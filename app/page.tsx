@@ -10,13 +10,12 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import axios from "axios"
 
-interface LoginResponse {
+interface CreateUserResponse {
   access_token: string;
   token_type: string;
   user_id: number;
   username: string;
   email: string;
-  role: string;
 }
 
 interface LoginCredentials {
@@ -26,13 +25,20 @@ interface LoginCredentials {
 
 
 export default function LoginPage() {
+  // Estado para controlar si estamos en la pestaña de inicio de sesión o registro
+  // y para manejar los datos del formulario
   const [isLogin, setIsLogin] = useState(true)
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
+    nombre: "",
+    telefono: "",
+    domicilio: "",
+    unidad_responsable_id: ""
   })
+  // useRouter para redireccionar después del registro o inicio de sesión
   const router = useRouter()
   const [errores, setErrores] = useState("")
 
@@ -57,97 +63,84 @@ export default function LoginPage() {
 
   // Manejar el envío del formulario de registro
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Form Data:", formData);
-    const { username, email, password, confirmPassword } = formData
-    // Validar las contraseñas antes de enviar el formulario
-    if (!validatePasswords(password, confirmPassword)) {
-      return
-    }
-    // Preparar los datos para el registro
-
-    const credentials: LoginCredentials = {
-      username,
-      password,
-    }
-    console.log("Credenciales de registro:", credentials);
+    e.preventDefault();
 
 
-    // Enviar la solicitud de registro al servidor
-    console.log("Enviando solicitud de registro...");
-    console.log("URL de registro:", "localhost:8000/register");
-    console.log("Datos del formulario:", formData);
-    console.log("Credenciales:", credentials);
-    console.log("Validando contraseñas:", validatePasswords(password, confirmPassword));
-    console.log("Errores:", errores);
-    console.log("Estado de isLogin:", isLogin);
-    console.log("Form Data antes del envío:", formData);
-    console.log("Intentando registrar usuario...");
-    console.log("Intentando registrar usuario con datos:", {
-      username,
-      email,
-      password,
-      confirmPassword,
-    })
-    console.log("Intentando registrar usuario con credenciales:", credentials)
-
+    if (!validatePasswords(formData.password, formData.confirmPassword)) return;
 
     try {
-      const response = await axios.post<LoginResponse>("localhost:8000/register")
-      if (response.status === 201) {
-        toast.success("Usuario registrado exitosamente")
-        // Redirigir al usuario a la página de inicio de sesión
-        setIsLogin(true)
+      const userData = {
+        username: formData.username.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        nombre: formData.nombre.trim(), // Campo obligatorio
+        telefono: formData.telefono || null, // Opcional
+        domicilio: formData.domicilio || null, // Opcional
+        unidad_responsable_id: formData.unidad_responsable_id || null // Opcional
+      };
 
-        setFormData({
-          username: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-        })
-
-        setIsLogin(true)
-      } else {
-        toast.error("Error al registrar el usuario")
-      }
-    }
-    catch (error) {
-      error instanceof Error && error.message
-      console.error("Error al registrar el usuario:", error)
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          // El servidor respondió con un código de estado fuera del rango de 2xx
-          console.error("Error de respuesta del servidor:", error.response.data)
-          setErrores(error.response.data)
-          toast.error(`Error: ${error.response.data}`)
-        } else if (error.request) {
-          // La solicitud fue realizada pero no se recibió respuesta
-          console.error("Error de solicitud:", error.request)
-          toast.error("No se recibió respuesta del servidor")
-        } else {
-          // Algo sucedió al configurar la solicitud que provocó un error
-          console.error("Error al configurar la solicitud:", error.message)
-          toast.error(`Error: ${error.message}`)
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/register`,
+        userData,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
-      }
-      else {
-        // Manejo de errores no relacionados con Axios
-        console.error("Error desconocido:", error)
-        toast.error("Ocurrió un error desconocido")
-      }
-      setErrores("Error al registrar el usuario")
-      console.error("Error al registrar el usuario:", error)
-      toast.error("Error al registrar el usuario")
+      );
+
+      // Manejar la respuesta del servidor que sea exitosa
+      console.log("Respuesta del servidor:", response.data);
+      toast.success("Usuario registrado exitosamente");
+
+      // Redireccionar al usuario a la página de inicio de sesión
+      setIsLogin(true);
+
+      // limpiar el formulario después del registro exitoso
       setFormData({
         username: "",
         email: "",
         password: "",
         confirmPassword: "",
-      })
-      console.log("Form Data después del error:", formData);
-      return;
+        nombre: "",
+        telefono: "",
+        domicilio: "",
+        unidad_responsable_id: ""
+      });
+
+
+    } catch (error) {
+      console.error("Error al registrar usuario:", error);
+
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Mostrar detalles específicos del error 422
+          if (error.response.status === 422) {
+            const errorDetails = error.response.data.detail || error.response.data;
+            console.error("Detalles del error:", errorDetails);
+
+            if (Array.isArray(errorDetails)) {
+              // Si el backend devuelve múltiples errores
+              errorDetails.forEach((err: any) => {
+                toast.error(`Error: ${err.msg || err.message}`);
+              });
+            } else if (typeof errorDetails === 'string') {
+              toast.error(errorDetails);
+            } else {
+              toast.error("Error de validación en los datos enviados");
+            }
+          } else {
+            toast.error(`Error del servidor: ${error.response.data.detail || error.message}`);
+          }
+        } else {
+          toast.error(`Error de conexión: ${error.message}`);
+        }
+      } else {
+        toast.error("Error desconocido al intentar registrar");
+      }
     }
-  }
+
+  };
 
   // Manejar cambios en los campos del formulario
   // Actualizar el estado del formulario
@@ -258,6 +251,39 @@ export default function LoginPage() {
                     type="password"
                     required
                     value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nombre">Nombre completo*</Label>
+                  <Input
+                    id="nombre"
+                    name="nombre"
+                    type="text"
+                    required
+                    value={formData.nombre}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="telefono">Teléfono</Label>
+                  <Input
+                    id="telefono"
+                    name="telefono"
+                    type="tel"
+                    value={formData.telefono}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="domicilio">Domicilio</Label>
+                  <Input
+                    id="domicilio"
+                    name="domicilio"
+                    type="text"
+                    value={formData.domicilio}
                     onChange={handleInputChange}
                   />
                 </div>

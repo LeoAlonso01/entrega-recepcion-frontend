@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className="h-full">
+    <html className="h-full">
       <body className='h-full bg-gray-50'>
         <Toaster position="top-right" richColors />
         {children}
