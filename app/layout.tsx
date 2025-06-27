@@ -1,8 +1,10 @@
-import type { Metadata } from 'next'
-import { Toaster } from "sonner"
-import './globals.css'
 
-export const metadata: Metadata = {
+import type { Metadata } from 'next'
+import ClientToaster from '@/components/ClientToaster'
+import '../styles/globals.css';
+
+
+/* export const metadata: Metadata = {
   title: 'SERUMICH',
   keywords: ['SERUMICH', 'Sistema de Entrega Recepción', 'Actas', 'Administración', 'Anexos'],
   authors: [{ name: 'SERUMICH Team', url: 'https://serumich.com' }],
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
   },
   description: 'Created with v0',
   generator: 'v0.dev',
-}
+} */
 
 export default function RootLayout({
   children,
@@ -32,9 +34,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html className="h-full">
-      <body className='h-full bg-gray-50'>
-        <Toaster position="top-right" richColors />
+    // Cambiar el fragmento para quitar el error de "hydration"
+    // https://nextjs.org/docs/messages/react-hydration-error
+    <html lang="es" className="h-full">
+      <body className="h-full bg-gray-100 text-gray-900 antialiased">
+        <ClientToaster />
         {children}
       </body>
     </html>

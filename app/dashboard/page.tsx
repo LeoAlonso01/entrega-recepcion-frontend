@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { FileText, Users, ClipboardList, LogOut } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
+import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
+
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
@@ -17,6 +19,18 @@ export default function Dashboard() {
     const userData = localStorage.getItem("user")
 
     if (!token || !userData) {
+      toast.error("Debes iniciar sesión para acceder al panel de control.")
+      router.push("/")
+      return
+    }
+    // Checar la duracuion del token
+    const tokenExpiration = localStorage.getItem("tokenExpiration")
+
+    if (tokenExpiration && new Date(tokenExpiration) < new Date()) {
+      toast.error("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.")
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+      localStorage.removeItem("tokenExpiration")
       router.push("/")
       return
     }
@@ -24,70 +38,26 @@ export default function Dashboard() {
     setUser(JSON.parse(userData))
   }, [router])
 
-  const handleLogout = () => {
-    toast.success("Sesión cerrada exitosamente")
-    router.push("/")
-  }
-
   if (!user) return null
 
   return (
+
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
       {/* Header */}
-      <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="w-full shadow-sm bg-[#24356B]">
+        
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <NavbarWithBreadcrumb />
+          
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold text-white">SERUMICH</h1>
+            {/* Logo y nombre */}
 
-              <nav className="hidden md:flex space-x-6">
-
-               
-                <div className="group">
-                  <Link href="/dashboard/administracion" className="px-4 py-2 text-white hover:text-[#B59E60] hover:bg-gray-800 hover:rounded-md transition-all duration-300">
-                    Administración
-                  </Link>
-                </div>
-
-                <div className="group">
-                  <Link href="/dashboard/actas" className="px-4 py-2 text-white hover:text-[#B59E60] hover:bg-gray-800 hover:rounded-md transition-all duration-300">
-                    Entrega recepción
-                  </Link>
-                </div>
-
-                <div className="group">
-                  <Link href="/dashboard/anexos" className="px-4 py-2 text-white hover:text-[#B59E60] hover:bg-gray-800 hover:rounded-md transition-all duration-300">
-                    Anexos
-                  </Link>
-                </div>
-
-              </nav>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <p className="text-white">Bienvenido, {user.username}</p>
-              <p className="text-white">Usuario: {user.role}</p>
-              <img
-                src={user.avatar || "/default-avatar.png"}
-                alt="User Avatar"
-                className="w-8 h-8 rounded-full border-2 border-white"
-              />
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-                className="text-white border-white hover:bg-white hover:text-[#24356B]"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Salir
-              </Button>
-            </div>
           </div>
         </div>
-      </header>
+      </header >
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      < main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" >
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Panel de Control</h2>
           <p className="text-gray-600">Gestiona las actas, anexos y administración del sistema</p>
@@ -222,7 +192,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   )
 }

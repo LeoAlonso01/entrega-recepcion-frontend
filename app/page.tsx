@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import axios from "axios"
+
 
 interface CreateUserResponse {
   access_token: string;
@@ -33,31 +33,73 @@ export default function LoginPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    nombre: "",
-    telefono: "",
-    domicilio: "",
-    unidad_responsable_id: ""
+
   })
+  let username = formData.username;
+  let password = formData.password;
   // useRouter para redireccionar después del registro o inicio de sesión
   const router = useRouter()
   const [errores, setErrores] = useState("")
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Inicio de sesion")
+    e.preventDefault();
+    console.log("Inicio de sesion");
+
+    try {
+      const response = await fetch("http://localhost:8000/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded", // Corregí el typo (de encoder a encoded)
+        },
+        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+      });
+
+      // Primero leemos la respuesta completa
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        
+        if (response.status === 401) {
+          toast.error("Usuario o contraseña incorrectos");
+        } else if (response.status === 422) {
+          toast.error("Error de validación en los datos enviados");
+        } 
+          throw new Error(`${responseData.detail || "Error al iniciar sesión"}`);
+      }
+
+      // Si la respuesta es exitosa
+      localStorage.setItem("token", responseData.access_token);
+      localStorage.setItem("user", JSON.stringify(responseData));
+      toast.success("Inicio de sesión exitoso");
+      router.push("/dashboard");
+    } catch (error) {
+      console.error("Error al iniciar sesión:", error);
+      if (error instanceof Error) {
+        toast.error(`${error.message}`);
+      } else {
+        toast.error("Error desconocido al intentar iniciar sesión");
+      }
+    }
   }
 
   // validacion de contraseñas a registrar usuario
   const validatePasswords = (password: string, confirmPassword: string): boolean => {
+    // Validar que las contraseñas coincidan y tengan al menos 8 caracteres
     if (password !== confirmPassword) {
       toast.error("Las contraseñas no coinciden")
       return false
     }
+    // Validar que la contraseña tenga al menos 8 caracteres
     if (password.length < 8) {
       toast.error("La contraseña debe tener al menos 8 caracteres")
       return false
     }
-    // Aquí puedes agregar más validaciones si es necesario
+    // Validacion para el correo electronico que termine en "umich.mx"
+    if (!formData.email.endsWith("@umich.mx")) {
+      toast.error("El correo electrónico debe terminar en @umich.mx")
+      return false
+    }
+    
     return true
   }
 
@@ -65,80 +107,11 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-
+    // Validar que las contraseñas coincidan y tengan al menos 8 caracteres
     if (!validatePasswords(formData.password, formData.confirmPassword)) return;
 
-    try {
-      const userData = {
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        nombre: formData.nombre.trim(), // Campo obligatorio
-        telefono: formData.telefono || null, // Opcional
-        domicilio: formData.domicilio || null, // Opcional
-        unidad_responsable_id: formData.unidad_responsable_id || null // Opcional
-      };
-
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/register`,
-        userData,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      // Manejar la respuesta del servidor que sea exitosa
-      console.log("Respuesta del servidor:", response.data);
-      toast.success("Usuario registrado exitosamente");
-
-      // Redireccionar al usuario a la página de inicio de sesión
-      setIsLogin(true);
-
-      // limpiar el formulario después del registro exitoso
-      setFormData({
-        username: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        nombre: "",
-        telefono: "",
-        domicilio: "",
-        unidad_responsable_id: ""
-      });
-
-
-    } catch (error) {
-      console.error("Error al registrar usuario:", error);
-
-      if (axios.isAxiosError(error)) {
-        if (error.response) {
-          // Mostrar detalles específicos del error 422
-          if (error.response.status === 422) {
-            const errorDetails = error.response.data.detail || error.response.data;
-            console.error("Detalles del error:", errorDetails);
-
-            if (Array.isArray(errorDetails)) {
-              // Si el backend devuelve múltiples errores
-              errorDetails.forEach((err: any) => {
-                toast.error(`Error: ${err.msg || err.message}`);
-              });
-            } else if (typeof errorDetails === 'string') {
-              toast.error(errorDetails);
-            } else {
-              toast.error("Error de validación en los datos enviados");
-            }
-          } else {
-            toast.error(`Error del servidor: ${error.response.data.detail || error.message}`);
-          }
-        } else {
-          toast.error(`Error de conexión: ${error.message}`);
-        }
-      } else {
-        toast.error("Error desconocido al intentar registrar");
-      }
-    }
+    // Preparar los datos del usuario para el registro
+    console.log("registrando usuario");
 
   };
 
@@ -254,39 +227,8 @@ export default function LoginPage() {
                     onChange={handleInputChange}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre completo*</Label>
-                  <Input
-                    id="nombre"
-                    name="nombre"
-                    type="text"
-                    required
-                    value={formData.nombre}
-                    onChange={handleInputChange}
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="telefono">Teléfono</Label>
-                  <Input
-                    id="telefono"
-                    name="telefono"
-                    type="tel"
-                    value={formData.telefono}
-                    onChange={handleInputChange}
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="domicilio">Domicilio</Label>
-                  <Input
-                    id="domicilio"
-                    name="domicilio"
-                    type="text"
-                    value={formData.domicilio}
-                    onChange={handleInputChange}
-                  />
-                </div>
                 <Button type="submit" className="w-full" style={{ backgroundColor: "#751518", color: "white" }}>
                   Registrarse
                 </Button>
