@@ -21,6 +21,26 @@ const navLinks: NavLink[] = [
   { name: "Unidades", href: "/dashboard/unidades" },
 ];
 
+// funcon que revisa el rol y muestra las rutas correspondientes
+const getNavLinksByRole = (role: string): NavLink[] => {
+  switch (role) {
+    case "ADMIN":
+      return [
+        { name: "Administración", href: "/dashboard/administracion" },
+        { name: "Actas", href: "/dashboard/actas" },
+        { name: "Unidades", href: "/dashboard/unidades" },
+      ];
+    case "USER":
+      return [{ name: "Anexos", href: "/dashboard/anexos" }];
+    case "AUDITOR":
+      return [
+        { name: "Actas", href: "/dashboard/actas" },
+      ];
+    default:
+      return [];
+  }
+}
+
 function getBreadcrumbs(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbs = segments.map((segment, index) => {
@@ -31,18 +51,34 @@ function getBreadcrumbs(pathname: string) {
   return breadcrumbs;
 }
 
-export default function NavbarWithBreadcrumb() {
+export default function NavbarWithBreadcrumb( user : { role: string } | null) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [role, setRole] = useState<string | null>(null);
 
   // Verificar si hay usuario autenticado
   useEffect(() => {
-    const user = localStorage.getItem("user");
+    const username = localStorage.getItem("user");
+    const userRole = localStorage.getItem("role");
     if (!user) window.location.href = "/";
+  
+    if (username) {
+      console.log(username[0] === "{" ? JSON.parse(username).role : userRole);
+      // Si el usuario es un objeto JSON, parsearlo
+      setRole(username[0] === "{" ? JSON.parse(username).role : userRole);
+    }
+    // poenr el rol del usuario en el estado
+    if (userRole) {
+      setRole(userRole);
+    }
+    
   }, []);
 
   const pathname = usePathname();
   const breadcrumbs = getBreadcrumbs(pathname);
   const isActive = (href: string) => pathname === href;
+
+  // funcion para usar getnavbyrole basado en el rol obtenido
+  const displayedNavLinks = role ? getNavLinksByRole(role) : [];
 
   return (
     <header className="w-full bg-[#24356B] shadow-sm">
@@ -55,13 +91,12 @@ export default function NavbarWithBreadcrumb() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            {navLinks.map(({ name, href }) => (
+            {displayedNavLinks.map(({ name, href }) => (
               <Link
                 key={href}
                 href={href}
-                className={`text-white text-sm font-medium hover:text-gray-300 transition ${
-                  isActive(href) ? "underline underline-offset-4 text-yellow-300" : ""
-                }`}
+                className={`text-white text-sm font-medium hover:text-gray-300 transition ${isActive(href) ? "underline underline-offset-4 text-yellow-300" : ""
+                  }`}
               >
                 {name}
               </Link>
@@ -104,9 +139,8 @@ export default function NavbarWithBreadcrumb() {
               <Link
                 key={href}
                 href={href}
-                className={`text-white text-sm font-medium hover:text-gray-300 transition ${
-                  isActive(href) ? "underline underline-offset-4 text-yellow-300" : ""
-                }`}
+                className={`text-white text-sm font-medium hover:text-gray-300 transition ${isActive(href) ? "underline underline-offset-4 text-yellow-300" : ""
+                  }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {name}
@@ -131,11 +165,10 @@ export default function NavbarWithBreadcrumb() {
                   <li>
                     <Link
                       href={href}
-                      className={`hover:underline ${
-                        idx === breadcrumbs.length - 1
+                      className={`hover:underline ${idx === breadcrumbs.length - 1
                           ? "text-yellow-300"
                           : "text-gray-300"
-                      }`}
+                        }`}
                     >
                       {decodeURIComponent(name)}
                     </Link>
