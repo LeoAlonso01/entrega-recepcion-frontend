@@ -29,11 +29,14 @@ const getNavLinksByRole = (role: string): NavLink[] => {
         { name: "Administración", href: "/dashboard/administracion" },
         { name: "Actas", href: "/dashboard/actas" },
         { name: "Unidades", href: "/dashboard/unidades" },
+        { name: "Anexos", href: "/dashboard/anexos" },
       ];
     case "USER":
       return [{ name: "Anexos", href: "/dashboard/anexos" }];
     case "AUDITOR":
       return [
+        { name: "Administración", href: "/dashboard/administracion" },
+        { name: "Anexos", href: "/dashboard/anexos" },
         { name: "Actas", href: "/dashboard/actas" },
       ];
     default:
