@@ -32,7 +32,6 @@ interface RegisterCredentials {
   confirmPassword: string;
 }
 
-
 export default function LoginPage() {
   // Estado para controlar si estamos en la pestaña de inicio de sesión o registro
   // y para manejar los datos del formulario
@@ -56,7 +55,7 @@ export default function LoginPage() {
     console.log("Inicio de sesion");
 
     try {
-      const response = await fetch("http://148.216.111.124:8000/token", {
+      const response = await fetch("http://localhost:8000/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded", // Corregí el typo (de encoder a encoded)
@@ -91,7 +90,6 @@ export default function LoginPage() {
       }
     }
   }
-
   // funcion que valida el correo electronico
   const validateEmail = (email: string) => {
     // Expresión regular para validar el formato del correo electrónico
@@ -100,7 +98,6 @@ export default function LoginPage() {
     setIsEmailValid(isValid);
     return isValid;
   }
-
   // validacion de contraseñas a registrar usuario
   const validatePasswords = (password: string, confirmPassword: string): boolean => {
     // Validar que las contraseñas coincidan y tengan al menos 8 caracteres
@@ -121,7 +118,6 @@ export default function LoginPage() {
 
     return true
   }
-
   // manejar el páso de datos del formulario de registro
   // y pasar los datos a solicitud de permisos
   const handleRegistroExitoso = () => {
@@ -132,7 +128,6 @@ export default function LoginPage() {
 
     router.push(`/solicitud_permisos?${query.toString()}`);
   };
-
   // Manejar el envío del formulario de registro
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,7 +170,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch("http://148.216.111.124:8000/register", {
+      const response = await fetch("http://localhost:8000/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -220,7 +215,6 @@ export default function LoginPage() {
     }
 
   };
-
   // Manejar cambios en los campos del formulario
   // Actualizar el estado del formulario
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,6 +227,7 @@ export default function LoginPage() {
     console.log("Form Data:", formData);
   }
 
+  // render del 
   return (
     <Tooltip.Provider>
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#24356B" }}>

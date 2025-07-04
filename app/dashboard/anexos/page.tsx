@@ -164,12 +164,18 @@ export default function AnexosPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingAnexo, setEditingAnexo] = useState<Anexo | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    codigo: string
+    titulo: string
+    descripcion: string
+    tipo: Anexo["tipo"]
+    estado: Anexo["estado"]
+  }>({
     codigo: "",
     titulo: "",
     descripcion: "",
-    tipo: "Inventario" as const,
-    estado: "Borrador" as const,
+    tipo: "Inventario",
+    estado: "Borrador",
   })
   const router = useRouter()
 
