@@ -3,26 +3,73 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb";
+import { useRouter } from "next/navigation";
 
-
-
-export default function UnidadesResponsablesPage() {
+export default function UnidadesResponsablesPage( acces_token: string | null) {
 
     // Aquí puedes agregar el estado y lógica para manejar las unidades responsables
     const [unidades, setUnidades] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<Error | null>(null);
 
     useEffect(() =>{
-        console.log("Cargando unidades responsables...");
+       
+        // consulta de las unidades responsables
+        handleGetUnidades();
 
+        console.log("Unidades responsables cargadas:", unidades);
     },[]);
+
+    const handleGetUnidades = async () => {
+        // Aquí puedes obtener el token de acceso desde localStorage
+        const token =  localStorage.getItem("token");
+        
+        // Verifica si el token es válido
+        if (!token) {
+            console.error("Token de acceso no encontrado. Redirigiendo a la página de inicio");
+            // Redirige al usuario a la página de inicio o de inicio de sesión
+            setError(new Error("Token de acceso no encontrado. Redirigiendo a la página de inicio"));
+            const router = useRouter();
+            router.push("/");
+            return;
+        }else {
+            console.log("Token de acceso encontrado y valido!! :", token);
+        }
+        try {
+            // Aquí puedes hacer una llamada a la API para obtener las unidades responsables
+            const response = await fetch('http://localhost:8000/unidades_responsables',{
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // enviar token de acceso en el header
+                    'Authorization': `Bearer ${token}`
+                }
+                
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al obtener las unidades responsables');
+            }
+
+            const data = await response.json();
+            setUnidades(data);
+            setLoading(false);
+
+
+            
+            
+        } catch (error) {
+
+            console.error("Error al obtener las unidades responsables:", error);
+            setError(error as Error);
+            setLoading(false);
+        }
+    }
 
     return (
         <>
             <div className="bg-gray-100">
-                <NavbarWithBreadcrumb
-                />
+                <NavbarWithBreadcrumb role="admin" />
             </div>      
 
             <div className="container mx-auto px-4 py-8">

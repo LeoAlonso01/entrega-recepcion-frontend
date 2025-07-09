@@ -29,13 +29,16 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 
 interface Anexo {
   id: number
-  clave: "RF01" | "RF02" | "RF03" | "RF04" | "RF05" | "RF06" | "RF07" | "RF08" | "RF09" | "RF10"
+  clave: "RF01" | "RF02" | "RF03" | "RF04" | "RF05" | "RF06" | "RF07" | "RF08" | "RF09" | "RF10" | "RF11" | "RF12" | "RF13" | "RF14" | "RF15" | "RF16" | "RF17" | "RF18" 
   titulo: string
   descripcion: string
   categoria: "Contratos, Convenios y Licitaciones" | "Recursos Presupuestales y Financieros" | "Inventario de Bienes Muebles e Inmuebles" | "Recursos Humanos" | "Seguridad y Control de Acceso" | "Documentación y Archivos" | "Asuntos Legales y de Auditoría" | "Programas y Proyectos" | "Transparencia" | "Estructura y Normativa Interna"
   fecha_creacion: string
   estado: "Borrador" | "Completado" | "Revisión" | "Cancelado"
   archivo: string // Nombre del archivo asociado
+  // creador por: el anexo debe tener un creador asociado, por ejemplo, un usuario o empleado
+  creador: string // Nombre del creador del anexo
+
 }
 
 const exportAnexosToPDF = (anexos: Anexo[], title = "Reporte de Anexos") => {
@@ -140,7 +143,7 @@ const exportAnexosToExcel = (anexos: Anexo[], title = "Reporte de Anexos") => {
   XLSX.writeFile(workbook, `anexos_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-export default function AnexosPage() {
+export default function AnexosPage( user : { username: string }, userrole: { role: string }, unidadresponable: { unidad: string } ) {
   const [anexos, setAnexos] = useState<Anexo[]>([
     {
       id: 1,
@@ -151,6 +154,7 @@ export default function AnexosPage() {
       fecha_creacion: "2024-01-15",
       estado: "Borrador",
       archivo: "", // Nombre del archivo asociado
+      creador: user.username, // Nombre del creador del anexo
     },
     {
       id: 2,
@@ -161,6 +165,7 @@ export default function AnexosPage() {
       fecha_creacion: "2024-01-16",
       estado: "Borrador",
       archivo: "", // Nombre del archivo asociado
+      creador: user.username, // Nombre del creador del anexo
     },
   ])
 
@@ -173,6 +178,7 @@ export default function AnexosPage() {
     categoria: Anexo["categoria"]
     estado: Anexo["estado"]
     archivo: string
+    creador?: string // Optional, can be set later
   }>({
     clave: "",
     titulo: "",
@@ -180,6 +186,7 @@ export default function AnexosPage() {
     categoria: "Inventario de Bienes Muebles e Inmuebles",
     estado: "Borrador",
     archivo: "",
+    creador: user.username, // Set the creator from the user prop
   })
   const router = useRouter()
 
@@ -213,6 +220,7 @@ export default function AnexosPage() {
         clave: formData.clave as Anexo["clave"],
         fecha_creacion: new Date().toISOString().split("T")[0],
         archivo: (formData as any).archivo || "", // Ensure archivo is set
+        creador: user.username, // Set the creator from the user prop
       }
       setAnexos([...anexos, newAnexo])
     }
@@ -228,6 +236,7 @@ export default function AnexosPage() {
       categoria: "Inventario de Bienes Muebles e Inmuebles",
       estado: "Borrador",
       archivo: "",
+      creador: user.username, // Reset creator to the current user
     })
     setEditingAnexo(null)
     setIsDialogOpen(false)
@@ -242,6 +251,7 @@ export default function AnexosPage() {
       categoria: anexo.categoria,
       estado: anexo.estado,
       archivo: anexo.archivo || "",
+      creador: anexo.creador, // Set the creator from the anexo
     })
     setIsDialogOpen(true)
   }
