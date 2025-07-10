@@ -90,6 +90,10 @@ export default function Dashboard() {
 
         {user.role === "ADMIN" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="mb-6">
+              <p className="text-sm text-gray-500">Bienvenido, {user.name || user.username}.</p>
+              <p className="text-sm text-gray-500">Tu rol: {user.role}</p>
+            </div>
             {/* Actas Card */}
             <Link href="/dashboard/actas">
               <Card

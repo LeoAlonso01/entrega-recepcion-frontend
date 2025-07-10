@@ -37,7 +37,7 @@ export default function UnidadesResponsablesPage( acces_token: string | null) {
         }
         try {
             // Aquí puedes hacer una llamada a la API para obtener las unidades responsables
-            const response = await fetch('http://localhost:8000/unidades_responsables',{
+            const response = await fetch('http://148.216.25.183:8000/unidades_responsables',{
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
