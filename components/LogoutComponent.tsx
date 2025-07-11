@@ -26,15 +26,17 @@ export default function LogoutComponent({ user }: { user: { username: string } }
 
     return (
         <div className="flex items-center space-x-2">
-            <p className="text-white">Bienvenido, {user.username}</p>
+            <p className="text-gray-800 font-semibold text-sm px-2 py-1 rounded bg-gray-100">
+                Bienvenido, {user.username}
+            </p>
             <Button
                 onClick={handleLogout}
                 variant="outline"
                 size="sm"
-                className="group flex items-center space-x-2 border-gray-800 hover:bg-gray-800 hover:text-white transition-colors duration-300"
+                className="group flex items-center gap-2 px-3 py-1 border border-red-500 bg-white text-red-600 hover:bg-red-500 hover:text-white focus:ring-2 focus:ring-red-300 transition-colors duration-200 rounded-md shadow-sm"
             >
-                <LogOut className="h-2 w-2 text-gray-800 group-hover:text-white transition-colors duration-300" />
-                <span className="text-gray-800 group-hover:text-white transition-colors duration-300">Cerrar sesión</span>
+                <LogOut className="h-4 w-4 text-red-500 group-hover:text-white transition-colors duration-200" />
+                <span className="font-medium group-hover:text-white transition-colors duration-200">Cerrar sesión</span>
             </Button>
         </div>
     );

@@ -25,7 +25,7 @@ import Link from "next/link"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
-
+import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 interface Acta {
   id: number
   numero: string
@@ -108,7 +108,7 @@ const exportToExcel = (actas: Acta[], title = "Reporte de Actas") => {
   XLSX.writeFile(workbook, `actas_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-export default function ActasPage() {
+export default function ActasPage( user: { role: string } | null ) {
   const [actas, setActas] = useState<Acta[]>([
     {
       id: 1,
@@ -132,13 +132,20 @@ export default function ActasPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingActa, setEditingActa] = useState<Acta | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    numero: string
+    fecha: string
+    entregante: string
+    recibiente: string
+    descripcion: string
+    estado: "Pendiente" | "Completada" | "Revisión"
+  }>({
     numero: "",
     fecha: "",
     entregante: "",
     recibiente: "",
     descripcion: "",
-    estado: "Pendiente" as const,
+    estado: "Pendiente",
   })
   const router = useRouter()
 
@@ -213,7 +220,7 @@ export default function ActasPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
       {/* Header */}
-      <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
+      {/* <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
@@ -227,7 +234,10 @@ export default function ActasPage() {
             </div>
           </div>
         </div>
-      </header>
+      </header> */}
+
+      {/* Breadcrumbs */}
+      <NavbarWithBreadcrumb role="ADMIN" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">

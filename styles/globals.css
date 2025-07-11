@@ -84,6 +84,13 @@ body {
   }
 }
 
+.tree-node {
+  transition: background-color 0.2s ease;
+}
+.tree-node:hover {
+  background-color: #f3f4f6;
+}
+
 @layer base {
   * {
     @apply border-border;

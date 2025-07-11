@@ -26,10 +26,20 @@ import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
+import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
+
+interface Usuario {
+  id: number
+  username: string
+  email: string
+  role: "USER" | "ADMIN"
+  is_active: boolean
+  created_at: string
+}
 
 interface Anexo {
   id: number
-  clave: "RF01" | "RF02" | "RF03" | "RF04" | "RF05" | "RF06" | "RF07" | "RF08" | "RF09" | "RF10" | "RF11" | "RF12" | "RF13" | "RF14" | "RF15" | "RF16" | "RF17" | "RF18" 
+  clave: "RF01" | "RF02" | "RF03" | "RF04" | "RF05" | "RF06" | "RF07" | "RF08" | "RF09" | "RF10" | "RF11" | "RF12" | "RF13" | "RF14" | "RF15" | "RF16" | "RF17" | "RF18"
   titulo: string
   descripcion: string
   categoria: "Contratos, Convenios y Licitaciones" | "Recursos Presupuestales y Financieros" | "Inventario de Bienes Muebles e Inmuebles" | "Recursos Humanos" | "Seguridad y Control de Acceso" | "Documentación y Archivos" | "Asuntos Legales y de Auditoría" | "Programas y Proyectos" | "Transparencia" | "Estructura y Normativa Interna"
@@ -143,7 +153,7 @@ const exportAnexosToExcel = (anexos: Anexo[], title = "Reporte de Anexos") => {
   XLSX.writeFile(workbook, `anexos_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-export default function AnexosPage( user : { username: string }, userrole: { role: string }, unidadresponable: { unidad: string } ) {
+export default function AnexosPage(user: { username: string }, userrole: { role: string }, unidadresponable: { unidad: string }) {
   const [anexos, setAnexos] = useState<Anexo[]>([
     {
       id: 1,
@@ -179,6 +189,14 @@ export default function AnexosPage( user : { username: string }, userrole: { rol
     estado: Anexo["estado"]
     archivo: string
     creador?: string // Optional, can be set later
+    archivoObj?: File | null // Add this property to allow file object
+    partida?: string
+    denominacion?: string
+    presupuestoAutorizado?: string
+    ampliacionesDeducciones?: string
+    presupuestoModificado?: string
+    presupuestoEjercido?: string
+    porEjercer?: string
   }>({
     clave: "",
     titulo: "",
@@ -187,8 +205,34 @@ export default function AnexosPage( user : { username: string }, userrole: { rol
     estado: "Borrador",
     archivo: "",
     creador: user.username, // Set the creator from the user prop
+    archivoObj: null, // Initialize archivoObj
+    partida: "",
+    denominacion: "",
+    presupuestoAutorizado: "",
+    ampliacionesDeducciones: "",
+    presupuestoModificado: "",
+    presupuestoEjercido: "",
+    porEjercer: "",
   })
   const router = useRouter()
+  const [isInvalidFileType, setIsInvalidFileType] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Función para calcular el presupuesto modificado
+  function calcularPresupuestoModificado(presupuestoAutorizado?: string, ampliacionesDeducciones?: string) {
+    const autorizado = parseFloat(presupuestoAutorizado || "0");
+    const ampliaciones = parseFloat(ampliacionesDeducciones || "0");
+    return (autorizado + ampliaciones).toString();
+  }
+
+  // Función para calcular el monto por ejercer
+  function calcularPorEjercer(presupuestoModificado?: string, presupuestoEjercido?: string) {
+    const modificado = parseFloat(presupuestoModificado || "0");
+    const ejercido = parseFloat(presupuestoEjercido || "0");
+    return (modificado - ejercido).toString();
+  }
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -196,9 +240,9 @@ export default function AnexosPage( user : { username: string }, userrole: { rol
       router.push("/")
     }
   }, [router])
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitted(true);
 
     if (editingAnexo) {
       setAnexos(
@@ -226,7 +270,35 @@ export default function AnexosPage( user : { username: string }, userrole: { rol
     }
 
     resetForm()
+    setIsSubmitted(false);
   }
+
+  // Función para manejar la selección de archivos
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validar tipo de archivo
+      if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        setIsInvalidFileType(false);
+        setSelectedFile(file);
+
+        // Crear URL de previsualización
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+
+        // Actualizar el estado del formulario
+        setFormData({
+          ...formData,
+          archivo: file.name,
+          archivoObj: file // Asegúrate de tener este campo en tu formData
+        });
+      } else {
+        setIsInvalidFileType(true);
+        setPreviewUrl(null);
+        setSelectedFile(null);
+      }
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -302,11 +374,23 @@ export default function AnexosPage( user : { username: string }, userrole: { rol
     }
   }
 
+  // Función para eliminar archivo
+  const removeFile = () => {
+    setPreviewUrl(null);
+    setSelectedFile(null);
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      archivo: '',
+      archivoObj: null
+    }));
+    setIsInvalidFileType(false);
+  };
+
   return (
     <>
       <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
         {/* Header */}
-        <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
+        {/*  <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
               <div className="flex items-center space-x-4">
@@ -320,7 +404,10 @@ export default function AnexosPage( user : { username: string }, userrole: { rol
               </div>
             </div>
           </div>
-        </header>
+        </header> */}
+
+        {/* Breadcrumbs */}
+        <NavbarWithBreadcrumb role={userrole?.role ?? "USER"} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Stats Cards */}
@@ -439,120 +526,221 @@ export default function AnexosPage( user : { username: string }, userrole: { rol
 
                   <div className="grid gap-4 py-4">
 
-                  {formData.clave === "RF01" && (
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="flex flex-col">
-                        <Label htmlFor="Partida">Partida <span>*</span></Label>
-                        <Input
-                          id="Partida"
-                          type="number"
-                          value={formData.titulo}
-                          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <Label>Denominación <span>*</span></Label>
-                        <Input
-                          type="number"
-                          value={formData.titulo}
-                          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                         
-                        >
-                        </Input>
-                      </div>
-                      <div className="flex flex-col">
-                        <Label>Presupuesto Autorizado <span>*</span></Label>
-                        <Input
-                          type="number"
-                          value={formData.titulo}
-                          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                          
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <Label>Ampliaciones y/o Deducciones</Label>
-                        <Input
-                          type="number"
-                          value={formData.titulo}
-                          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                          
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <Label>Presupuesto Modificado</Label>
-                        <Input
-                          type="number"
-                          value={formData.titulo}
-                          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                         
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <Label>Presupuesto Ejercido</Label>
-                        <Input
-                          type="number"
-                          value={formData.titulo}
-                          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                          
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <Label>Por Ejercer</Label>
-                        <Input
-                          type="number"
-                          value={formData.titulo}
-                          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                          
-                        />
-                      </div>
+                    {formData.clave === "RF01" && (
 
-                      {/* Puedes agregar más campos si es necesario */}
-                        <Label>Archivos del Presupuesto del SIIA</Label>
-                        <Input
-                        type="file"
-                        accept=".pdf,.xlsx"
-                        style={{
-                          border: "1px solid #ccc",
-                          padding: "8px",
-                          borderRadius: "4px",
-                          marginTop: "8px",
-                          width: "100%",
-                          boxSizing: "border-box",
-                          backgroundColor: "gray",
-                          transition: "background-color 0.2s, border-color 0.2s",
-                        }}
-                        onMouseOver={e => {
-                          (e.currentTarget as HTMLInputElement).style.backgroundColor = "#bdbdbd"
-                          ;(e.currentTarget as HTMLInputElement).style.borderColor = "#24356B"
-                        }}
-                        onMouseOut={e => {
-                          (e.currentTarget as HTMLInputElement).style.backgroundColor = "gray"
-                          ;(e.currentTarget as HTMLInputElement).style.borderColor = "#ccc"
-                        }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            setFormData({ ...formData, archivo: file.name })
-                          }
-                        }}
-                      />
-                      <h3>Previsualización</h3>
-                      <div>
-                        {formData.archivo && formData.archivo.endsWith(".pdf") ? (
-                          <iframe
-                            src={URL.createObjectURL(new Blob([formData.archivo], { type: "application/pdf" }))}
-                            style={{ width: "100%", height: "400px", border: "1px solid #ccc" }}
-                            title="Previsualización del PDF"
-                          />
-                        ) : formData.archivo && formData.archivo.endsWith(".xlsx") ? (
-                          <p>Archivo Excel cargado: {formData.archivo}</p>
-                        ) : (
-                          <p>No hay archivo cargado</p>
-                        )}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <>
+                          {/* Partida */}
+                          <div className="flex flex-col">
+                            <Label htmlFor="partida" className="flex items-center">
+                              Partida <span className="text-red-500 ml-1">*</span>
+                            </Label>
+                            <Input
+                              id="partida"
+                              type="number"
+                              value={formData.partida || ''}
+                              onChange={(e) => setFormData({ ...formData, partida: e.target.value })}
+                              className={`mt-1 ${!formData.partida && isSubmitted ? 'border-red-500' : ''}`}
+                            />
+                            {!formData.partida && isSubmitted && (
+                              <p className="mt-1 text-sm text-red-500">Este campo es requerido</p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col">
+                            <Label htmlFor="denominacion" className="flex items-center">
+                              Denominación <span className="text-red-500 ml-1">*</span>
+                            </Label>
+                            <Input
+                              id="denominacion"
+                              type="text"
+                              value={formData.denominacion || ''}
+                              onChange={(e) => setFormData({ ...formData, denominacion: e.target.value })}
+                              className={`mt-1 ${!formData.denominacion && isSubmitted ? 'border-red-500' : ''}`}
+                            />
+                            {!formData.denominacion && isSubmitted && (
+                              <p className="mt-1 text-sm text-red-500">Este campo es requerido</p>
+                            )}
+                          </div>
+
+                          {/* Presupuesto Autorizado */}
+                          <div className="flex flex-col">
+                            <Label htmlFor="presupuestoAutorizado" className="flex items-center">
+                              Presupuesto Autorizado <span className="text-red-500 ml-1">*</span>
+                            </Label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                              <Input
+                                id="presupuestoAutorizado"
+                                type="number"
+                                step="0.01"
+                                value={formData.presupuestoAutorizado || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setFormData({
+                                    ...formData,
+                                    presupuestoAutorizado: value,
+                                    presupuestoModificado: calcularPresupuestoModificado(value, formData.ampliacionesDeducciones)
+                                  });
+                                }}
+                                className={`pl-8 ${!formData.presupuestoAutorizado && isSubmitted ? 'border-red-500' : ''}`}
+                              />
+                            </div>
+                            {!formData.presupuestoAutorizado && isSubmitted && (
+                              <p className="mt-1 text-sm text-red-500">Este campo es requerido</p>
+                            )}
+                          </div>
+
+                          {/* Ampliaciones y/o Deducciones */}
+                          <div className="flex flex-col">
+                            <Label htmlFor="ampliacionesDeducciones">Ampliaciones y/o Deducciones</Label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                              <Input
+                                id="ampliacionesDeducciones"
+                                type="number"
+                                step="0.01"
+                                value={formData.ampliacionesDeducciones || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setFormData({
+                                    ...formData,
+                                    ampliacionesDeducciones: value,
+                                    presupuestoModificado: calcularPresupuestoModificado(formData.presupuestoAutorizado, value)
+                                  });
+                                }}
+                                className="pl-8"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Presupuesto Modificado (calculado) */}
+                          <div className="flex flex-col">
+                            <Label htmlFor="presupuestoModificado">Presupuesto Modificado</Label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                              <Input
+                                id="presupuestoModificado"
+                                type="number"
+                                step="0.01"
+                                value={formData.presupuestoModificado || ''}
+                                readOnly
+                                className="pl-8 bg-gray-100"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Presupuesto Ejercido */}
+                          <div className="flex flex-col">
+                            <Label htmlFor="presupuestoEjercido">Presupuesto Ejercido</Label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                              <Input
+                                id="presupuestoEjercido"
+                                type="number"
+                                step="0.01"
+                                value={formData.presupuestoEjercido || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setFormData({
+                                    ...formData,
+                                    presupuestoEjercido: value,
+                                    porEjercer: calcularPorEjercer(formData.presupuestoModificado, value)
+                                  });
+                                }}
+                                className="pl-8"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Por Ejercer (calculado) */}
+                          <div className="flex flex-col">
+                            <Label htmlFor="porEjercer">Por Ejercer</Label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                              <Input
+                                id="porEjercer"
+                                type="number"
+                                step="0.01"
+                                value={formData.porEjercer || ''}
+                                readOnly
+                                className="pl-8 bg-gray-100"
+                              />
+                            </div>
+                          </div>
+                        </>
+                        {/* Archivo */}
+                        <div className="mt-6">
+                            <Label className="flex items-center mb-2">
+                            Archivos del Presupuesto del SIIA
+                            </Label>
+                            <div className="relative flex items-center">
+                            <Input
+                              id="archivo"
+                              type="file"
+                              accept=".pdf,.xlsx"
+                              onChange={handleFileChange}
+                              className={`hidden`}
+                            />
+                            <label
+                              htmlFor="archivo"
+                              className={`cursor-pointer px-4 py-2 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-all flex items-center gap-2 ${isInvalidFileType ? 'border-red-500' : ''}`}
+                            >
+                              <svg className="h-5 w-5 text-[#24356B]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M4 12V8a2 2 0 012-2h4l2 2h4a2 2 0 012 2v4" />
+                              </svg>
+                              {selectedFile ? "Archivo seleccionado" : "Seleccionar archivo"}
+                            </label>
+                            {selectedFile && (
+                              <span className="ml-3 text-sm text-gray-600 truncate">{selectedFile.name}</span>
+                            )}
+                            </div>
+                          {isInvalidFileType && (
+                            <p className="mt-1 text-sm text-red-500">Formato no permitido. Solo se aceptan PDF y XLSX.</p>
+                          )}
+
+                          {/* Vista previa */}
+                          {previewUrl && (
+                            <div className="mt-4 border rounded-md overflow-hidden">
+                              <div className="flex items-center justify-between bg-gray-50 px-4 py-2">
+                                <h3 className="font-medium">Previsualización</h3>
+                                <button
+                                  type="button"
+                                  onClick={removeFile}
+                                  className="text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1 rounded transition"
+                                  title="Eliminar archivo"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="text-xs"></span>
+                                </button>
+                              </div>
+                              <div className="p-4">
+                                {selectedFile?.type === "application/pdf" ? (
+                                  <iframe
+                                    src={previewUrl}
+                                    title="Previsualización del PDF"
+                                    className="w-full h-64 border rounded"
+                                  />
+                                ) : selectedFile?.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ? (
+                                  <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded">
+                                    <FileSpreadsheet className="h-10 w-10 text-[#24356B] mb-2" />
+                                    <p className="text-sm text-gray-600">Archivo Excel cargado</p>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded">
+                                    <span className="text-gray-500">No se puede previsualizar este tipo de archivo.</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="px-4 py-2 bg-gray-50 flex items-center">
+                                <span className="text-sm text-gray-600 truncate">{selectedFile?.name}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                    
+                    )}
+
 
                     <div className="space-y-2">
                       <Label htmlFor="estado">Estado</Label>

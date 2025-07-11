@@ -27,6 +27,7 @@ import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
+import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 
 interface Usuario {
   id: number
@@ -115,7 +116,7 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
   XLSX.writeFile(workbook, `usuarios_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-export default function AdministracionPage() {
+export default function AdministracionPage( user: { role: string } | null ) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([
     {
       id: 1,
@@ -142,14 +143,18 @@ export default function AdministracionPage() {
       created_at: "2024-01-20",
     },
   ])
-
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    username: string
+    email: string
+    password: string
+    role: "USER" | "ADMIN"
+  }>({
     username: "",
     email: "",
     password: "",
-    role: "USER" as const,
+    role: "USER",
   })
   const router = useRouter()
 
@@ -223,7 +228,7 @@ export default function AdministracionPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
       {/* Header */}
-      <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
+      {/* <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
@@ -237,7 +242,10 @@ export default function AdministracionPage() {
             </div>
           </div>
         </div>
-      </header>
+      </header> */}
+
+      {/* Breadcrumbs */}
+      <NavbarWithBreadcrumb role={user?.role ?? "USER"} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}

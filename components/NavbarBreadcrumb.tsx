@@ -89,7 +89,7 @@ export default function NavbarWithBreadcrumb( user : { role: string } | null) {
         {/* NAV */}
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold text-white">SERUMICH</h1>
+            <h1 className="text-xl font-bold text-white">SERUMICH V2</h1>
           </div>
 
           {/* Desktop Navigation */}
@@ -158,7 +158,7 @@ export default function NavbarWithBreadcrumb( user : { role: string } | null) {
           <nav className="text-sm text-white py-2">
             <ol className="flex space-x-2">
               <li>
-                <Link href="/" className="hover:underline text-gray-300">
+                <Link href="/dashboard" className="hover:underline text-gray-300">
                   Inicio
                 </Link>
               </li>
