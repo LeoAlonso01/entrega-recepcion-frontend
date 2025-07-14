@@ -27,6 +27,9 @@ import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
+import { toast } from "sonner"
+
+
 
 interface Usuario {
   id: number
@@ -240,6 +243,8 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       router.push("/")
     }
   }, [router])
+
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitted(true);
@@ -407,7 +412,10 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
         </header> */}
 
         {/* Breadcrumbs */}
-        <NavbarWithBreadcrumb role={userrole?.role ?? "USER"} />
+        <NavbarWithBreadcrumb
+          user={user.username} // Pass the username property of the user object
+          disableAuthCheck={true} // Deshabilitar la verificación de autenticación para esta página 
+        />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Stats Cards */}
@@ -671,10 +679,10 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                         </>
                         {/* Archivo */}
                         <div className="mt-6">
-                            <Label className="flex items-center mb-2">
+                          <Label className="flex items-center mb-2">
                             Archivos del Presupuesto del SIIA
-                            </Label>
-                            <div className="relative flex items-center">
+                          </Label>
+                          <div className="relative flex items-center">
                             <Input
                               id="archivo"
                               type="file"
@@ -687,14 +695,14 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                               className={`cursor-pointer px-4 py-2 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-all flex items-center gap-2 ${isInvalidFileType ? 'border-red-500' : ''}`}
                             >
                               <svg className="h-5 w-5 text-[#24356B]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M4 12V8a2 2 0 012-2h4l2 2h4a2 2 0 012 2v4" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M4 12V8a2 2 0 012-2h4l2 2h4a2 2 0 012 2v4" />
                               </svg>
                               {selectedFile ? "Archivo seleccionado" : "Seleccionar archivo"}
                             </label>
                             {selectedFile && (
                               <span className="ml-3 text-sm text-gray-600 truncate">{selectedFile.name}</span>
                             )}
-                            </div>
+                          </div>
                           {isInvalidFileType && (
                             <p className="mt-1 text-sm text-red-500">Formato no permitido. Solo se aceptan PDF y XLSX.</p>
                           )}

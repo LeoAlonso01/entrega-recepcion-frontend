@@ -22,19 +22,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2, ArrowLeft, Shield, User } from "lucide-react"
 import Link from "next/link"
-
+import { toast } from "sonner"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
+import { Eye } from "lucide-react"
 
 interface Usuario {
   id: number
   username: string
   email: string
-  role: "USER" | "ADMIN"
-  is_active: boolean
+  role: "USER" | "ADMIN" | "AUDITOR"
+  is_deleted?: boolean // Optional property for soft delete
   created_at: string
 }
 
@@ -50,7 +51,6 @@ const exportUsersToPDF = (usuarios: Usuario[], title = "Reporte de Usuarios") =>
   doc.setTextColor(0, 0, 0)
   doc.text(`Fecha de generación: ${new Date().toLocaleDateString("es-ES")}`, 20, 30)
   doc.text(`Total de usuarios: ${usuarios.length}`, 20, 40)
-  doc.text(`Usuarios activos: ${usuarios.filter((u) => u.is_active).length}`, 20, 50)
   doc.text(`Administradores: ${usuarios.filter((u) => u.role === "ADMIN").length}`, 20, 60)
 
   // Table
@@ -58,27 +58,26 @@ const exportUsersToPDF = (usuarios: Usuario[], title = "Reporte de Usuarios") =>
     usuario.username,
     usuario.email,
     usuario.role === "ADMIN" ? "Administrador" : "Usuario",
-    usuario.is_active ? "Activo" : "Inactivo",
     usuario.created_at,
   ])
-  ;(doc as any).autoTable({
-    head: [["Usuario", "Email", "Rol", "Estado", "Fecha Registro"]],
-    body: tableData,
-    startY: 70,
-    styles: {
-      fontSize: 9,
-      cellPadding: 3,
-    },
-    headStyles: {
-      fillColor: [117, 21, 24], // #751518
-      textColor: [255, 255, 255],
-      fontSize: 10,
-      fontStyle: "bold",
-    },
-    alternateRowStyles: {
-      fillColor: [248, 249, 250],
-    },
-  })
+    ; (doc as any).autoTable({
+      head: [["Usuario", "Email", "Rol", "Estado", "Fecha Registro"]],
+      body: tableData,
+      startY: 70,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [117, 21, 24], // #751518
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: "bold",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250],
+      },
+    })
 
   doc.save(`usuarios_reporte_${new Date().toISOString().split("T")[0]}.pdf`)
 }
@@ -89,7 +88,6 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
       Usuario: usuario.username,
       Email: usuario.email,
       Rol: usuario.role === "ADMIN" ? "Administrador" : "Usuario",
-      Estado: usuario.is_active ? "Activo" : "Inactivo",
       "Fecha Registro": usuario.created_at,
     })),
   )
@@ -102,8 +100,6 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
     ["Estadísticas de Usuarios"],
     [""],
     ["Total de usuarios:", usuarios.length],
-    ["Usuarios activos:", usuarios.filter((u) => u.is_active).length],
-    ["Usuarios inactivos:", usuarios.filter((u) => !u.is_active).length],
     ["Administradores:", usuarios.filter((u) => u.role === "ADMIN").length],
     ["Usuarios regulares:", usuarios.filter((u) => u.role === "USER").length],
     [""],
@@ -116,53 +112,72 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
   XLSX.writeFile(workbook, `usuarios_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-export default function AdministracionPage( user: { role: string } | null ) {
+
+
+export default function AdministracionPage(user: { role: string } | null) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([
-    {
-      id: 1,
-      username: "admin",
-      email: "admin@sistema.com",
-      role: "ADMIN",
-      is_active: true,
-      created_at: "2024-01-01",
-    },
-    {
-      id: 2,
-      username: "usuario1",
-      email: "usuario1@sistema.com",
-      role: "USER",
-      is_active: true,
-      created_at: "2024-01-15",
-    },
-    {
-      id: 3,
-      username: "usuario2",
-      email: "usuario2@sistema.com",
-      role: "USER",
-      is_active: false,
-      created_at: "2024-01-20",
-    },
   ])
+  // Estados para el manejo del diálogo y formulario
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
   const [formData, setFormData] = useState<{
     username: string
     email: string
     password: string
-    role: "USER" | "ADMIN"
+    role: "USER" | "ADMIN" | "AUDITOR" | string
   }>({
     username: "",
     email: "",
     password: "",
-    role: "USER",
+    role: "",
   })
   const router = useRouter()
+
+  const handleGetUsers = async () => {
+    // llamada a la api
+    try {
+      const response = await fetch("http://localhost:8000/users", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      // manejar la respuesta negativa
+      if (!response.ok) {
+        throw new Error("Error al obtener los usuarios");
+      }
+
+      const data = await response.json();
+      // llenar el state para tener los usuarios 
+      // Asegurarse de que los datos sean del tipo Usuario[]
+      if (!Array.isArray(data)) {
+        throw new Error("Datos de usuarios no válidos");
+      }
+      // Actualizar el estado con los usuarios obtenidos
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      //setUsuarios(data as Usuario[]); // Ensure data is cast to Usuario[]
+      console.log("Usuarios obtenidos:", data);
+      // Aquí puedes actualizar el estado de usuarios en tu componente
+      setUsuarios(data as Usuario[]); // Asegúrate de que data sea del tipo Usuario[]    
+    } catch (error) {
+      // manejar los errores 
+      console.error("Error al obtener los usuarios:", error);
+      toast.error("Error al obtener los usuarios: " + (error as Error).message);
+
+    }
+
+  }
 
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (!token) {
       router.push("/")
     }
+    // Obtener los usuarios desde la API
+    handleGetUsers();
   }, [router])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -172,17 +187,18 @@ export default function AdministracionPage( user: { role: string } | null ) {
       setUsuarios(
         usuarios.map((usuario) =>
           usuario.id === editingUsuario.id
-            ? { ...usuario, username: formData.username, email: formData.email, role: formData.role }
+            ? { ...usuario, username: formData.username, email: formData.email, role: formData.role as "USER" | "ADMIN" | "AUDITOR" }
             : usuario,
         ),
       )
     } else {
       const newUsuario: Usuario = {
-        id: Date.now(),
+        // Generate a new unique ID
+        id: usuarios.length > 0 ? Math.max(...usuarios.map(u => u.id)) + 1 : 1, // Generate a new unique ID
         username: formData.username,
         email: formData.email,
-        role: formData.role,
-        is_active: true,
+        role: formData.role as "USER" | "ADMIN" | "AUDITOR",
+        is_deleted: false, // Default value for new users
         created_at: new Date().toISOString().split("T")[0],
       }
       setUsuarios([...usuarios, newUsuario])
@@ -220,33 +236,28 @@ export default function AdministracionPage( user: { role: string } | null ) {
   }
 
   const toggleUserStatus = (id: number) => {
+    // obtener la propiedad is_deleted y si es false poner activo
+    const usuarioToUpdate = usuarios.find((usuario) => usuario.id === id);
+    if (usuarioToUpdate && !usuarioToUpdate.is_deleted) {
+      // User is active, you can perform additional logic if needed
+    }
     setUsuarios(
-      usuarios.map((usuario) => (usuario.id === id ? { ...usuario, is_active: !usuario.is_active } : usuario)),
+      usuarios.map((usuario) =>
+        usuario.id === id ? { ...usuario, is_deleted: false } : usuario
+      )
     )
   }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
-      {/* Header */}
-      {/* <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver
-                </Button>
-              </Link>
-              <h1 className="text-xl font-bold text-white">Administración</h1>
-            </div>
-          </div>
-        </div>
-      </header> */}
 
       {/* Breadcrumbs */}
-      <NavbarWithBreadcrumb role={user?.role ?? "USER"} />
+      <NavbarWithBreadcrumb
+        user={currentUser?.username || null}
+        role={user?.role || ""}
+      />
 
+      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -274,12 +285,12 @@ export default function AdministracionPage( user: { role: string } | null ) {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
+              <CardTitle className="text-sm font-medium">Usuarios Titulares</CardTitle>
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{usuarios.filter((u) => u.is_active).length}</div>
-              <p className="text-xs text-muted-foreground">Usuarios activos en el sistema</p>
+              <div className="text-2xl font-bold">{usuarios.filter((u) => u.role === "USER").length}</div>
+              <p className="text-xs text-muted-foreground">Usuarios con acceso básico al sistema</p>
             </CardContent>
           </Card>
         </div>
@@ -404,8 +415,7 @@ export default function AdministracionPage( user: { role: string } | null ) {
                   <TableHead>Usuario</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha Registro</TableHead>
+                  {/* <TableHead>Estado</TableHead> */}
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -420,24 +430,23 @@ export default function AdministracionPage( user: { role: string } | null ) {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={usuario.is_active ? "default" : "destructive"}>
-                        {usuario.is_active ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{usuario.created_at}</TableCell>
-                    <TableCell>
                       <div className="flex space-x-2">
                         <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleUserStatus(usuario.id)}
-                          className={usuario.is_active ? "text-red-600" : "text-green-600"}
-                        >
-                          {usuario.is_active ? "Desactivar" : "Activar"}
-                        </Button>
+
+                        {/* Botón para ver detalles de los  usuarios */}
+                        <Link href={`/dashboard/administracion/usuarios/${usuario.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1 hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">Ver detalles</span>
+                          </Button>
+                        </Link>
+                        {/* Botón para activar/desactivar usuarios */}
                         <Button
                           variant="outline"
                           size="sm"

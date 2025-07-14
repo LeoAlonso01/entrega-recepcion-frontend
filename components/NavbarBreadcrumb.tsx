@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 import LogoutComponent from "./LogoutComponent";
+import path from "path";
 
 // Tipos
 interface NavLink {
@@ -13,12 +14,20 @@ interface NavLink {
   href: string;
 }
 
+// Intreface para el usuario y su role
+interface User {
+  username: string;
+  role: string;
+}
+
+
 // Rutas de navegación
 const navLinks: NavLink[] = [
   { name: "Administración", href: "/dashboard/administracion" },
   { name: "Actas", href: "/dashboard/actas" },
   { name: "Anexos", href: "/dashboard/anexos" },
   { name: "Unidades", href: "/dashboard/unidades" },
+  { name : "Detalles", href: path.join("/dashboard/administracion/usuarios", "[id]")}
 ];
 
 // funcon que revisa el rol y muestra las rutas correspondientes
@@ -35,7 +44,6 @@ const getNavLinksByRole = (role: string): NavLink[] => {
       return [{ name: "Anexos", href: "/dashboard/anexos" }];
     case "AUDITOR":
       return [
-        { name: "Administración", href: "/dashboard/administracion" },
         { name: "Anexos", href: "/dashboard/anexos" },
         { name: "Actas", href: "/dashboard/actas" },
       ];
@@ -54,34 +62,52 @@ function getBreadcrumbs(pathname: string) {
   return breadcrumbs;
 }
 
-export default function NavbarWithBreadcrumb( user : { role: string } | null) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+
+interface NavbarWithBreadcrumbProps {
+  user?: string | null;
+  role ?: string | null;
+  disableAuthCheck?: boolean; // Para pruebas
+}
+
+export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck = false }: NavbarWithBreadcrumbProps) {
   const [role, setRole] = useState<string | null>(null);
-
   // Verificar si hay usuario autenticado
-  useEffect(() => {
-    const username = localStorage.getItem("user");
-    const userRole = localStorage.getItem("role");
-    if (!user) window.location.href = "/";
-  
-    if (username) {
-      console.log(username[0] === "{" ? JSON.parse(username).role : userRole);
-      // Si el usuario es un objeto JSON, parsearlo
-      setRole(username[0] === "{" ? JSON.parse(username).role : userRole);
-    }
-    // poenr el rol del usuario en el estado
-    if (userRole) {
-      setRole(userRole);
-    }
-    
-  }, []);
-
   const pathname = usePathname();
   const breadcrumbs = getBreadcrumbs(pathname);
   const isActive = (href: string) => pathname === href;
-
   // funcion para usar getnavbyrole basado en el rol obtenido
   const displayedNavLinks = role ? getNavLinksByRole(role) : [];
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [localUser, setLocalUser] = useState<User | null>(null);
+
+  // Verificar si hay usuario autenticado
+  useEffect(() => {
+    // Solo acceder a localStorage en el cliente
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem("user");
+      const userRole = localStorage.getItem("role");
+      const parsedUser = userData ? JSON.parse(userData) : null;
+      
+      // Usar el prop si existe, sino usar el localStorage
+      const currentUser = propUser || parsedUser;
+      setLocalUser(propUser || parsedUser);
+
+      console.log("Current User:", currentUser);
+
+      if (!currentUser && !disableAuthCheck && !propUser) {
+        window.location.href = "/";
+        return;
+      }
+
+      // Determinar el rol
+      const currentRole = userRole || (parsedUser?.role ? parsedUser.role : null);
+      setRole(currentRole);
+    }
+  }, [propUser, disableAuthCheck]);
+
+  if (!localUser) {
+    return null; // O un loading spinner si prefieres
+  }
 
   return (
     <header className="w-full bg-[#24356B] shadow-sm">
@@ -104,10 +130,11 @@ export default function NavbarWithBreadcrumb( user : { role: string } | null) {
                 {name}
               </Link>
             ))}
-            <LogoutComponent user={JSON.parse(localStorage.getItem("user") || "{}")} />
+            <LogoutComponent user={localUser} />
           </nav>
 
           {/* Mobile Menu Button */}
+         
           <button
             className="md:hidden text-white focus:outline-none"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -133,6 +160,8 @@ export default function NavbarWithBreadcrumb( user : { role: string } | null) {
               )}
             </svg>
           </button>
+          {/* user wellcome and logout mobile  */}
+          
         </div>
 
         {/* Mobile Menu */}
@@ -149,7 +178,7 @@ export default function NavbarWithBreadcrumb( user : { role: string } | null) {
                 {name}
               </Link>
             ))}
-            <LogoutComponent user={JSON.parse(localStorage.getItem("user") || "{}")} />
+            <LogoutComponent user={localUser} />
           </nav>
         )}
 

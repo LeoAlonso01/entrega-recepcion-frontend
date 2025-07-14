@@ -25,6 +25,16 @@ interface LoginCredentials {
   password: string;
 }
 
+// user interface
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: "USER" | "ADMIN" | "AUDITOR";
+  is_deleted?: boolean; // Optional property for soft delete
+  created_at: string;
+}
+
 interface RegisterCredentials {
   username: string;
   email: string;
@@ -78,7 +88,12 @@ export default function LoginPage() {
 
       // Si la respuesta es exitosa
       localStorage.setItem("token", responseData.access_token);
-      localStorage.setItem("user", JSON.stringify(responseData));
+      localStorage.setItem("user", JSON.stringify({
+        id : responseData.user_id,
+        username: responseData.username,
+        email: responseData.email,
+        role: responseData.role, // Asignar un rol por defecto, puedes cambiarlo según tu lógica
+      }));
       toast.success("Inicio de sesión exitoso");
       router.push("/dashboard");
     } catch (error) {

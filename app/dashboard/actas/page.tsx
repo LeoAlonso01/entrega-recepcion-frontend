@@ -26,6 +26,7 @@ import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
+
 interface Acta {
   id: number
   numero: string
@@ -109,26 +110,7 @@ const exportToExcel = (actas: Acta[], title = "Reporte de Actas") => {
 }
 
 export default function ActasPage( user: { role: string } | null ) {
-  const [actas, setActas] = useState<Acta[]>([
-    {
-      id: 1,
-      numero: "ACT-001",
-      fecha: "2024-01-15",
-      entregante: "Juan Pérez",
-      recibiente: "María García",
-      descripcion: "Entrega de equipos de oficina",
-      estado: "Completada",
-    },
-    {
-      id: 2,
-      numero: "ACT-002",
-      fecha: "2024-01-16",
-      entregante: "Carlos López",
-      recibiente: "Ana Martínez",
-      descripcion: "Entrega de documentos administrativos",
-      estado: "Pendiente",
-    },
-  ])
+  const [actas, setActas] = useState<Acta[]>([])
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingActa, setEditingActa] = useState<Acta | null>(null)
@@ -219,22 +201,7 @@ export default function ActasPage( user: { role: string } | null ) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
-      {/* Header */}
-      {/* <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver
-                </Button>
-              </Link>
-              <h1 className="text-xl font-bold text-white">Actas de Entrega Recepción</h1>
-            </div>
-          </div>
-        </div>
-      </header> */}
+     
 
       {/* Breadcrumbs */}
       <NavbarWithBreadcrumb role="ADMIN" />

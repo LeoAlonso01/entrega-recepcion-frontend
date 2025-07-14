@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 // Definición del tipo Unidad
 // Este tipo representa la estructura de una unidad responsable
@@ -39,10 +40,10 @@ type UnidadJerarquica = Unidad & {
     rfc?: string;
 };
 
-
-
-export default function UnidadesResponsablesPage() {
+export default function UnidadesResponsablesPage(currentUser: { role: string } | null, username: string | null) {
     // Estados
+    const [user, setUser] = useState<{ username: string; role?: string } | null>({ username: username || "", role: "" });
+    const [userrole, setUserRole] = useState<{ role: string }>({ role: user?.role || "" });
     const [token, setToken] = useState<string | null>(null);
     const [unidades, setUnidades] = useState<Unidad[]>([]);
     const [unidadesOriginales, setUnidadesOriginales] = useState<Unidad[]>([]);
@@ -53,23 +54,17 @@ export default function UnidadesResponsablesPage() {
     const [error, setError] = useState<Error | null>(null);
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
     const router = useRouter();
-    
+
 
     // Removed duplicate renderTreeNode function to resolve redeclaration error.
 
-    // Verificar token al montar el componente
     useEffect(() => {
-        const storedToken = localStorage.getItem("token");
-        // validar si el token es valido
-
-        if (!storedToken) {
-            router.push("/");
-            return;
-        }
-
-        setToken(storedToken);
+        const token = localStorage.getItem("token")
         handleGetUnidades();
-    }, [router]);
+        if (!token) {
+          router.push("/")
+        }
+      }, [router])
 
     // Obtener todas las unidades normales
     const handleGetUnidades = async () => {
@@ -127,6 +122,7 @@ export default function UnidadesResponsablesPage() {
         try {
             const response = await fetch('http://localhost:8000/unidades_jerarquicas', {
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
             });
@@ -153,77 +149,76 @@ export default function UnidadesResponsablesPage() {
 
     // Renderizar nodo del árbol jerárquico
     const toggleNode = (id: number) => {
-  const newExpanded = new Set(expandedNodes);
-  if (newExpanded.has(id)) {
-    newExpanded.delete(id);
-  } else {
-    newExpanded.add(id);
-  }
-  setExpandedNodes(newExpanded);
-};
+        const newExpanded = new Set(expandedNodes);
+        if (newExpanded.has(id)) {
+            newExpanded.delete(id);
+        } else {
+            newExpanded.add(id);
+        }
+        setExpandedNodes(newExpanded);
+    };
 
-const renderTreeNode = (unidad: UnidadJerarquica) => {
-  const children = unidadesJerarquia.filter(u => u.unidad_padre_id === unidad.id_unidad);
-  const isExpanded = expandedNodes.has(unidad.id_unidad);
-  const hasChildren = children.length > 0;
-  
-  return (
-    <div key={unidad.id_unidad}>
-      <div 
-        className={`flex items-center py-1 cursor-pointer rounded hover:bg-gray-100 p-1 ${
-          unidad.estado === 'inactivo' ? 'opacity-70' : ''
-        }`}
-        style={{ paddingLeft: `${(unidad.nivel || 0) * 20}px` }}
-        onClick={() => hasChildren && toggleNode(unidad.id_unidad)}
-      >
-        {hasChildren && (
-          <div className="mr-2 flex-shrink-0">
-            {isExpanded ? (
-              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v1h3a1 1 0 110 2h-3v1a1 1 0 11-2 0V7H6a1 1 0 110-2h3V4a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-            )}
-          </div>
-        )}
-        
-        <div className="flex items-center flex-1 min-w-0">
-          <div className="flex-shrink-0 mr-2">
-            {hasChildren ? (
-              <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v1h3a1 1 0 110 2h-3v1a1 1 0 11-2 0V6H6a1 1 0 110-2h3V4a1 1 0 111-1z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-              </svg>
-            )}
-          </div>
-          
-          <div className="min-w-0">
-            <div className={`text-sm font-medium ${unidad.estado === 'inactivo' ? 'text-gray-500' : 'text-gray-900'}`}>
-              {unidad.nombre}
+    const renderTreeNode = (unidad: UnidadJerarquica) => {
+        const children = unidadesJerarquia.filter(u => u.unidad_padre_id === unidad.id_unidad);
+        const isExpanded = expandedNodes.has(unidad.id_unidad);
+        const hasChildren = children.length > 0;
+
+        return (
+            <div key={unidad.id_unidad}>
+                <div
+                    className={`flex items-center py-1 cursor-pointer rounded hover:bg-gray-100 p-1 ${unidad.estado === 'inactivo' ? 'opacity-70' : ''
+                        }`}
+                    style={{ paddingLeft: `${(unidad.nivel || 0) * 20}px` }}
+                    onClick={() => hasChildren && toggleNode(unidad.id_unidad)}
+                >
+                    {hasChildren && (
+                        <div className="mr-2 flex-shrink-0">
+                            {isExpanded ? (
+                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v1h3a1 1 0 110 2h-3v1a1 1 0 11-2 0V7H6a1 1 0 110-2h3V4a1 1 0 011-1z" clipRule="evenodd" />
+                                </svg>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="flex items-center flex-1 min-w-0">
+                        <div className="flex-shrink-0 mr-2">
+                            {hasChildren ? (
+                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v1h3a1 1 0 110 2h-3v1a1 1 0 11-2 0V6H6a1 1 0 110-2h3V4a1 1 0 111-1z" clipRule="evenodd" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                                </svg>
+                            )}
+                        </div>
+
+                        <div className="min-w-0">
+                            <div className={`text-sm font-medium ${unidad.estado === 'inactivo' ? 'text-gray-500' : 'text-gray-900'}`}>
+                                {unidad.nombre}
+                            </div>
+                            {unidad.responsable && (
+                                <div className="text-xs text-gray-500 truncate">
+                                    {unidad.responsable}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {hasChildren && isExpanded && (
+                    <div className="mt-1 ml-6 border-l border-gray-200 pl-4">
+                        {children.map(renderTreeNode)}
+                    </div>
+                )}
             </div>
-            {unidad.responsable && (
-              <div className="text-xs text-gray-500 truncate">
-                {unidad.responsable}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {hasChildren && isExpanded && (
-        <div className="mt-1 ml-6 border-l border-gray-200 pl-4">
-          {children.map(renderTreeNode)}
-        </div>
-      )}
-    </div>
-  );
-};
+        );
+    };
 
     // Filtro de búsqueda local
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,34 +240,46 @@ const renderTreeNode = (unidad: UnidadJerarquica) => {
     return (
         <>
             <div className="bg-gray-100">
-                <NavbarWithBreadcrumb role="admin" />
+                <NavbarWithBreadcrumb
+                    user={user ? user.username : ''} // Pass the username property of the user object if user is not null
+                    disableAuthCheck={true} // Deshabilitar la verificación de autenticación para esta página 
+                />
             </div>
 
-            <div className="container mx-auto px-4 py-8">
+            <div className="container whitespace-nowrap overflow-x-auto px-4 py-8">
                 <h1 className="text-2xl font-bold mb-6">Unidades Responsables</h1>
 
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                     {/* Pestañas */}
-                    <TabsList className="grid w-full grid-cols-2 h-10 text-sm">
+                    <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm">
+                        {/* Pestañas para Listado, Jerarquía y Dependencias */}
                         <TabsTrigger
                             value="listado"
-                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-t-lg px-4 py-2"
+                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-md sm:rounded-t-lg px-4 py-2 text-center"
                         >
                             Listado de Unidades
                         </TabsTrigger>
+                        {/* Pestaña para Árbol de Jerarquía */}
                         <TabsTrigger
                             value="jerarquia"
-                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-t-lg px-4 py-2"
+                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-md sm:rounded-t-lg px-4 py-2 text-center"
                         >
                             Árbol de Jerarquía
                         </TabsTrigger>
+                        {/* Pestaña para Dependencias de Unidad */}
+                        <TabsTrigger
+                            value="dependencias"
+                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-md sm:rounded-t-lg px-4 py-2 text-center"
+                        >
+                            Dependencias de Unidad
+                        </TabsTrigger>
                     </TabsList>
 
-                    {/* Contenido - Listado */}
-                    <TabsContent value="listado" className="mt-4">
+                    {/* Contenido - Listado de Unidades */}
+                    <TabsContent value="listado" className="mt-4 sm:mt-6 md:mt-8">
                         <div className="bg-white shadow rounded-lg overflow-hidden">
                             {/* Header con búsqueda y acciones */}
-                            <div className="p-6 border-b border-gray-200">
+                            <div className="p-6 pt-10 border-b border-gray-200">
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                     <div className="relative">
                                         <input
@@ -291,7 +298,8 @@ const renderTreeNode = (unidad: UnidadJerarquica) => {
                                         </svg>
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    {/* Botones de acción (Exportar, Agregar) */}
+                                    {/* <div className="flex gap-2">
                                         <button
                                             className="px-4 py-2 bg-[#24356B] text-white rounded hover:bg-[#1c2a5d] transition-colors"
                                             onClick={() => alert('Exportar PDF')}
@@ -316,6 +324,7 @@ const renderTreeNode = (unidad: UnidadJerarquica) => {
                                             </span>
                                         </button>
                                     </div>
+                                   */}
                                 </div>
                             </div>
 
@@ -354,7 +363,7 @@ const renderTreeNode = (unidad: UnidadJerarquica) => {
                                         </div>
 
                                         {/* Filtros adicionales */}
-                                        <div className="mb-4 flex flex-wrap gap-4">
+                                        {/*  <div className="mb-4 flex flex-wrap gap-4">
                                             <select className="px-3 py-2 border border-gray-300 rounded text-sm">
                                                 <option value="">Todos los tipos</option>
                                                 <option value="departamento">Departamento</option>
@@ -367,83 +376,105 @@ const renderTreeNode = (unidad: UnidadJerarquica) => {
                                                 <option value="activo">Activo</option>
                                                 <option value="inactivo">Inactivo</option>
                                             </select>
-                                        </div>
+                                        </div> */}
 
                                         {/* Tabla */}
                                         <div className="overflow-x-auto rounded-lg border border-gray-200">
-                                            <table className="min-w-full divide-y divide-gray-200">
-                                                <thead className="bg-gray-50">
-                                                    <tr>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            Nombre
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            Tipo
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            Responsable
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            Estado
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            Acciones
-                                                        </th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="bg-white divide-y divide-gray-200">
-                                                    {unidades.map((unidad) => (
-                                                        <tr key={unidad.id_unidad} className="hover:bg-gray-50 transition-colors">
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <div className="font-medium text-gray-900">{unidad.nombre}</div>
-                                                                {unidad.codigo_postal && (
-                                                                    <div className="text-xs text-gray-500">CP: {unidad.codigo_postal}</div>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                                    {unidad.tipo_unidad || 'Sin definir'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <div className="flex items-center">
-                                                                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600">
-                                                                        {unidad.responsable ? unidad.responsable[0].toUpperCase() : '?'}
-                                                                    </div>
-                                                                    <div className="ml-3">
-                                                                        <div className="text-sm font-medium text-gray-900">
-                                                                            {unidad.responsable || 'Sin asignar'}
+                                            <div className="w-full overflow-x-auto">
+                                                <Table className="min-w-full text-sm divide-y divide-gray-200">
+                                                    <TableHeader className="bg-gray-50 hidden md:table-header-group">
+                                                        <TableRow>
+                                                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Nombre</TableHead>
+                                                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Tipo</TableHead>
+                                                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Responsable</TableHead>
+                                                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Estado</TableHead>
+                                                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Acciones</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody className="divide-y divide-gray-200">
+                                                        {unidades.map((unidad) => (
+                                                            <TableRow
+                                                                key={unidad.id_unidad}
+                                                                className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
+                                                            >
+                                                                {/* Nombre */}
+                                                                <TableCell className="px-4 py-4 md:table-cell">
+                                                                    <div className="md:hidden font-semibold text-gray-500">Nombre</div>
+                                                                    <div className="font-medium text-gray-900">{unidad.nombre}</div>
+                                                                    {unidad.codigo_postal && (
+                                                                        <div className="text-xs text-gray-500">CP: {unidad.codigo_postal}</div>
+                                                                    )}
+                                                                </TableCell>
+
+                                                                {/* Tipo */}
+                                                                <TableCell className="px-4 py-4 md:table-cell">
+                                                                    <div className="md:hidden font-semibold text-gray-500">Tipo</div>
+                                                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                                        {unidad.tipo_unidad || 'Sin definir'}
+                                                                    </span>
+                                                                </TableCell>
+
+                                                                {/* Responsable */}
+                                                                <TableCell className="px-4 py-4 md:table-cell">
+                                                                    <div className="md:hidden font-semibold text-gray-500">Responsable</div>
+                                                                    <div className="flex items-center">
+                                                                        <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600">
+                                                                            {unidad.responsable ? unidad.responsable[0].toUpperCase() : '?'}
                                                                         </div>
-                                                                        {unidad.rfc && (
-                                                                            <div className="text-xs text-gray-500">RFC: {unidad.rfc}</div>
-                                                                        )}
+                                                                        <div className="ml-3">
+                                                                            <div className="text-sm font-medium text-gray-900">
+                                                                                {unidad.responsable || 'Sin asignar'}
+                                                                            </div>
+                                                                            {unidad.rfc && (
+                                                                                <div className="text-xs text-gray-500">RFC: {unidad.rfc}</div>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${unidad.estado === 'activo'
-                                                                        ? 'bg-green-100 text-green-800'
-                                                                        : 'bg-red-100 text-red-800'
-                                                                    }`}>
-                                                                    {unidad.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                                <button className="text-blue-600 hover:text-blue-900 mr-4">
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828M8 7H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-2" />
-                                                                    </svg>
-                                                                </button>
-                                                                <button className="text-red-600 hover:text-red-900">
-                                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                    </svg>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                                </TableCell>
+
+                                                                {/* Estado */}
+                                                                <TableCell className="px-4 py-4 md:table-cell">
+                                                                    <div className="md:hidden font-semibold text-gray-500">Estado</div>
+                                                                    <span
+                                                                        className={`px-2 py-1 text-xs font-semibold rounded-full ${unidad.estado === 'activo'
+                                                                            ? 'bg-green-100 text-green-800'
+                                                                            : 'bg-red-100 text-red-800'
+                                                                            }`}
+                                                                    >
+                                                                        {unidad.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                                                                    </span>
+                                                                </TableCell>
+
+                                                                {/* Acciones */}
+                                                                <TableCell className="px-4 py-4 flex gap-4 md:table-cell">
+                                                                    <div className="md:hidden font-semibold text-gray-500 mb-1">Acciones</div>
+                                                                    <button className="text-blue-600 hover:text-blue-900">
+                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth="2"
+                                                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828M8 7H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-2"
+                                                                            />
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button className="text-red-600 hover:text-red-900">
+                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth="2"
+                                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                            />
+                                                                        </svg>
+                                                                    </button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+
                                         </div>
 
                                         {/* Paginación */}
@@ -464,7 +495,7 @@ const renderTreeNode = (unidad: UnidadJerarquica) => {
                     </TabsContent>
 
                     {/* Contenido - Jerarquía */}
-                    <TabsContent value="jerarquia" className="mt-4">
+                    <TabsContent value="jerarquia" className="mt-4 sm:mt-6 md:mt-8">
                         <div className="bg-white shadow rounded-lg overflow-hidden">
                             <div className="p-6 border-b border-gray-200">
                                 <h2 className="text-xl font-semibold text-gray-800">Árbol Jerárquico</h2>
@@ -502,6 +533,21 @@ const renderTreeNode = (unidad: UnidadJerarquica) => {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* Contenido - Dependencias de Unidad */}
+                    <TabsContent value="dependencias" className="mt-4 sm:mt-6 md:mt-8">
+                        <div className="bg-white shadow rounded-lg overflow-hidden">
+                            <div className="p-6 border-b border-gray-200">
+                                <h2 className="text-xl font-semibold text-gray-800">Dependencias de Unidad</h2>
+                                <p className="text-sm text-gray-500 mt-1">Visualización de dependencias entre unidades</p>
+                            </div>
+
+                            <div className="p-6">
+                                {/* Aquí puedes implementar la lógica para mostrar las dependencias de unidad */}
+                                <p className="text-gray-600">Esta sección está en desarrollo.</p>
                             </div>
                         </div>
                     </TabsContent>

@@ -44,13 +44,9 @@ export default function Dashboard() {
 
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
       <header className="w-full shadow-sm bg-[#24356B]">
-
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        </div>
-
       </header >
 
-      <NavbarWithBreadcrumb role={user?.role || ""} />
+      <NavbarWithBreadcrumb user={user} role={user?.role || ""} />
 
       {/* Main Content */}
       < main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" >
@@ -83,7 +79,6 @@ export default function Dashboard() {
             </Link>
           </div>
         )}
-
         {user.role === "ADMIN" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="mb-6">
@@ -200,28 +195,27 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: "#B59E60" }}
-                    >
-                      <FileText className="h-4 w-4 text-white" />
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Pendientes</p>
-                    <p className="text-2xl font-semibold text-gray-900">3</p>
-                  </div>
-                </div>
-              </div>
             </>
           )}
 
-
-
+          {user.role === "AUDITOR" && (
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: "#B59E60" }}
+                  >
+                    <FileText className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Actas</p>
+                  <p className="text-2xl font-semibold text-gray-900">10</p>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </main >
