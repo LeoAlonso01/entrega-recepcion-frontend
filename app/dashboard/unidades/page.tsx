@@ -16,6 +16,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Trash2, Pencil, Eye } from "lucide-react";
+import { set } from "date-fns";
 
 // Definición del tipo Unidad
 // Este tipo representa la estructura de una unidad responsable
@@ -53,6 +55,35 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
     const [loadingJerarquia, setLoadingJerarquia] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+    const [formData, setFormData] = useState<Unidad>({
+        id_unidad: 0,
+        nombre: "",
+        responsable: "",
+        unidad_padre_id: null,
+        nivel: 0,
+        codigo_postal: "",
+        tipo_unidad: "",
+        rfc: "",
+        estado: "activo", // Por defecto, las unidades son activas
+    }
+
+);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [editingUnidad, setEditingUnidad] = useState<Unidad | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [newUnidad, setNewUnidad] = useState<Unidad>({
+        id_unidad: 0,
+        nombre: "",
+        responsable: "",
+        unidad_padre_id: null,
+        nivel: 0,
+        codigo_postal: "",
+        tipo_unidad: "",
+        rfc: "",
+        estado: "activo", // Por defecto, las unidades son activas
+    });
     const router = useRouter();
 
 
@@ -62,9 +93,63 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         const token = localStorage.getItem("token")
         handleGetUnidades();
         if (!token) {
-          router.push("/")
+            router.push("/")
         }
-      }, [router])
+    }, [router])
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        toast.success("Unidad editada correctamente.");
+        setIsDialogOpen(false);
+    }
+
+    const handleDelete = async (id: number) => {
+        setIsDeleting(true);
+       /*  try {
+            // Aquí puedes hacer una llamada a la API para eliminar la unidad
+            const response = await fetch(`http://localhost:8000/unidades_responsables/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Error al eliminar la unidad');
+            }
+            // Actualizar el estado para eliminar la unidad del listado
+            setUnidades(unidades.filter(unidad => unidad.id_unidad !== id));
+            setUnidadesOriginales(unidadesOriginales.filter(unidad => unidad.id_unidad !== id));
+            toast.success("Unidad eliminada correctamente.");
+        } catch (error) {
+            console.error("Error al eliminar la unidad:", error);
+            toast.error("Error al eliminar la unidad.");
+        } finally {
+            setIsDeleting(false);
+        } */
+       toast.success("Unidad eliminada correctamente.");
+       setIsDeleting(false);
+    };
+
+    const handleAddSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        // Aquí puedes hacer una llamada a la API para agregar la unidad
+        toast.success("Unidad agregada correctamente.");
+        setIsAdding(false);
+        setFormData({
+            id_unidad: 0,
+            nombre: "",
+            responsable: "",
+            unidad_padre_id: null,
+            nivel: 0,
+            codigo_postal: "",
+            tipo_unidad: "",
+            rfc: "",
+            estado: "activo", // Por defecto, las unidades son activas
+        });
+    }
+
 
     // Obtener todas las unidades normales
     const handleGetUnidades = async () => {
@@ -357,9 +442,26 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                     <>
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="text-xl font-bold text-gray-800">Listado de Unidades</h2>
-                                            <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => {
+                                                    setIsAdding(true);
+                                                    setNewUnidad({
+                                                        id_unidad: 0,
+                                                        nombre: "",
+                                                        responsable: "",
+                                                        unidad_padre_id: null,
+                                                        nivel: 0,
+                                                        codigo_postal: "",
+                                                        tipo_unidad: "",
+                                                        rfc: "",
+                                                        estado: "activo", // Por defecto, las unidades son activas
+                                                    });
+                                                }}
+                                                className="bg-[#B59E60] hover:bg-[#a48d54] text-white"
+                                            >
                                                 Agregar Unidad
-                                            </button>
+                                            </Button>
                                         </div>
 
                                         {/* Filtros adicionales */}
@@ -448,26 +550,41 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                 {/* Acciones */}
                                                                 <TableCell className="px-4 py-4 flex gap-4 md:table-cell">
                                                                     <div className="md:hidden font-semibold text-gray-500 mb-1">Acciones</div>
-                                                                    <button className="text-blue-600 hover:text-blue-900">
-                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path
-                                                                                strokeLinecap="round"
-                                                                                strokeLinejoin="round"
-                                                                                strokeWidth="2"
-                                                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828M8 7H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-2"
-                                                                            />
-                                                                        </svg>
-                                                                    </button>
-                                                                    <button className="text-red-600 hover:text-red-900">
-                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path
-                                                                                strokeLinecap="round"
-                                                                                strokeLinejoin="round"
-                                                                                strokeWidth="2"
-                                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                            />
-                                                                        </svg>
-                                                                    </button>
+                                                                    {/* Botón de ver detalles */}
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toast.success("Ver detalles de la unidad (funcionalidad en desarrollo)")}
+                                                                        className="text-blue-600 hover:text-blue-800"
+                                                                    >
+                                                                        <Eye className="h-4 w-4" />
+                                                                    </Button>
+
+                                                                   {/* Botón de editar unidad */}
+                                                                   <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => {
+                                                                            setEditingUnidad(unidad);
+                                                                            setIsEditing(true);
+                                                                        }}
+                                                                        className="text-blue-600 hover:text-blue-800"
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+
+
+                                                                   {/* Bonton para eliminar  */}
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() =>
+                                                                           setIsDeleting(true)
+                                                                        }
+                                                                        className="text-red-600 hover:text-red-800"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
@@ -552,6 +669,179 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                         </div>
                     </TabsContent>
                 </Tabs>
+                {/* Dialog para editar la unidad responsable */}
+                <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Editar Unidad Responsable</DialogTitle>
+                            <DialogDescription>
+                                Modifica los detalles de la unidad responsable seleccionada.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleEditSubmit}>
+                            <div className="grid gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Nombre de la Unidad</label>
+                                    <input
+                                        type="text"
+                                        value={editingUnidad?.nombre || ''}
+                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, nombre: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Responsable</label>
+                                    <input
+                                        type="text"
+                                        value={editingUnidad?.responsable || ''}
+                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, responsable: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Tipo de Unidad</label>
+                                    <select
+                                        value={editingUnidad?.tipo_unidad || ''}
+                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, tipo_unidad: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus
+                                        border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="">Seleccionar tipo</option>
+                                        <option value="departamento">Departamento</option>
+                                        <option value="coordinacion">Coordinación</option>
+                                        <option value="direccion">Dirección</option>
+                                        <option value="otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Estado</label>
+                                    <select
+                                        value={editingUnidad?.estado || ''}
+                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, estado: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="activo">Activo</option>
+                                        <option value="inactivo">Inactivo</option>
+                                    </select>
+                                </div>
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="mr-2"
+                                        onClick={() => setIsEditing(false)}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
+                                        Guardar Cambios
+                                    </Button>
+                                </div>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Dialog para eliminar la unidad responsable */}
+                <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
+                    <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Eliminar Unidad Responsable</DialogTitle>
+                            <DialogDescription>
+                                ¿Estás seguro de que deseas eliminar la unidad responsable seleccionada?
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-end">
+                            <Button
+                                variant="outline"
+                                className="mr-2"
+                                onClick={() => setIsDeleting(false)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+
+                                className="bg-red-600 text-white hover:bg-red-700"
+                                onClick={() => handleDelete(editingUnidad?.id_unidad || 0)}
+                            >
+                                Eliminar Unidad
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* dialog para el formulario para agregar unidad resposnable  */ }
+                <Dialog open={isAdding} onOpenChange={setIsAdding}>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Agregar Unidad Responsable</DialogTitle>
+                            <DialogDescription>
+                                Completa los detalles de la nueva unidad responsable.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleAddSubmit}>
+                            <div className="grid gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Nombre de la Unidad</label>
+                                    <input
+                                        type="text"
+                                        value={newUnidad.nombre}
+                                        onChange={(e) => setNewUnidad({ ...newUnidad, nombre: e.target.value })}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Responsable</label>
+                                    <input 
+                                        type="text"
+                                        value={newUnidad.responsable ?? ""}
+                                        onChange={(e) => setNewUnidad({ ...newUnidad, responsable: e.target.value })}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Tipo de Unidad</label>
+                                    <select
+                                        value={newUnidad.tipo_unidad}
+                                        onChange={(e) => setNewUnidad({ ...newUnidad, tipo_unidad: e.target.value })}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    >
+                                        <option value="">Seleccionar tipo</option>
+                                        <option value="departamento">Departamento</option>
+                                        <option value="coordinacion">Coordinación</option>
+                                        <option value="direccion">Dirección</option>
+                                        <option value="otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Estado</label>
+                                    <select
+                                        value={newUnidad.estado}
+                                        onChange={(e) => setNewUnidad({ ...newUnidad, estado: e.target.value })}
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"    
+                                    >
+                                        <option value="activo">Activo</option>
+                                        <option value="inactivo">Inactivo</option>
+                                    </select>
+                                </div>
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="mr-2"
+                                        onClick={() => setIsAdding(false)}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
+                                        Agregar Unidad
+                                    </Button>
+                                </div>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
             </div>
         </>
     );

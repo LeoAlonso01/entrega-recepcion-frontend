@@ -29,6 +29,7 @@ import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { Eye } from "lucide-react"
+import { set } from "date-fns"
 
 interface Usuario {
   id: number
@@ -112,14 +113,13 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
   XLSX.writeFile(workbook, `usuarios_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-
-
 export default function AdministracionPage(user: { role: string } | null) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([
   ])
   // Estados para el manejo del diálogo y formulario
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDeliting, setIsDeleting] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
   const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
   const [formData, setFormData] = useState<{
@@ -229,23 +229,14 @@ export default function AdministracionPage(user: { role: string } | null) {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: number) => {/* 
     if (confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
       setUsuarios(usuarios.filter((usuario) => usuario.id !== id))
-    }
-  }
+    } */
+    setIsDeleting(false)
+    setUsuarios(usuarios.filter((usuario) => usuario.id !== id))
+    toast.success("Usuario eliminado correctamente.")
 
-  const toggleUserStatus = (id: number) => {
-    // obtener la propiedad is_deleted y si es false poner activo
-    const usuarioToUpdate = usuarios.find((usuario) => usuario.id === id);
-    if (usuarioToUpdate && !usuarioToUpdate.is_deleted) {
-      // User is active, you can perform additional logic if needed
-    }
-    setUsuarios(
-      usuarios.map((usuario) =>
-        usuario.id === id ? { ...usuario, is_deleted: false } : usuario
-      )
-    )
   }
 
   return (
@@ -259,7 +250,8 @@ export default function AdministracionPage(user: { role: string } | null) {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+
+        {/* estadisticas Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -293,6 +285,7 @@ export default function AdministracionPage(user: { role: string } | null) {
               <p className="text-xs text-muted-foreground">Usuarios con acceso básico al sistema</p>
             </CardContent>
           </Card>
+
         </div>
 
         <div className="flex justify-between items-center mb-6">
@@ -383,7 +376,9 @@ export default function AdministracionPage(user: { role: string } | null) {
               </form>
             </DialogContent>
           </Dialog>
+
           <div className="flex space-x-2">
+
             <Button
               variant="outline"
               onClick={() => exportUsersToPDF(usuarios)}
@@ -392,6 +387,7 @@ export default function AdministracionPage(user: { role: string } | null) {
               <FileText className="h-4 w-4 mr-2" />
               Exportar PDF
             </Button>
+
             <Button
               variant="outline"
               onClick={() => exportUsersToExcel(usuarios)}
@@ -450,7 +446,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(usuario.id)}
+                          onClick={() => setIsDeleting(true)}
                           className="text-red-600 hover:text-red-800"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -463,7 +459,42 @@ export default function AdministracionPage(user: { role: string } | null) {
             </Table>
           </CardContent>
         </Card>
+
+        {/* componente para eliminar usuarios (sift delete) */}
+        {/* Aquí podrías agregar un componente para manejar la eliminación suave de usuarios si es necesario */}
+        <Dialog open={isDeliting} onOpenChange={setIsDeleting}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Eliminar Usuario</DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleting(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  // Aquí podrías implementar la lógica para eliminar el usuario
+                  handleDelete(editingUsuario?.id || 0)
+                  setIsDeleting(false)
+                  toast.success("Usuario eliminado correctamente")
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Eliminar Usuario
+              </Button>
+
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </main>
     </div>
   )
 }
+
+
+

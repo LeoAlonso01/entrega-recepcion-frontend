@@ -29,14 +29,56 @@ import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 
 interface Acta {
   id: number
-  numero: string
+  unidad_responsable?: string
+  folio?: string
   fecha: string
+  hora?: string
   entregante: string
   recibiente: string
+  comisionado?: string
+  nombramiento?: string
   descripcion: string
+  observaciones?: string
   estado: "Pendiente" | "Completada" | "Revisión"
 }
 
+// Helper functions to generate random data
+const createUUID = () => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  }
+  )
+}
+
+// Generates a random UUID
+const createUUIDint = () => {
+  return Math.floor(Math.random() * 1000000000) // Generates a random integer
+}
+
+// Generates a folio in the format FOLIO-YYYY-XXXX
+const createFolio = () => {
+  const year = new Date().getFullYear()
+  const randomNumber = Math.floor(Math.random() * 10000).toString().padStart(4, "0")
+  return `FOLIO-${year}-${randomNumber}`
+}
+
+const folioFinal = createFolio()
+const horaFinal = new Date().toLocaleTimeString("es-ES", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+})
+
+// Generates a date in the format YYYY-MM-DD
+const createDate = () => {
+  const date = new Date()
+  return date.toISOString().split("T")[0] // YYYY-MM-DD format
+}
+
+// Export functions
+// Exports the actas data to a PDF file
 const exportToPDF = (actas: Acta[], title = "Reporte de Actas") => {
   const doc = new jsPDF()
 
@@ -52,31 +94,33 @@ const exportToPDF = (actas: Acta[], title = "Reporte de Actas") => {
 
   // Table
   const tableData = actas.map((acta) => [
-    acta.numero,
+    acta.folio,
     acta.fecha,
+    acta.hora,
+    acta.unidad_responsable || "Unidad de Entrega y Recepción",
     acta.entregante,
     acta.recibiente,
     acta.estado,
     acta.descripcion.substring(0, 50) + (acta.descripcion.length > 50 ? "..." : ""),
   ])
-  ;(doc as any).autoTable({
-    head: [["Número", "Fecha", "Entregante", "Recibiente", "Estado", "Descripción"]],
-    body: tableData,
-    startY: 50,
-    styles: {
-      fontSize: 8,
-      cellPadding: 3,
-    },
-    headStyles: {
-      fillColor: [36, 53, 107], // #24356B
-      textColor: [255, 255, 255],
-      fontSize: 9,
-      fontStyle: "bold",
-    },
-    alternateRowStyles: {
-      fillColor: [248, 249, 250],
-    },
-  })
+    ; (doc as any).autoTable({
+      head: [["Fólio", "Fecha", "Entrega", "Recibe", "Unidad Responsable", "Estado", "Descripción"]],
+      body: tableData,
+      startY: 50,
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [36, 53, 107], // #24356B
+        textColor: [255, 255, 255],
+        fontSize: 9,
+        fontStyle: "bold",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250],
+      },
+    })
 
   doc.save(`actas_reporte_${new Date().toISOString().split("T")[0]}.pdf`)
 }
@@ -84,8 +128,9 @@ const exportToPDF = (actas: Acta[], title = "Reporte de Actas") => {
 const exportToExcel = (actas: Acta[], title = "Reporte de Actas") => {
   const worksheet = XLSX.utils.json_to_sheet(
     actas.map((acta) => ({
-      Número: acta.numero,
+      Folio: acta.folio,
       Fecha: acta.fecha,
+      Unidad: acta.unidad_responsable || "Unidad de Entrega y Recepción",
       Entregante: acta.entregante,
       Recibiente: acta.recibiente,
       Estado: acta.estado,
@@ -109,23 +154,30 @@ const exportToExcel = (actas: Acta[], title = "Reporte de Actas") => {
   XLSX.writeFile(workbook, `actas_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-export default function ActasPage( user: { role: string } | null ) {
+export default function ActasPage(user: { role: string } | null) {
   const [actas, setActas] = useState<Acta[]>([])
-
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingActa, setEditingActa] = useState<Acta | null>(null)
   const [formData, setFormData] = useState<{
-    numero: string
+    folio?: string
     fecha: string
+    hora?: string
+    unidad_responsable?: string
     entregante: string
     recibiente: string
+    comisionado?: string
+    nombramiento?: string
     descripcion: string
     estado: "Pendiente" | "Completada" | "Revisión"
   }>({
-    numero: "",
+    folio: "",
     fecha: "",
+    hora: "",
+    unidad_responsable: "Unidad de Entrega y Recepción",
     entregante: "",
     recibiente: "",
+    comisionado: "",
+    nombramiento: "",
     descripcion: "",
     estado: "Pendiente",
   })
@@ -156,10 +208,14 @@ export default function ActasPage( user: { role: string } | null ) {
 
   const resetForm = () => {
     setFormData({
-      numero: "",
+      folio: "",
+      unidad_responsable: "Unidad de Entrega y Recepción",
       fecha: "",
+      hora: "",
+      comisionado: "",
       entregante: "",
       recibiente: "",
+      nombramiento: "",
       descripcion: "",
       estado: "Pendiente",
     })
@@ -170,10 +226,14 @@ export default function ActasPage( user: { role: string } | null ) {
   const handleEdit = (acta: Acta) => {
     setEditingActa(acta)
     setFormData({
-      numero: acta.numero,
-      fecha: acta.fecha,
+      folio: acta.folio || folioFinal,
+      fecha: acta.fecha || createDate(),
+      hora: acta.hora || horaFinal,
+      unidad_responsable: acta.unidad_responsable || "Unidad de Entrega y Recepción",
       entregante: acta.entregante,
       recibiente: acta.recibiente,
+      comisionado: acta.comisionado || "",
+      nombramiento: acta.nombramiento || "",
       descripcion: acta.descripcion,
       estado: acta.estado,
     })
@@ -199,10 +259,9 @@ export default function ActasPage( user: { role: string } | null ) {
     }
   }
 
+  console.log(formData)
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
-     
-
       {/* Breadcrumbs */}
       <NavbarWithBreadcrumb role="ADMIN" />
 
@@ -220,41 +279,77 @@ export default function ActasPage( user: { role: string } | null ) {
                 Nueva Acta
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[1000px]">
               <DialogHeader>
                 <DialogTitle>{editingActa ? "Editar Acta" : "Nueva Acta de Entrega Recepción"}</DialogTitle>
                 <DialogDescription>
                   {editingActa ? "Modifica los datos del acta" : "Completa la información para crear una nueva acta"}
                 </DialogDescription>
               </DialogHeader>
+              <h3 className="text-lg font-semibold text-blue-700 mb-4">Información del acta</h3>
               <form onSubmit={handleSubmit}>
+                <div>
+                  <Label className="block mb-2">Unidad Responsable</Label>
+                  <Input
+                    value={formData.unidad_responsable || "Unidad de entrega y recepción a la que pertenece el acta"}
+                    readOnly
+                    className="bg-gray-100 text-gray-700"
+                  />
+                </div>
                 <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="numero">Número de Acta</Label>
+                      <Label htmlFor="numero">Folio de acta</Label>
                       <Input
-                        id="numero"
-                        value={formData.numero}
-                        onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                        id="folio"
+                        value={formData.folio || folioFinal}
+                        onChange={(e) => setFormData({ ...formData, folio: e.target.value })}
                         placeholder="ACT-001"
                         required
                       />
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="fecha">Fecha</Label>
+                      <Label htmlFor="fecha_hora">Fecha</Label>
                       <Input
-                        id="fecha"
+                        id="fecha_hora"
                         type="date"
-                        value={formData.fecha}
+                        value={formData.fecha || createDate()}
                         onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                         required
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2" >
+                      <Label htmlFor="folio">Hora</Label>
+                      <Input
+                        id="folio"
+                        value={formData.hora || horaFinal}
+                        onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
+                        placeholder="FOLIO-2023-0001"
+                        required
+                      />
+                    </div>
+
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="entregante">Entregante</Label>
+                      <Label htmlFor="comisionado">Comisionado</Label>
+                      <Input
+                        id="comisionado"
+                        value={formData.comisionado || ""}
+                        onChange={(e) => setFormData({ ...formData, comisionado: e.target.value })}
+                        placeholder="Nombre del comisionado"
+                      />
+                    </div>
+
+                  </div>
+                  <h3 className="text-lg font-semibold text-blue-700 mb-4" >Funcionario que entrega</h3>
+
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+
+                    <div className="space-y-2">
+                      <Label htmlFor="entregante">Funcionario que entrega</Label>
                       <Input
                         id="entregante"
                         value={formData.entregante}
@@ -264,44 +359,114 @@ export default function ActasPage( user: { role: string } | null ) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="recibiente">Recibiente</Label>
+                      <Label htmlFor="Id">Número de Identificación</Label>
                       <Input
                         id="recibiente"
                         value={formData.recibiente}
                         onChange={(e) => setFormData({ ...formData, recibiente: e.target.value })}
-                        placeholder="Nombre del recibiente"
+                        placeholder="Número de identificación"
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nombramiento" >Nombramiento</Label>
+                      <Input
+                        id="nombramiento"
+                        value={formData.nombramiento || ""}
+                        onChange={(e) => setFormData({ ...formData, nombramiento: e.target.value })}
+                        placeholder="Nombramiento del entregante"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fechaNombramiento">Fecha de Nombramiento</Label>
+                      <Input
+                        id="fechaNombramiento"
+                        type="date"
+                        value={formData.fecha || createDate()}
+                        onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="observaciones">Asignación</Label>
+                      <Select
+                        value={formData.unidad_responsable}
+                        onValueChange={(value: any) => setFormData({ ...formData, unidad_responsable: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Tipo de Asignación" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Nombramiento">Nombramiento</SelectItem>
+                          <SelectItem value="Jerarquia">Jerarquía</SelectItem>
+                          <SelectItem value="Designacion">Designación</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="asignadoPor">Asignado por</Label>
+                      <Select
+                        value={formData.unidad_responsable}
+                        onValueChange={(value: any) => setFormData({ ...formData, unidad_responsable: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="¿Quién asigno?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rector">Rector(a)</SelectItem>
+                          <SelectItem value="hConsejo">H. Consejo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="Domicilio">Domicilio del Servidor Entrante</Label>
+                      <Input
+                        id="Domicilio"
+                        type="dom"
+                        value={formData.unidad_responsable || "Domicilio del servidor entrante"}
+                        onChange={(e) => setFormData({ ...formData, unidad_responsable: e.target.value })}
+                        placeholder="Domicilio del servidor entrante"
+                      />
+
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="descripcion">Descripción</Label>
-                    <Textarea
-                      id="descripcion"
-                      value={formData.descripcion}
-                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                      placeholder="Describe los elementos entregados..."
-                      required
-                    />
+                  <h3 className="text-lg font-semibold text-blue-700 mb-4" >Testigos</h3>
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-2">
+
+                      <Label htmlFor="nombreTestigoEntrante"> Testigo Entrante </Label>
+                      <Input
+                        id="nombreTestigoEntrante"
+                        value={formData.descripcion}
+                        onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                        placeholder="Nombre del testigo entrante"
+                        required
+                      />
+                    </div>
+                   
+                  </div>
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+                   >
+                     <div className="space-y-2">
+                      <Label htmlFor="estado">Estado</Label>
+                      <Select
+                        value={formData.estado}
+                        onValueChange={(value: any) => setFormData({ ...formData, estado: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona el estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pendiente">Pendiente</SelectItem>
+                          <SelectItem value="Revisión">En Revisión</SelectItem>
+                          <SelectItem value="Completada">Completada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="estado">Estado</Label>
-                    <Select
-                      value={formData.estado}
-                      onValueChange={(value: any) => setFormData({ ...formData, estado: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona el estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pendiente">Pendiente</SelectItem>
-                        <SelectItem value="Revisión">En Revisión</SelectItem>
-                        <SelectItem value="Completada">Completada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={resetForm}>
@@ -314,6 +479,7 @@ export default function ActasPage( user: { role: string } | null ) {
               </form>
             </DialogContent>
           </Dialog>
+
           <div className="flex space-x-2">
             <Button
               variant="outline"
@@ -343,10 +509,11 @@ export default function ActasPage( user: { role: string } | null ) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Número</TableHead>
+                  <TableHead>Fólio</TableHead>
                   <TableHead>Fecha</TableHead>
-                  <TableHead>Entregante</TableHead>
-                  <TableHead>Recibiente</TableHead>
+                  <TableHead>Unidad Responsable</TableHead>
+                  <TableHead>Entrega</TableHead>
+                  <TableHead>Recibe</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -354,8 +521,9 @@ export default function ActasPage( user: { role: string } | null ) {
               <TableBody>
                 {actas.map((acta) => (
                   <TableRow key={acta.id}>
-                    <TableCell className="font-medium">{acta.numero}</TableCell>
+                    <TableCell className="font-medium">{acta.folio}</TableCell>
                     <TableCell>{acta.fecha}</TableCell>
+                    <TableCell>{acta.unidad_responsable || "Unidad de Entrega y Recepción"}</TableCell>
                     <TableCell>{acta.entregante}</TableCell>
                     <TableCell>{acta.recibiente}</TableCell>
                     <TableCell>
@@ -365,7 +533,7 @@ export default function ActasPage( user: { role: string } | null ) {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => alert(`Ver detalles de ${acta.numero}`)}>
+                        <Button variant="outline" size="sm" onClick={() => alert(`Ver detalles de ${acta.folio}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleEdit(acta)}>
