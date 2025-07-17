@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2, ArrowLeft, Shield, User } from "lucide-react"
 import Link from "next/link"
@@ -119,6 +120,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   // Estados para el manejo del diálogo y formulario
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [isDeliting, setIsDeleting] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
   const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
@@ -138,7 +140,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const handleGetUsers = async () => {
     // llamada a la api
     try {
-      const response = await fetch("http://localhost:8000/users", {
+      const response = await fetch("http://148.216.25.183:8000/users", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -161,11 +163,13 @@ export default function AdministracionPage(user: { role: string } | null) {
       //setUsuarios(data as Usuario[]); // Ensure data is cast to Usuario[]
       console.log("Usuarios obtenidos:", data);
       // Aquí puedes actualizar el estado de usuarios en tu componente
+      setIsLoading(false);
       setUsuarios(data as Usuario[]); // Asegúrate de que data sea del tipo Usuario[]    
     } catch (error) {
       // manejar los errores 
       console.error("Error al obtener los usuarios:", error);
       toast.error("Error al obtener los usuarios: " + (error as Error).message);
+      setIsLoading(false);
 
     }
 
@@ -399,7 +403,26 @@ export default function AdministracionPage(user: { role: string } | null) {
           </div>
         </div>
 
-        <Card>
+        {isLoading ? (
+              <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48 mb-2" />
+          <Skeleton className="h-4 w-72" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-32 rounded-md" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+        )
+        :(
+          <Card>
           <CardHeader>
             <CardTitle>Lista de Usuarios</CardTitle>
             <CardDescription>Gestiona los usuarios registrados en el sistema</CardDescription>
@@ -459,7 +482,8 @@ export default function AdministracionPage(user: { role: string } | null) {
             </Table>
           </CardContent>
         </Card>
-
+        )
+        }
         {/* componente para eliminar usuarios (sift delete) */}
         {/* Aquí podrías agregar un componente para manejar la eliminación suave de usuarios si es necesario */}
         <Dialog open={isDeliting} onOpenChange={setIsDeleting}>
