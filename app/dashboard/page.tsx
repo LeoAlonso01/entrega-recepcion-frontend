@@ -56,10 +56,6 @@ export default function Dashboard() {
         </div>
         {user.role === "USER" && (
           <div>
-            <div className="mb-6">
-              <p className="text-sm text-gray-500">Bienvenido, {user.name || user.username}.</p>
-              <p className="text-sm text-gray-500">Tu rol: {user.role}</p>
-            </div>
             <Link href="/dashboard/anexos">
               <Card
                 className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
@@ -81,12 +77,8 @@ export default function Dashboard() {
         )}
         {user.role === "ADMIN" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="mb-6">
-              <p className="text-sm text-gray-500">Bienvenido, {user.name || user.username}.</p>
-              <p className="text-sm text-gray-500">Tu rol: {user.role}</p>
-            </div>
             {/* Actas Card */}
-            <Link href="/dashboard/actas">
+            {/* <Link href="/dashboard/actas">
               <Card
                 className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
                 style={{ borderLeftColor: "#B59E60" }}
@@ -102,7 +94,7 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-600">Crear, editar y consultar actas de entrega recepción</p>
                 </CardContent>
               </Card>
-            </Link>
+            </Link> */}
 
             {/* Administración Card */}
             <Link href="/dashboard/administracion">
@@ -147,14 +139,11 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </Link>
-
-
-
           </div>
         )}
 
         {/* Stats Section */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
+       {/*  <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
 
           {user.role === "USER" && (
             <div className="bg-white p-6 rounded-lg shadow">
@@ -217,7 +206,7 @@ export default function Dashboard() {
             </div>
           )}
 
-        </div>
+        </div> */}
       </main >
     </div >
   )
