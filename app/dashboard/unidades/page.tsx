@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,11 +13,13 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext } from '@/components/ui/pagination'; // Ejemplo con Shadcn UI Pagination
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Trash2, Pencil, Eye } from "lucide-react";
 import { set } from "date-fns";
+import { all } from "axios";
 
 // Definición del tipo Unidad
 // Este tipo representa la estructura de una unidad responsable
@@ -67,7 +69,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         estado: "activo", // Por defecto, las unidades son activas
     }
 
-);
+    );
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -86,8 +88,18 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
     });
     const router = useRouter();
 
+    // ########### Estados para la paginación ###########
+    const [currentPage, setCurrentPage] = useState(1);
+    const [unitsPerPage, setUnitsPerPage] = useState(10); // Unidades por página
+
+    // --- Lógica de paginación ---
+    const indexOfLastUnit = currentPage * unitsPerPage;
+    const indexOfFirstUnit = indexOfLastUnit - unitsPerPage;
+    const currentUnits = useMemo(() => unidades.slice(indexOfFirstUnit, indexOfLastUnit), [unidades, indexOfFirstUnit, indexOfLastUnit]);
+    const totalPages = Math.ceil(unidades.length / unitsPerPage);
 
     // Removed duplicate renderTreeNode function to resolve redeclaration error.
+
 
     useEffect(() => {
         const token = localStorage.getItem("token")
@@ -99,37 +111,37 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
 
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         toast.success("Unidad editada correctamente.");
         setIsDialogOpen(false);
     }
 
     const handleDelete = async (id: number) => {
         setIsDeleting(true);
-       /*  try {
-            // Aquí puedes hacer una llamada a la API para eliminar la unidad
-            const response = await fetch(`http://localhost:8000/unidades_responsables/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            if (!response.ok) {
-                throw new Error('Error al eliminar la unidad');
-            }
-            // Actualizar el estado para eliminar la unidad del listado
-            setUnidades(unidades.filter(unidad => unidad.id_unidad !== id));
-            setUnidadesOriginales(unidadesOriginales.filter(unidad => unidad.id_unidad !== id));
-            toast.success("Unidad eliminada correctamente.");
-        } catch (error) {
-            console.error("Error al eliminar la unidad:", error);
-            toast.error("Error al eliminar la unidad.");
-        } finally {
-            setIsDeleting(false);
-        } */
-       toast.success("Unidad eliminada correctamente.");
-       setIsDeleting(false);
+        /*  try {
+             // Aquí puedes hacer una llamada a la API para eliminar la unidad
+             const response = await fetch(`http://localhost:8000/unidades_responsables/${id}`, {
+                 method: 'DELETE',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     'Authorization': `Bearer ${token}`
+                 }
+             });
+             if (!response.ok) {
+                 throw new Error('Error al eliminar la unidad');
+             }
+             // Actualizar el estado para eliminar la unidad del listado
+             setUnidades(unidades.filter(unidad => unidad.id_unidad !== id));
+             setUnidadesOriginales(unidadesOriginales.filter(unidad => unidad.id_unidad !== id));
+             toast.success("Unidad eliminada correctamente.");
+         } catch (error) {
+             console.error("Error al eliminar la unidad:", error);
+             toast.error("Error al eliminar la unidad.");
+         } finally {
+             setIsDeleting(false);
+         } */
+        toast.success("Unidad eliminada correctamente.");
+        setIsDeleting(false);
     };
 
     const handleAddSubmit = async (e: React.FormEvent) => {
@@ -150,7 +162,6 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         });
     }
 
-
     // Obtener todas las unidades normales
     const handleGetUnidades = async () => {
         // Aquí puedes obtener el token de acceso desde localStorage
@@ -169,7 +180,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         }
         try {
             // Aquí puedes hacer una llamada a la API para obtener las unidades responsables
-            const response = await fetch('http://148.216.25.183:8000/unidades_responsables', {
+            const response = await fetch('http://localhost:8000/unidades_responsables', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -320,6 +331,11 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                 setUnidades(filtered);
             }
         }
+    };
+
+    // --- Función para cambiar la página ---
+    const paginate = (page: number) => {
+        setCurrentPage(page);
     };
 
     return (
@@ -494,7 +510,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody className="divide-y divide-gray-200">
-                                                        {unidades.map((unidad) => (
+                                                        {currentUnits.map((unidad) => (
                                                             <TableRow
                                                                 key={unidad.id_unidad}
                                                                 className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
@@ -503,9 +519,9 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                 <TableCell className="px-4 py-4 md:table-cell">
                                                                     <div className="md:hidden font-semibold text-gray-500">Nombre</div>
                                                                     <div className="font-medium text-gray-900">{unidad.nombre}</div>
-                                                                    {unidad.codigo_postal && (
+                                                                    {/* {unidad.codigo_postal && (
                                                                         <div className="text-xs text-gray-500">CP: {unidad.codigo_postal}</div>
-                                                                    )}
+                                                                    )} */}
                                                                 </TableCell>
 
                                                                 {/* Tipo */}
@@ -560,8 +576,8 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                         <Eye className="h-4 w-4" />
                                                                     </Button>
 
-                                                                   {/* Botón de editar unidad */}
-                                                                   <Button
+                                                                    {/* Botón de editar unidad */}
+                                                                    <Button
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={() => {
@@ -574,12 +590,12 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                     </Button>
 
 
-                                                                   {/* Bonton para eliminar  */}
+                                                                    {/* Bonton para eliminar  */}
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
                                                                         onClick={() =>
-                                                                           setIsDeleting(true)
+                                                                            setIsDeleting(true)
                                                                         }
                                                                         className="text-red-600 hover:text-red-800"
                                                                     >
@@ -591,19 +607,49 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                     </TableBody>
                                                 </Table>
                                             </div>
-
                                         </div>
+
 
                                         {/* Paginación */}
                                         <div className="mt-4 flex items-center justify-between">
-                                            <div className="text-sm text-gray-700">
-                                                Mostrando <span className="font-medium">{Math.min(1, unidades.length)}</span> a <span className="font-medium">{Math.min(10, unidades.length)}</span> de <span className="font-medium">{unidades.length}</span> resultados
-                                            </div>
-                                            <div className="flex space-x-2">
-                                                <button className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">Anterior</button>
-                                                <button className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">1</button>
-                                                <button className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">Siguiente</button>
-                                            </div>
+                                            <Pagination className="mt-4 flex justify-center">
+                                                <PaginationContent>
+                                                    <PaginationItem>
+                                                        <PaginationPrevious
+                                                            href="#"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                if (currentPage > 1) paginate(currentPage - 1);
+                                                            }}
+                                                            className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                                        />
+                                                    </PaginationItem>
+                                                    {[...Array(totalPages)].map((_, index) => (
+                                                        <PaginationItem key={index}>
+                                                            <PaginationLink
+                                                                href="#"
+                                                                isActive={index + 1 === currentPage}
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    paginate(index + 1);
+                                                                }}
+                                                            >
+                                                                {index + 1}
+                                                            </PaginationLink>
+                                                        </PaginationItem>
+                                                    ))}
+                                                    <PaginationItem>
+                                                        <PaginationNext
+                                                            href="#"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                if (currentPage < totalPages) paginate(currentPage + 1);
+                                                            }}
+                                                            className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                                                        />
+                                                    </PaginationItem>
+                                                </PaginationContent>
+                                            </Pagination>
                                         </div>
                                     </>
                                 )}
@@ -770,7 +816,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                     </DialogContent>
                 </Dialog>
 
-                {/* dialog para el formulario para agregar unidad resposnable  */ }
+                {/* dialog para el formulario para agregar unidad resposnable  */}
                 <Dialog open={isAdding} onOpenChange={setIsAdding}>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
@@ -792,7 +838,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Responsable</label>
-                                    <input 
+                                    <input
                                         type="text"
                                         value={newUnidad.responsable ?? ""}
                                         onChange={(e) => setNewUnidad({ ...newUnidad, responsable: e.target.value })}
@@ -818,7 +864,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                     <select
                                         value={newUnidad.estado}
                                         onChange={(e) => setNewUnidad({ ...newUnidad, estado: e.target.value })}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"    
+                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                     >
                                         <option value="activo">Activo</option>
                                         <option value="inactivo">Inactivo</option>

@@ -40,7 +40,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
             }
 
             setRefreshing(true);
-            const response = await fetch(`http://148.216.25.183:8000/users/${id}`, {
+            const response = await fetch(`http://localhost:8000/users/${id}`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
