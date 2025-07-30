@@ -8,14 +8,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import FormActa from "@/components/forms/FormActa"
+import { Skeleton} from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit, Trash2, Eye, FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 
-interface Acta {
+interface ActaForm {
   id: number
-  unidad_responsable?: string
+  unidad_responsable: number
   folio?: string
   fecha: string
   hora?: string
@@ -28,7 +29,7 @@ interface Acta {
   nombramiento?: string
   fecha_nombramiento?: string
   asignacion?: string
-  asiganado_por?: string
+  asignado_por?: string
   domicilio_entrante?: string
   telefono_entrante?: string
   saliente: string
@@ -49,29 +50,16 @@ interface Unidad {
   descripcion?: string
 }
 
-const createFolio = () => {
-  const year = new Date().getFullYear()
-  const randomNumber = Math.floor(Math.random() * 10000).toString().padStart(4, "0")
-  return `FOLIO-${year}-${randomNumber}`
-}
-
 const createDate = () => {
   return new Date().toISOString().split("T")[0]
 }
 
-const folioFinal = createFolio()
-
-const horaFinal = new Date().toLocaleTimeString("es-ES", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-})
-
 export default function ActasPage() {
-  const [actas, setActas] = useState<Acta[]>([])
+  const [actas, setActas] = useState<ActaForm[]>([])
   const [showForm, setShowForm] = useState(false)
   const [unidades, setUnidades] = useState<Unidad[]>([])
-  const [editingActa, setEditingActa] = useState<Acta | null>(null)
+  const [editingActa, setEditingActa] = useState<ActaForm | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
@@ -80,6 +68,7 @@ export default function ActasPage() {
       router.push("/")
     }
     getUnidadesResponsables()
+    getActas()
   }, [router])
 
   const getUnidadesResponsables = async () => {
@@ -107,16 +96,134 @@ export default function ActasPage() {
     }
   }
 
-  const handleEdit = (acta: Acta) => {
+  const getActas = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/actas/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) throw new Error('Error al obtener actas')
+      
+      const data = await response.json()
+      setActas(data)
+    } catch (error) {
+      console.error("Error:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEdit = (acta: ActaForm) => {
     setEditingActa(acta)
     setShowForm(true)
   }
 
-  const handleDelete = (id: number) => {
-    if (confirm("¿Eliminar esta acta?")) {
+  const handleDelete = async (id: number) => {
+    if (!confirm("¿Eliminar esta acta?")) return
+
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast.error("No se encontró el token de autenticación")
+        return
+      }
+
+      const response = await fetch(`http://localhost:8000/actas/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) throw new Error('Error al eliminar acta')
+
       setActas(actas.filter(acta => acta.id !== id))
+      toast.success("Acta eliminada correctamente")
+    } catch (error) {
+      console.error("Error al eliminar acta:", error)
+      toast.error("Error al eliminar acta")
     }
   }
+
+  const updateActa = async (id: number, actaData: Partial<ActaForm>) => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast.error("No se encontró el token de autenticación")
+        return
+      }
+
+      const response = await fetch(`http://localhost:8000/actas/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(actaData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Error al actualizar acta')
+      }
+
+      const updatedActa = await response.json()
+      return updatedActa
+    } catch (error) {
+      console.error("Error al actualizar acta:", error)
+      throw error
+    }
+  }
+
+  const createActa = async (actaData: Omit<ActaForm, 'id'>) => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        toast.error("No se encontró el token de autenticación")
+        return
+      }
+
+      const response = await fetch('http://localhost:8000/actas/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(actaData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Error al crear acta')
+      }
+
+      const newActa = await response.json()
+      return newActa
+    } catch (error) {
+      console.error("Error al crear acta:", error)
+      throw error
+    }
+  }
+
+  const handleSaveActa = async (formData: ActaForm) => {
+  try {
+    if (editingActa && formData.id) {
+      const updatedActa = await updateActa(formData.id, formData);
+      setActas(actas.map(a => a.id === formData.id ? updatedActa : a));
+      toast.success("Acta actualizada");
+    } else {
+      const newActa = await createActa(formData);
+      setActas([...actas, newActa]);
+      toast.success("Acta creada");
+    }
+    setShowForm(false);
+    setEditingActa(null);
+  } catch (error) {
+    toast.error("Error al guardar");
+  }
+}
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -126,6 +233,55 @@ export default function ActasPage() {
       default: return "bg-gray-100 text-gray-800"
     }
   }
+
+  const TableSkeleton = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <Skeleton className="h-6 w-[200px] mb-2" />
+            <Skeleton className="h-4 w-[100px]" />
+          </div>
+          <div className="flex space-x-2">
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <div className="grid grid-cols-7 gap-4">
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8" />
+            <Skeleton className="h-8 w-[120px]" />
+          </div>
+          
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="grid grid-cols-7 gap-4 pt-2">
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <div className="flex items-center">
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+              <div className="flex space-x-2">
+                <Skeleton className="h-9 w-9 rounded-md" />
+                <Skeleton className="h-9 w-9 rounded-md" />
+                <Skeleton className="h-9 w-9 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -173,32 +329,24 @@ export default function ActasPage() {
 
         {showForm ? (
           <FormActa
-            acta={editingActa
-              ? {
-                  ...editingActa,
-                  ine_entrante: editingActa.ine_entrante !== undefined ? Number(editingActa.ine_entrante) : undefined,
-                  ine_testigo_entrante: editingActa.ine_testigo_entrante !== undefined ? Number(editingActa.ine_testigo_entrante) : undefined,
-                  ine_testigo_saliente: editingActa.ine_testigo_saliente !== undefined ? Number(editingActa.ine_testigo_saliente) : undefined,
-                }
-              : null
-            }
-            unidades={unidades}
-            onCancel={() => setShowForm(false)}
-            onSave={(formData) => {
-              const normalizeActa = (data: any): Acta => ({
-                ...data,
-                ine_entrante: data.ine_entrante !== undefined ? Number(data.ine_entrante) : undefined,
-                ine_testigo_entrante: data.ine_testigo_entrante !== undefined ? Number(data.ine_testigo_entrante) : undefined,
-                ine_testigo_saliente: data.ine_testigo_saliente !== undefined ? Number(data.ine_testigo_saliente) : undefined,
-              })
-              if (editingActa) {
-                setActas(actas.map(a => a.id === editingActa.id ? {...a, ...normalizeActa(formData)} : a))
-              } else {
-                setActas([...actas, { ...normalizeActa({ ...formData, id: Date.now() }) }])
-              }
-              setShowForm(false)
+            acta={editingActa || {
+              id: 0,
+              unidad_responsable: unidades[0]?.id_unidad || 0,
+              fecha: createDate(),
+              hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              entrante: "",
+              saliente: "",
+              estado: "Pendiente"
             }}
+            unidades={unidades}
+            onCancel={() => {
+              setShowForm(false)
+              setEditingActa(null)
+            }}
+            onSave={handleSaveActa}
           />
+        ) : isLoading ? (
+          <TableSkeleton />
         ) : (
           <Card>
             <CardHeader>
@@ -223,7 +371,10 @@ export default function ActasPage() {
                     <TableRow key={acta.id}>
                       <TableCell className="font-medium">{acta.folio}</TableCell>
                       <TableCell>{acta.fecha}</TableCell>
-                      <TableCell>{acta.unidad_responsable || "Unidad de Entrega y Recepción"}</TableCell>
+                      <TableCell>
+                        {unidades.find(u => u.id_unidad === acta.unidad_responsable)?.nombre || 
+                         `Unidad ${acta.unidad_responsable}`}
+                      </TableCell>
                       <TableCell>{acta.entrante}</TableCell>
                       <TableCell>{acta.saliente}</TableCell>
                       <TableCell>
@@ -233,7 +384,7 @@ export default function ActasPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => alert(`Ver detalles de ${acta.folio}`)}>
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(acta)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => handleEdit(acta)}>
@@ -260,5 +411,3 @@ export default function ActasPage() {
     </div>
   )
 }
-
-
