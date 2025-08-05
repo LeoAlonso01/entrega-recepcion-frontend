@@ -22,7 +22,7 @@ interface Unidad {
 }
 
 interface ActaForm {
-  id?: number;
+  id: number;
   unidad_responsable: number;
   folio?: string;
   fecha: string;

@@ -140,7 +140,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const handleGetUsers = async () => {
     // llamada a la api
     try {
-      const response = await fetch("http://localhost:8000/users", {
+      const response = await fetch("http://148.216.25.183:8000/users"/*http://localhost:8000/users */, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

@@ -180,7 +180,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         }
         try {
             // Aquí puedes hacer una llamada a la API para obtener las unidades responsables
-            const response = await fetch('http://localhost:8000/unidades_responsables', {
+            const response = await fetch('http://148.216.25.183:8000/unidades_responsables'/*'http://localhost:8000/unidades_responsables' */, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         setLoadingJerarquia(true);
 
         try {
-            const response = await fetch('http://localhost:8000/unidades_jerarquicas', {
+            const response = await fetch('http://148.216.25.183:8000/unidades_jerarquicas'/*`http://localhost:8000/unidades_jerarquicas` */, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`

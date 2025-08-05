@@ -65,7 +65,7 @@ export default function LoginPage() {
     console.log("Inicio de sesion");
 
     try {
-      const response = await fetch(/* "http://148.216.25.183:8000/token" */"http://localhost:8000/token", {
+      const response = await fetch( "http://148.216.25.183:8000/token" /*"http://localhost:8000/token"*/, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded", // Corregí el typo (de encoder a encoded)
