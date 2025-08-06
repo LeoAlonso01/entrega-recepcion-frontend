@@ -29,3 +29,19 @@ export const getActas = async () => {
     }
 
 }
+
+export const getCurrentUser = async () => {
+  try {
+    const response = await fetch(`${apiURL}/me`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+    console.log(response);
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    throw error;
+  }
+}

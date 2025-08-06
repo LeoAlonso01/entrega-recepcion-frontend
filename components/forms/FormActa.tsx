@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createActa } from './../../app/services/api';
 import { toast } from 'sonner';
+import { getCurrentUser } from './../../app/services/api';
 
 const createFolio = () => {
   const year = new Date().getFullYear()
@@ -11,6 +12,8 @@ const createFolio = () => {
 const createDate = () => {
   return new Date().toISOString().split("T")[0]
 }
+
+
 
 const folioFinal = createFolio()
 const fechaFinal = createDate()
@@ -103,13 +106,23 @@ const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
     entrante: acta.entrante || "",
     saliente: acta.saliente || "",
   });
-
+  const [currentUserName, setCurrentUserName] = useState<string>("");
   const validateForm = (data: ActaForm): string | null => {
     if (!data.unidad_responsable) return "Unidad responsable es requerida";
     if (!data.entrante) return "Nombre del entrante es requerido";
     if (!data.saliente) return "Nombre del saliente es requerido";
     return null;
   };
+
+  // poner el marca el current user como comisionado por defecto
+getCurrentUser().then(user => {
+  if (user && user.name) {
+    setCurrentUserName(user.name);
+    console.log("Usuario actual:", user.name);
+  } else {
+    console.error("No se pudo obtener el usuario actual");
+  }
+});
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
