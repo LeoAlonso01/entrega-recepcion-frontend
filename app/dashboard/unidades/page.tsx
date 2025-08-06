@@ -216,7 +216,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         setLoadingJerarquia(true);
 
         try {
-            const response = await fetch('http://148.216.25.183:8000/unidades_jerarquicas'/*`http://localhost:8000/unidades_jerarquicas` */, {
+            const response = await fetch(/* 'http://148.216.25.183:8000/unidades_jerarquicas' */`http://localhost:8000/unidades_jerarquicas`, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`

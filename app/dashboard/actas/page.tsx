@@ -79,7 +79,7 @@ export default function ActasPage() {
     }
 
     try {
-      const response = await fetch('http://148.216.25.183:8000/unidades_responsables'/*'http://localhost:8000/unidades_responsables' */, {
+      const response = await fetch(/* 'http://148.216.25.183:8000/unidades_responsables' */'http://localhost:8000/unidades_responsables', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ export default function ActasPage() {
 
   const getActas = async () => {
     try {
-      const response = await fetch('http://148.216.25.183:8000/actas/'/*'http://localhost:8000/actas/'*/, {
+      const response = await fetch(/* 'http://148.216.25.183:8000/actas/' */'http://localhost:8000/actas/', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
