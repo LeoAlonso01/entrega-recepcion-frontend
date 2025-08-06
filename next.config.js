@@ -45,6 +45,6 @@ const nextConfig = {
       allowedOrigins: ['148.216.25.183:8000'],
     },
   }
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
