@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { createActa } from './../../app/services/api';
 import { toast } from 'sonner';
-import { getCurrentUser } from './../../app/services/api';
 
 const createFolio = () => {
   const year = new Date().getFullYear()
@@ -13,11 +12,40 @@ const createDate = () => {
   return new Date().toISOString().split("T")[0]
 }
 
-
+const createHoraFinal = (): string => {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
 
 const folioFinal = createFolio()
 const fechaFinal = createDate()
-const horaFinal = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+const horaFinal = createHoraFinal()
+
+const normalizeTime = (timeStr?: string): string | undefined => {
+  if (!timeStr) return undefined;
+  
+  // Si ya está en formato HH:mm
+  if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
+    return timeStr;
+  }
+
+  // Intenta parsear formatos AM/PM
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)$/i);
+  if (match) {
+    let hours = parseInt(match[1]);
+    const minutes = match[2];
+    const period = match[3].toLowerCase();
+    
+    if (period.startsWith('p') && hours < 12) hours += 12;
+    if (period.startsWith('a') && hours === 12) hours = 0;
+    
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+  }
+
+  return undefined;
+};
 
 interface Unidad {
   id_unidad: number;
@@ -29,7 +57,7 @@ interface ActaForm {
   unidad_responsable: number;
   folio?: string;
   fecha: string;
-  hora?: string;
+  hora: string;
   comisionado?: string;
   oficio_comision?: string;
   fecha_oficio_comision?: string;
@@ -63,7 +91,7 @@ function prepareActaData(formData: ActaForm): ActaForm {
     unidad_responsable: Number(formData.unidad_responsable),
     folio: cleanString(formData.folio) || folioFinal,
     fecha: cleanString(formData.fecha) || fechaFinal,
-    hora: cleanString(formData.hora) || horaFinal,
+    hora: normalizeTime(cleanString(formData.hora)) || horaFinal,
     comisionado: cleanString(formData.comisionado),
     oficio_comision: cleanString(formData.oficio_comision),
     fecha_oficio_comision: cleanString(formData.fecha_oficio_comision),
@@ -106,23 +134,13 @@ const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
     entrante: acta.entrante || "",
     saliente: acta.saliente || "",
   });
-  const [currentUserName, setCurrentUserName] = useState<string>("");
+
   const validateForm = (data: ActaForm): string | null => {
     if (!data.unidad_responsable) return "Unidad responsable es requerida";
     if (!data.entrante) return "Nombre del entrante es requerido";
     if (!data.saliente) return "Nombre del saliente es requerido";
     return null;
   };
-
-  // poner el marca el current user como comisionado por defecto
-getCurrentUser().then(user => {
-  if (user && user.name) {
-    setCurrentUserName(user.name);
-    console.log("Usuario actual:", user.name);
-  } else {
-    console.error("No se pudo obtener el usuario actual");
-  }
-});
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -506,4 +524,3 @@ getCurrentUser().then(user => {
 };
 
 export default FormActa;
-

@@ -19,7 +19,7 @@ interface ActaForm {
   unidad_responsable: number
   folio?: string
   fecha: string
-  hora?: string
+  hora: string
   comisionado?: string
   oficio_comision?: string
   fecha_oficio_comision?: string
