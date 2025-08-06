@@ -55,7 +55,7 @@ interface Anexo {
 }
 
 const getAnexos = async () =>{
-  const response = await fetch("http://localhost:8000/anexos/", 
+  const response = await fetch('http://148.216.25.183:8000/anexos/'/* 'http://localhost:8000/anexos/' */, 
   {
     method: "GET",
     headers: {
