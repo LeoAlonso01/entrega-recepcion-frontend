@@ -30,6 +30,7 @@ const normalizeTime = (timeStr?: string): string | undefined => {
   if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
     return timeStr;
   }
+  
 
   // Intenta parsear formatos AM/PM
   const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)$/i);

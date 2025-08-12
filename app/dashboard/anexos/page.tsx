@@ -5,15 +5,12 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Edit, Trash2, Download, ArrowLeft } from "lucide-react"
-import Link from "next/link"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
@@ -702,7 +699,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     clave: string | Anexo["clave"]
     categoria: string | Anexo["categoria"]
     fecha_creacion: string | Anexo["fecha_creacion"]
-    datos: JSON | Anexo["datos"]
+    datos: Record<string, any> | Anexo["datos"]
     estado: string | Anexo["estado"]
     unidad_responsable_id: string | Anexo["unidad_responsable_id"]
   }>({
@@ -770,7 +767,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       }
     )
 
-    console.log("Datos del formulario enviados:", formData, file)
+    console.log("Datos del formulario enviados:", formData, file, datos)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -870,12 +867,15 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     return !claveRequierePDF(clave); // Todos los demás son Excel
   }
 
-  const handleExcelUpload = (parsedData: any) => {
-    setFormData(prev => ({
+
+  const handleExcelUpload = (parsedData: Record<string, any>) => {
+    setFormData((prev) => ({
       ...prev,
       datos: parsedData,
     }));
+    setDatos(parsedData);
   };
+
 
 
   // Filtrar las claves basadas en la categoría seleccionada
@@ -1082,20 +1082,20 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                     ) : (
                       <div>
                         <label htmlFor="excel-uploader">Subir Excel</label>
-                        <ExcelUploader onUploadSuccess={handleExcelUpload} />
-
+                        <ExcelUploader
+                          onUploadSuccess={handleExcelUpload} />
                       </div>
                     )}
                     {/* llenar el campo datos con el json desde excel */}
                     {formData.clave === "Excel" && (
                       <div>
                         <label htmlFor="datos">Datos</label>
-                        <textarea
+                        {/* <textarea
                           id="datos"
                           value={JSON.stringify(formData.datos, null, 2)}
                           onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
                           className="w-full p-2 border border-gray-300 rounded-md"
-                        />
+                        /> */}
                       </div>
                     )}
                     {/* en el campo datos subir la url del archivo pdf */}

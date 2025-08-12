@@ -27,13 +27,21 @@ import { all } from "axios";
 type Unidad = {
     id_unidad: number;
     nombre: string;
-    responsable?: string | null;
+    responsable: {
+        username: string;
+        id: number;
+    };
     unidad_padre_id?: number | null;
     nivel?: number; // Añadido para jerarquía
     codigo_postal?: string; // Añadido para evitar error de propiedad faltante
     tipo_unidad?: string; // Añadido para evitar error de propiedad faltante
     rfc?: string; // Añadido para evitar error de propiedad faltante
     estado?: string; // Añadido para evitar error de propiedad faltante
+};
+
+type responsable = {
+    username: string;
+    id: number;
 };
 
 // Extiende Unidad para jerarquía, agregando los campos usados en renderTreeNode
@@ -60,7 +68,10 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
     const [formData, setFormData] = useState<Unidad>({
         id_unidad: 0,
         nombre: "",
-        responsable: "",
+        responsable: {
+            username: "",
+            id: 0
+        },
         unidad_padre_id: null,
         nivel: 0,
         codigo_postal: "",
@@ -78,7 +89,10 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
     const [newUnidad, setNewUnidad] = useState<Unidad>({
         id_unidad: 0,
         nombre: "",
-        responsable: "",
+        responsable: {
+            username: "",
+            id: 0
+        },
         unidad_padre_id: null,
         nivel: 0,
         codigo_postal: "",
@@ -152,7 +166,10 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         setFormData({
             id_unidad: 0,
             nombre: "",
-            responsable: "",
+            responsable: {
+                username: "",
+                id: 0
+            },
             unidad_padre_id: null,
             nivel: 0,
             codigo_postal: "",
@@ -185,7 +202,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                 headers: {
                     'Content-Type': 'application/json',
                     // enviar token de acceso en el header
-                    'Authorization': `Bearer ${token}`
+                    //'Authorization': `Bearer ${token}`
                 }
 
             });
@@ -208,6 +225,19 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
             setLoading(false);
         }
     }
+
+    const renderResponsable = (responsable:any) => {
+    if (!responsable) return 'Sin asignar';
+    
+    // Si es un objeto con username
+    if (responsable.username) return responsable.username;
+    
+    // Si por algún accidente es string/número
+    if (typeof responsable === 'string') return responsable;
+    if (typeof responsable === 'number') return `ID: ${responsable}`;
+    
+    return 'Sin asignar';
+};
 
     // Obtener unidades jerárquicas (solo cuando se selecciona la pestaña)
     const handleGetUnidadesJerarquicas = async () => {
@@ -242,6 +272,8 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
             handleGetUnidadesJerarquicas();
         }
     };
+
+
 
     // Renderizar nodo del árbol jerárquico
     const toggleNode = (id: number) => {
@@ -300,7 +332,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                             </div>
                             {unidad.responsable && (
                                 <div className="text-xs text-gray-500 truncate">
-                                    {unidad.responsable}
+                                    {renderResponsable(unidad.responsable)}
                                 </div>
                             )}
                         </div>
@@ -326,7 +358,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
             } else {
                 const filtered = unidadesOriginales.filter(unidad =>
                     unidad.nombre.toLowerCase().includes(searchTerm) ||
-                    (unidad.responsable?.toLowerCase() || "").includes(searchTerm)
+                    (unidad.responsable?.toString() || "").includes(searchTerm)
                 );
                 setUnidades(filtered);
             }
@@ -465,7 +497,10 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                     setNewUnidad({
                                                         id_unidad: 0,
                                                         nombre: "",
-                                                        responsable: "",
+                                                        responsable: {
+                                                            id: 0,
+                                                            username: ""
+                                                        },
                                                         unidad_padre_id: null,
                                                         nivel: 0,
                                                         codigo_postal: "",
@@ -505,7 +540,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                             <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Nombre</TableHead>
                                                             <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Tipo</TableHead>
                                                             <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Responsable</TableHead>
-                                                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Estado</TableHead>
+                                                            {/* <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Estado</TableHead> */}
                                                             <TableHead className="px-4 py-3 text-left uppercase tracking-wider">Acciones</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
@@ -537,21 +572,19 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                     <div className="md:hidden font-semibold text-gray-500">Responsable</div>
                                                                     <div className="flex items-center">
                                                                         <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600">
-                                                                            {unidad.responsable ? unidad.responsable[0].toUpperCase() : '?'}
+                                                                            {unidad.responsable?.username?.charAt(0).toUpperCase() || '?'}
                                                                         </div>
                                                                         <div className="ml-3">
                                                                             <div className="text-sm font-medium text-gray-900">
-                                                                                {unidad.responsable || 'Sin asignar'}
+                                                                                {unidad.responsable?.username || 'Sin asignar'}
                                                                             </div>
-                                                                            {unidad.rfc && (
-                                                                                <div className="text-xs text-gray-500">RFC: {unidad.rfc}</div>
-                                                                            )}
+                                                                            
                                                                         </div>
                                                                     </div>
                                                                 </TableCell>
 
                                                                 {/* Estado */}
-                                                                <TableCell className="px-4 py-4 md:table-cell">
+                                                                {/* <TableCell className="px-4 py-4 md:table-cell">
                                                                     <div className="md:hidden font-semibold text-gray-500">Estado</div>
                                                                     <span
                                                                         className={`px-2 py-1 text-xs font-semibold rounded-full ${unidad.estado === 'activo'
@@ -561,7 +594,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                     >
                                                                         {unidad.estado === 'activo' ? 'Activo' : 'Inactivo'}
                                                                     </span>
-                                                                </TableCell>
+                                                                </TableCell> */}
 
                                                                 {/* Acciones */}
                                                                 <TableCell className="px-4 py-4 flex gap-4 md:table-cell">
@@ -739,8 +772,22 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                     <label className="block text-sm font-medium text-gray-700">Responsable</label>
                                     <input
                                         type="text"
-                                        value={editingUnidad?.responsable || ''}
-                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, responsable: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
+                                        value={typeof editingUnidad?.responsable === 'object' ? editingUnidad.responsable.username : (editingUnidad?.responsable || '')}
+                                        onChange={(e) =>
+                                            setEditingUnidad(
+                                                editingUnidad
+                                                    ? {
+                                                        ...editingUnidad,
+                                                        responsable: {
+                                                            ...editingUnidad.responsable,
+                                                            username: e.target.value,
+                                                            id: editingUnidad.responsable?.id ?? 0
+                                                        },
+                                                        id_unidad: editingUnidad.id_unidad
+                                                    }
+                                                    : null
+                                            )
+                                        }
                                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                     />
                                 </div>
@@ -840,8 +887,15 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                     <label className="block text-sm font-medium text-gray-700">Responsable</label>
                                     <input
                                         type="text"
-                                        value={newUnidad.responsable ?? ""}
-                                        onChange={(e) => setNewUnidad({ ...newUnidad, responsable: e.target.value })}
+                                        value={typeof newUnidad.responsable === "object" ? newUnidad.responsable.username : ""}
+                                        onChange={(e) => setNewUnidad({
+                                            ...newUnidad,
+                                            responsable: {
+                                                ...newUnidad.responsable,
+                                                username: e.target.value,
+                                                id: typeof newUnidad.responsable === "object" ? newUnidad.responsable.id : 0
+                                            }
+                                        })}
                                         className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                     />
                                 </div>
