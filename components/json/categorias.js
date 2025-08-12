@@ -1,0 +1,50 @@
+export const categoria_anexos = [
+ {
+  "id": "1",
+  "nombre_categoria": "RECURSOS PRESUPUESTALES Y FINANCIEROS"
+ },
+ {
+  "id": "2",
+  "nombre_categoria": "Contratos, Convenios y Licitaciones"
+ },
+ {
+  "id": "3",
+  "nombre_categoria": "Estructura y Normativa Interna"
+ },
+ {
+  "id": "4",
+  "nombre_categoria": "Recursos Humanos"
+ },
+ {
+  "id": "5",
+  "nombre_categoria": "Inventario de Bienes Muebles e Inmuebles"
+ },
+ {
+  "id": "6",
+  "nombre_categoria": "Seguridad y Control de Accesos"
+ },
+ {
+  "id": "7",
+  "nombre_categoria": "Documentación y Archivo"
+ },
+ {
+  "id": "8",
+  "nombre_categoria": "Asuntos Legales y de Auditoría"
+ },
+ {
+  "id": "9",
+  "nombre_categoria": "Programas y Proyectos:"
+ },
+ {
+  "id": "10",
+  "nombre_categoria": "Transparencia"
+ },
+ {
+  "id": "11",
+  "nombre_categoria": "Otros"
+ },
+ {
+  "id": "12",
+  "nombre_categoria": "SIN CATEGORÍA"
+ }
+]

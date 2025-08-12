@@ -27,6 +27,8 @@ import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
+// import { categoria_anexos } from "./../../../components/json/categorias.js";
+// import { claves_anexos } from "./../../../components/json/claves.js";
 import { toast } from "sonner"
 import { get } from "http"
 
