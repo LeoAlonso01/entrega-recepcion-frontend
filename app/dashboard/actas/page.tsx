@@ -79,7 +79,7 @@ export default function ActasPage() {
     }
 
     try {
-      const response = await fetch('http://148.216.25.183:8000/unidades_responsables'/*'http://localhost:8000/unidades_responsables' */, {
+      const response = await fetch('http://api/unidades_responsables'/*'http://localhost:8000/unidades_responsables' */, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

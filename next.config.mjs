@@ -17,6 +17,10 @@ const nextConfig = {
         source: '/api/:path*',
         destination: 'http://148.216.25.183:8000/:path*',
       },
+      {
+        source: '/token',
+        destination: 'http://148.216.25.183:8000/token',
+      }
     ]
   },
   
@@ -27,24 +31,21 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           {
-            key: 'X-Forwarded-Proto',
-            value: 'https'
+            key: 'Content-Security-Policy',
+            value: "default-src 'self' vercel.app; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://148.216.25.183:8000;"
           },
           {
-            key: 'X-Forwarded-Host',
-            value: 'entrega-recepcion-frontend-n4u3.vercel.app'
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin'
           }
         ]
       }
     ]
-  },
-  
-  // Configuración experimental para evitar mixed content
-  experimental: {
-    serverActions: {
-      allowedOrigins: ['148.216.25.183:8000'],
-    },
   }
 }
 
-module.exports = nextConfig
+export default nextConfig;
