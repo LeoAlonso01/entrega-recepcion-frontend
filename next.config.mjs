@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Habilita el output standalone para Vercel (mejor para Docker y deployments optimizados)
+  output: 'standalone',  // <-- Añade esta línea
+  
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,8 +12,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  
-  // Configuración de rewrites mejorada
+
   async rewrites() {
     return [
       {
@@ -23,29 +25,37 @@ const nextConfig = {
       }
     ]
   },
-  
-  // Configuración de headers para seguridad
+
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/(.*)',
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self' vercel.app; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://148.216.25.183:8000;"
+            value: [
+              "default-src 'self'",
+              `connect-src 'self' https://api-entrega-recepcion.umich.mx http://148.216.25.183:8000`,
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob:",
+              "font-src 'self'",
+              "frame-src 'self'",
+              "media-src 'self'"
+            ].join('; ')
           },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
           },
           {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
           }
         ]
       }
-    ]
+    ];
   }
-}
+};
 
 export default nextConfig;
