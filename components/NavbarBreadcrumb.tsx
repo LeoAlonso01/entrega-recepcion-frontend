@@ -18,6 +18,7 @@ interface NavLink {
 interface User {
   username: string;
   role: string;
+  unidas_a_cargo: string[];
 }
 
 

@@ -691,6 +691,8 @@ const claves_anexos = [
   }
 ]
 
+
+
 export default function AnexosPage(user: { username: string }, userrole: { role: string }, unidadresponable: { unidad: string }) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
   const [showForm, setShowForm] = useState(false) // Nuevo estado para controlar la visibilidad
@@ -715,7 +717,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [userName, setUserName] = useState<string>("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [userid, setUserid] = useState<string>("")
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [unidadResponsable, setUnidadResponsable] = useState<string>("")
   const [file, setFile] = useState<File | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -749,13 +751,43 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       }
     }
 
+    fetchMyUnidad().then((data) => {
+      setUnidadResponsable(data);
+      console.log("Unidad responsable:", data);
+    });
+
     // Obtener los anexos
     getAnexos().then((data) => {
       setAnexos(data);
     });
-
-
+    
   }, [router]);
+
+  const fetchMyUnidad = async () => {
+  try {
+    const response = await fetch('http://localhost:8000/me/unidad', {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem('token')}`
+      },
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.error('No tienes unidad asignada');
+        return { error: 'No tienes unidad asignada' };
+      }
+      throw new Error('Error al obtener unidad');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error:', error);
+    return { error: typeof error === "object" && error !== null && "message" in error ? (error as { message: string }).message : String(error) };
+  }
+};
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
