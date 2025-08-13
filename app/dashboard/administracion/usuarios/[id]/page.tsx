@@ -40,7 +40,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
             }
 
             setRefreshing(true);
-            const response = await fetch(`http://api/users/${id}`/* `http://localhost:8000/users/${id}` */, {
+            const response = await fetch(`https://api-entrega-recepcion.umich.mx/users/${id}`/* `http://localhost:8000/users/${id}` */, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",

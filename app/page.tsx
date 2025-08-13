@@ -65,7 +65,7 @@ export default function LoginPage() {
     console.log("Inicio de sesion");
 
     try {
-      const response = await fetch( 'http://api/token' /* "http://localhost:8000/token" */, {
+      const response = await fetch( 'https://api-entrega-recepcion.umich.mx/token' /* "http://localhost:8000/token" */, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded", // Corregí el typo (de encoder a encoded)
@@ -185,7 +185,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch('http://api/register'/* "http://localhost://localhost:8000" */, {
+      const response = await fetch('https://api-entrega-recepcion.umich.mx/register'/* "http://localhost://localhost:8000" */, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -57,7 +57,7 @@ interface Anexo {
 }
 
 const getAnexos = async () =>{
-  const response = await fetch('http://api/anexos/'/* 'http://localhost:8000/anexos/' */, 
+  const response = await fetch('https://api-entrega-recepcion.umich.mx/anexos/'/* 'http://localhost:8000/anexos/' */, 
   {
     method: "GET",
     headers: {
