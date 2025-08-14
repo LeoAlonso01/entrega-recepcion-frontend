@@ -9,6 +9,8 @@ import Link from "next/link"
 import { toast } from "sonner"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
+
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)

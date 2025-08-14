@@ -18,8 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Trash2, Pencil, Eye } from "lucide-react";
-import { set } from "date-fns";
-import { all } from "axios";
+
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
 // Definición del tipo Unidad
 // Este tipo representa la estructura de una unidad responsable
@@ -197,7 +198,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         }
         try {
             // Aquí puedes hacer una llamada a la API para obtener las unidades responsables
-            const response = await fetch(/* 'http://148.216.25.183:8000/unidades_responsables' */'http://localhost:8000/unidades_responsables', {
+            const response = await fetch(`${API_URL}/unidades_responsables`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -246,7 +247,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         setLoadingJerarquia(true);
 
         try {
-            const response = await fetch(/* 'http://148.216.25.183:8000/unidades_jerarquicas' */`http://localhost:8000/unidades_jerarquicas`, {
+            const response = await fetch(`${API_URL}/unidades_jerarquicas`, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`

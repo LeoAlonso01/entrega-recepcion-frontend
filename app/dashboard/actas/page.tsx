@@ -11,6 +11,8 @@ import { Plus, Edit, Trash2, Eye, FileSpreadsheet, FileText } from "lucide-react
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 interface ActaForm {
   id: number
   unidad_responsable: number
@@ -76,7 +78,7 @@ export default function ActasPage() {
     }
 
     try {
-      const response = await fetch(/* 'http://148.216.25.183:8000/unidades_responsables' */'http://localhost:8000/unidades_responsables', {
+      const response = await fetch(`${API_URL}/unidades_responsables`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +97,7 @@ export default function ActasPage() {
 
   const getActas = async () => {
     try {
-      const response = await fetch(/* 'http://148.216.25.183:8000/actas/' */'http://localhost:8000/actas/', {
+      const response = await fetch(`${API_URL}/actas/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +130,7 @@ export default function ActasPage() {
         return
       }
 
-      const response = await fetch(`http://148.216.25.183:8000/actas/${id}`/*`http://localhost:8000/actas/${id}`*/, {
+      const response = await fetch(`${API_URL}/actas/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -153,7 +155,7 @@ export default function ActasPage() {
         return
       }
 
-      const response = await fetch(`http://148.216.25.183:8000/actas/${id}`/*` http://localhost:8000/actas/${id}` */, {
+      const response = await fetch(`${API_URL}/actas/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +184,7 @@ export default function ActasPage() {
         return
       }
 
-      const response = await fetch(/* 'http://148.216.25.183:8000/actas/' */`http://localhost:8000/actas/`, {
+      const response = await fetch(`${API_URL}/actas/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

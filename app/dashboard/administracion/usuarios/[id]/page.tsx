@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
+
 interface Usuario {
     id: number;
     username: string;
@@ -40,7 +42,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
             }
 
             setRefreshing(true);
-            const response = await fetch(/* `http://148.216.25.183:8000/users/${id}` */`http://localhost:8000/users/${id}`, {
+            const response = await fetch(`${API_URL}/users/${id}`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",

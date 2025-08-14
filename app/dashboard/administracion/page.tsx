@@ -30,7 +30,8 @@ import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { Eye } from "lucide-react"
-import { set } from "date-fns"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
 interface Usuario {
   id: number
@@ -140,7 +141,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const handleGetUsers = async () => {
     // llamada a la api
     try {
-      const response = await fetch(/* "http://148.216.25.183:8000/users" */"http://localhost:8000/users", {
+      const response = await fetch(`${API_URL}/users`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

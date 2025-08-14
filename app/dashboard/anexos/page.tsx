@@ -17,7 +17,9 @@ import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
-import CategoryKeySelector from "@/components/CategoryKeySelector"
+import { UnidadesPorUsuario } from "../../services/get_unidades";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
 interface Usuario {
   id: number
@@ -40,7 +42,7 @@ export interface Anexo {
 }
 
 const getAnexos = async () => {
-  const response = await fetch("http://localhost:8000/anexos/",
+  const response = await fetch(`${API_URL}/anexos/`,
     {
       method: "GET",
       headers: {
@@ -751,10 +753,17 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       }
     }
 
-    fetchMyUnidad().then((data) => {
-      setUnidadResponsable(data);
-      console.log("Unidad responsable:", data);
-    });
+    async function mostrarUnidad(){
+      try {
+        const unidad = await UnidadesPorUsuario(1);
+        console.log("Unidad responsable:", unidad.id_unidad);
+        console.log("Responsable:", unidad.responsable);
+      } catch (error) {
+        console.error("Error al obtener la unidad responsable:", error);
+      }
+    }
+
+    mostrarUnidad();
 
     // Obtener los anexos
     getAnexos().then((data) => {
@@ -762,31 +771,6 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     });
     
   }, [router]);
-
-  const fetchMyUnidad = async () => {
-  try {
-    const response = await fetch('http://localhost:8000/me/unidad', {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem('token')}`
-      },
-    });
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.error('No tienes unidad asignada');
-        return { error: 'No tienes unidad asignada' };
-      }
-      throw new Error('Error al obtener unidad');
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error:', error);
-    return { error: typeof error === "object" && error !== null && "message" in error ? (error as { message: string }).message : String(error) };
-  }
-};
 
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { EyeIcon, EyeOffIcon } from "lucide-react"
 import * as Tooltip from "@radix-ui/react-tooltip"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface CreateUserResponse {
   access_token: string;
@@ -65,10 +66,10 @@ export default function LoginPage() {
     console.log("Inicio de sesion");
 
     try {
-      const response = await fetch( /* 'http://148.216.25.183:8000/token' */ "http://localhost:8000/token", {
+      const response = await fetch(`${API_URL}/token`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded", // Corregí el typo (de encoder a encoded)
+          "Content-Type": "application/x-www-form-urlencoded", // Corregí el tipo (de encoder a encoded)
         },
         body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
       });
@@ -185,7 +186,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch(/* 'http://148.216.25.183:8000/register' */"http://localhost:8000", {
+      const response = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
