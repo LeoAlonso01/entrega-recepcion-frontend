@@ -2,7 +2,7 @@
 const nextConfig = {
   // Habilita el output standalone para Vercel (mejor para Docker y deployments optimizados)
   output: 'standalone',  // <-- Añade esta línea
-  
+
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -17,11 +17,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://148.216.25.183:8000/:path*',
+        destination: 'https://api-entrega-recepcion.umich.mx/:path*',
       },
       {
         source: '/token',
-        destination: 'http://148.216.25.183:8000/token',
+        destination: 'https://api-entrega-recepcion.umich.mx/token',
       }
     ]
   },
