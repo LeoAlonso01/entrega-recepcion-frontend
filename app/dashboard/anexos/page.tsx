@@ -18,6 +18,8 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import { Viewer } from '@react-pdf-viewer/core';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
@@ -28,6 +30,11 @@ interface Usuario {
   role: "USER" | "ADMIN"
   is_active: boolean
   created_at: string
+}
+
+interface EditableTableProps {
+  data:any[],
+  onChange: (data:any[]) => void;
 }
 
 export interface Anexo {
@@ -693,7 +700,64 @@ const claves_anexos = [
   }
 ]
 
+const EditableTable: React.FC<EditableTableProps> = ({data, onChange}) =>{
+  const handleEdit = (rowIndex: number, field: string, value: string) =>{
+    const updated = [...data];
+    updated[rowIndex] = { ...updated[rowIndex], [field]: value };
+    onChange(updated);
+  };
 
+  const handleDelete = (rowIndex: number) => {
+    const updated = data.filter((_, index) => index !== rowIndex);
+    onChange(updated);
+  };
+
+    if (!data || data.length === 0) {
+    return <p className="text-gray-500">No hay datos para mostrar</p>;
+  }
+
+  const columns = Object.keys(data[0]);
+
+   return (
+    <table className="min-w-full border border-gray-300 rounded-md">
+      <thead>
+        <tr>
+          {columns.map((col) => (
+            <th key={col} className="border px-2 py-1 bg-gray-100">
+              {col}
+            </th>
+          ))}
+          <th className="border px-2 py-1 bg-gray-100">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((row, rowIndex) => (
+          <tr key={rowIndex}>
+            {columns.map((col) => (
+              <td key={col} className="border px-2 py-1">
+                <input
+                  type="text"
+                  value={row[col] ?? ""}
+                  onChange={(e) => handleEdit(rowIndex, col, e.target.value)}
+                  className="w-full p-1 border rounded"
+                />
+              </td>
+            ))}
+            <td className="border px-2 py-1 text-center">
+              <button
+                onClick={() => handleDelete(rowIndex)}
+                className="text-red-500 hover:text-red-700"
+              >
+                Eliminar
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
+}
 
 export default function AnexosPage(user: { username: string }, userrole: { role: string }, unidadresponable: { unidad: string }) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
@@ -714,12 +778,12 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     estado: "Borrador",
     unidad_responsable_id: "",
   })
-
+  const [rows, setRows] = useState<any[]>([])
   const router = useRouter()
   const [userName, setUserName] = useState<string>("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
-  const [userid, setUserid] = useState<string>("")
-  const [unidadResponsable, setUnidadResponsable] = useState<string>("")
+  const [userid, setUserid] = useState<number>(0)
+  const [unidadResponsable, setUnidadResponsable] = useState<number>(0)
   const [file, setFile] = useState<File | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -749,11 +813,38 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       } catch (error) {
         console.error("Error al parsear los datos del usuario:", error);
         setUserName("");
-        setUserid("");
+        setUserid(0);
       }
     }
 
-    async function mostrarUnidad(){
+    if (userid) {
+      const obtenerUnidad = async () => {
+        try {
+          const unidad = await UnidadesPorUsuario(Number(userid));
+          console.log("Unidad responsable:", unidad.id_unidad);
+          console.log("Responsable:", unidad.responsable);
+
+          // respuesta correcta
+          setUnidadResponsable(Number(unidad.id_unidad));
+
+          // guardarlo en formData
+          setFormData(prev => ({
+            ...prev,
+            unidad_responsable_id: unidad.id_unidad
+          }));
+
+
+        } catch (error) {
+          console.error("Error al obtener la unidad responsable:", error);
+        }
+      }
+
+      obtenerUnidad();
+    }
+
+
+
+    async function mostrarUnidad() {
       try {
         const unidad = await UnidadesPorUsuario(1);
         console.log("Unidad responsable:", unidad.id_unidad);
@@ -769,8 +860,8 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     getAnexos().then((data) => {
       setAnexos(data);
     });
-    
-  }, [router]);
+
+  }, [router, userid]);
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -779,7 +870,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       "Función de creación/edición aún no implementada",
       {
         description: "Próximamente podrás crear o editar anexos.",
-        duration: 1000,
+        duration: 2000,
       }
     )
 
@@ -1099,23 +1190,18 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                       <div>
                         <label htmlFor="excel-uploader">Subir Excel</label>
                         <ExcelUploader
-                          onUploadSuccess={handleExcelUpload} />
+                        onUploadSuccess={(data) =>{
+                          setRows(data);
+                          setFormData((prev) =>({
+                            ...prev,
+                            datos:data, // esto sincroniza directamente con formData
+                          }));
+                        }}
+                        />
                       </div>
                     )}
                     {/* llenar el campo datos con el json desde excel */}
                     {formData.clave === "Excel" && (
-                      <div>
-                        <label htmlFor="datos">Datos</label>
-                        {/* <textarea
-                          id="datos"
-                          value={JSON.stringify(formData.datos, null, 2)}
-                          onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                        /> */}
-                      </div>
-                    )}
-                    {/* en el campo datos subir la url del archivo pdf */}
-                    {formData.clave === "PDF" && (
                       <div>
                         <label htmlFor="datos">Datos</label>
                         <textarea
@@ -1124,6 +1210,38 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                           onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
                           className="w-full p-2 border border-gray-300 rounded-md"
                         />
+                        <EditableTable
+                        data={Array.isArray(formData.datos) ? formData.datos : []}
+                        onChange={(newData)=>
+                          setFormData({
+                            ...formData,
+                            datos: newData
+                          })
+                        }
+                        />
+                      </div>
+                    )}
+                    {/* en el campo datos subir la url del archivo pdf */}
+                    {formData.clave === "PDF" && (
+                      <div>
+                        <label htmlFor="datos">Datos</label>
+                        {/* <textarea
+                          id="datos"
+                          value={JSON.stringify(formData.datos, null, 2)}
+                          onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                        /> */}
+                        <div className="border border-gray-300 rounded-md p-2 overflow-hidden mt-4"
+                          style={
+                            {
+                              width: "60%", // Ancho del contenedor
+                              height: "400px", // Altura del contenedor
+                            }
+                          }
+                        >
+                          {/* Directly use the Viewer component from @react-pdf-viewer/core */}
+                          <Viewer fileUrl={formData.datos.pdf_url} />
+                        </div>
                       </div>
                     )}
 
@@ -1145,7 +1263,19 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                       </div>
                     )}
 
-                    {/* clave del anexo */}
+                    {/* unidad responsable del anexo */}
+                    <label htmlFor="unidad_responsable" className="block text-sm font-medium text-gray-700 mb-2">
+                      Unidad Responsable
+                    </label>
+                    <input
+                      type="text"
+                      id="unidad_responsable"
+                      value={unidadResponsable
+                      }
+                      /* onChange={(e) => setUnidadResponsable(Number(e.target.value))} */
+                      readOnly
+                      className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                    />
                     {/* estado del anexo */}
                     <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-2">
                       Estado del Anexo
