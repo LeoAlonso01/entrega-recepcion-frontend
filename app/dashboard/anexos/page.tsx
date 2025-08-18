@@ -1270,8 +1270,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                     <input
                       type="text"
                       id="unidad_responsable"
-                      value={unidadResponsable
-                      }
+                      value={(unidadResponsable ? unidadResponsable : "NO ASIGNADA")}
                       /* onChange={(e) => setUnidadResponsable(Number(e.target.value))} */
                       readOnly
                       className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"

@@ -14,16 +14,10 @@ import * as Tooltip from "@radix-ui/react-tooltip"
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface CreateUserResponse {
-  access_token: string;
-  token_type: string;
-  user_id: number;
-  username: string;
-  email: string;
-}
-
-interface LoginCredentials {
-  username: string;
-  password: string;
+  username:string;
+  email:string;
+  password:string;
+  role:string;
 }
 
 // user interface
@@ -33,7 +27,6 @@ interface User {
   email: string;
   role: "USER" | "ADMIN" | "AUDITOR";
   is_deleted?: boolean; // Optional property for soft delete
-  created_at: string;
 }
 
 interface RegisterCredentials {
@@ -52,6 +45,7 @@ export default function LoginPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    role: "USER"
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isEmailValid, setIsEmailValid] = useState<boolean | null>(null)
@@ -134,16 +128,8 @@ export default function LoginPage() {
 
     return true
   }
-  // manejar el páso de datos del formulario de registro
-  // y pasar los datos a solicitud de permisos
-  const handleRegistroExitoso = () => {
-    const query = new URLSearchParams({
-      username: formData.username,
-      email: formData.email,
-    });
 
-    router.push(`/solicitud_permisos?${query.toString()}`);
-  };
+
   // Manejar el envío del formulario de registro
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,9 +159,6 @@ export default function LoginPage() {
 
     // Aquí va tu lógica para crear usuario
     console.log("Datos válidos:", formData);
-
-
-
     // Preparar los datos del usuario para el registro
     console.log("registrando usuario");
 
@@ -183,54 +166,57 @@ export default function LoginPage() {
       username: formData.username,
       email: formData.email,
       password: formData.password,
+      role: formData.role || null
     }
 
     try {
       const response = await fetch(`${API_URL}/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+        headers:{
+          "Content-Type":"application/json"
         },
-        body: JSON.stringify({
-          username: userData.username,
-          email: userData.email,
-          password: userData.password,
-        }),
+        body: JSON.stringify(userData),
       });
 
-      // Si la respuesta es exitosa, avisar que el usuario se ha creado correctamente y abrir el login
-      if (response.status === 201) {
-        console.log("Usuario creado exitosamente");
-        toast.success("Usuario creado exitosamente");
-        // Redireccionar al login
-        setIsLogin(true);
-        // Limpiar el formulario
-        setFormData({
-          username: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-        });
-        // el nuevo usuario no tiene rol asignado, redireccionar a la pagina de sin rol
-        // y pasarle los datos del usuario creado
-        handleRegistroExitoso();
-
-
-
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Error al crear el usuario:", errorData);
-          toast.error("Error al crear el usuario:" + errorData.detail?.[0]?.msg || "Error desconocido");
-        }
-
+      console.table(userData);
+      
+      // validacion de usuarios
+      if (!response.ok){
+        const ErrorData = await response.json();
+        console.error("Error en la respuesta del servidor:", ErrorData);
+        toast.error(ErrorData.detail || "Error al registrar usuario")
       }
-    } catch (error) {
 
-      console.error("Error al crear el usuario:", error);
+      // respuesta satisfactoria
+      const data = await response.json();
+      toast.success("Usuario creado exitosamente");
+      console.warn("Datos del usuario:", data);
+
+      // redireccion a los permisos
+      handleRegistroExitoso();
+
+    } catch (error) {
+      // error al hacer la solicitud
+      if (error instanceof Error) {
+        toast.error("Error al crear usuario: " + error.message);
+      } else {
+        toast.error("Error al crear usuario");
+      }
     }
 
   };
+
+  // manejar el páso de datos del formulario de registro
+  // y pasar los datos a solicitud de permisos
+  const handleRegistroExitoso = () => {
+    const query = new URLSearchParams({
+      username: formData.username,
+      email: formData.email,
+    });
+
+    router.push(`/solicitud_permisos?${query.toString()}`);
+  };
+
   // Manejar cambios en los campos del formulario
   // Actualizar el estado del formulario
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

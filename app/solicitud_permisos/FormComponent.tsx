@@ -301,7 +301,7 @@ export default function SolicitudPermisosPage() {
       <header className="shadow-sm" style={{ backgroundColor: "#24356B" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <h1 className="text-xl font-bold text-white">SERUMICH - Solicitud de Permisos</h1>
+            <h1 className="text-xl font-bold text-white">SERUMICH V2 - Solicitud de Permisos</h1>
             <Button variant="ghost" size="sm" className="text-white hover:bg-white/10" onClick={handleBackToLogin}>
               Volver al Login
             </Button>
@@ -327,7 +327,7 @@ export default function SolicitudPermisosPage() {
             <Alert>
               <User className="h-4 w-4" />
               <AlertDescription>
-                <strong>Tu cuenta ha sido creada pero aún no tiene un rol asignado.</strong> Para acceder al sistema
+                <strong>Tu cuenta ha sido creada pero aún no tienes unidad responsable asignada.</strong> Para acceder al sistema
                 completo, necesitas generar y enviar una solicitud de asignación de rol y permisos.
               </AlertDescription>
             </Alert>
