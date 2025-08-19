@@ -37,7 +37,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
         try {
             const token = localStorage.getItem("token");
             if (!token) {
-                router.push('/auth/login');
+                router.push('/login');
                 return;
             }
 
@@ -46,7 +46,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
+                    // Authorization: `Bearer ${token}`,
                 },
             });
 
@@ -78,6 +78,12 @@ export default function UsuarioDetallePage( user: Usuario | null) {
     };
 
     useEffect(() => {
+        // el token existe
+        const token = localStorage.getItem("token");
+            if (!token) {
+                router.push('/login');
+                return;
+            }
         fetchUsuario();
     }, [id]);
 
