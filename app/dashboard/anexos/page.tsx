@@ -18,8 +18,8 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
-import '@react-pdf-viewer/core/lib/styles/index.css';
-import { Viewer } from '@react-pdf-viewer/core';
+// import '@react-pdf-viewer/core/lib/styles/index.css';
+// import { Viewer } from '@react-pdf-viewer/core';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
@@ -1240,7 +1240,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                           }
                         >
                           {/* Directly use the Viewer component from @react-pdf-viewer/core */}
-                          <Viewer fileUrl={formData.datos.pdf_url} />
+                          {/* <Viewer fileUrl={formData.datos.pdf_url} /> */}
                         </div>
                       </div>
                     )}
