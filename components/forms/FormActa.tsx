@@ -1,52 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { createActa } from './../../app/services/api';
 import { toast } from 'sonner';
-
-const createFolio = () => {
-  const year = new Date().getFullYear()
-  const randomNumber = Math.floor(Math.random() * 10000).toString().padStart(4, "0")
-  return `FOLIO-${year}-${randomNumber}`
-}
-
-const createDate = () => {
-  return new Date().toISOString().split("T")[0]
-}
-
-const createHoraFinal = (): string => {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
-};
-
-const folioFinal = createFolio()
-const fechaFinal = createDate()
-const horaFinal = createHoraFinal()
-
-const normalizeTime = (timeStr?: string): string | undefined => {
-  if (!timeStr) return undefined;
-  
-  // Si ya está en formato HH:mm
-  if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
-    return timeStr;
-  }
-  
-
-  // Intenta parsear formatos AM/PM
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)$/i);
-  if (match) {
-    let hours = parseInt(match[1]);
-    const minutes = match[2];
-    const period = match[3].toLowerCase();
-    
-    if (period.startsWith('p') && hours < 12) hours += 12;
-    if (period.startsWith('a') && hours === 12) hours = 0;
-    
-    return `${String(hours).padStart(2, '0')}:${minutes}`;
-  }
-
-  return undefined;
-};
 
 interface Unidad {
   id_unidad: number;
@@ -82,10 +36,111 @@ interface ActaForm {
   observaciones?: string;
   estado: "Pendiente" | "Completada" | "Revisión";
 }
+interface Props {
+  acta: ActaForm;
+  unidades: Unidad[];
+  onCancel: () => void;
+  onSave: (data: ActaForm) => void;
+}
 
-function prepareActaData(formData: ActaForm): ActaForm {
-  // Convierte strings vacíos a undefined para no enviar campos vacíos
-  const cleanString = (str?: string) => (str && str.trim() !== "" ? str : undefined);
+const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
+  // Función para crear folio (optimizada)
+const createFolio = useCallback(() => {
+  const year = new Date().getFullYear();
+  const randomNumber = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+  return `FOLIO-${year}-${randomNumber}`;
+}, []);
+
+// Función para crear fecha (optimizada)
+const createDate = useCallback(() => {
+  return new Date().toISOString().split("T")[0];
+}, []);
+
+// Función para crear hora final (optimizada)
+const createHoraFinal = useCallback((): string => {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}, []);
+
+// Valores por defecto memorizados
+const folioFinal = useMemo(() => createFolio(), [createFolio]);
+const fechaFinal = useMemo(() => createDate(), [createDate]);
+const horaFinal = useMemo(() => createHoraFinal(), [createHoraFinal]);
+
+// Función para normalizar tiempo (optimizada)
+const normalizeTime = useCallback((timeStr?: string): string | undefined => {
+  if (!timeStr) return undefined;
+  
+  // Si ya está en formato HH:mm
+  if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
+    return timeStr;
+  }
+  
+  // Intenta parsear formatos AM/PM
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)$/i);
+  if (match) {
+    let hours = parseInt(match[1]);
+    const minutes = match[2];
+    const period = match[3].toLowerCase();
+    
+    if (period.startsWith('p') && hours < 12) hours += 12;
+    if (period.startsWith('a') && hours === 12) hours = 0;
+    
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+  }
+
+  return undefined;
+}, []);
+  // Estado inicial optimizado
+  const initialFormData = useMemo(() => ({
+    ...acta,
+    unidad_responsable: acta.unidad_responsable || (unidades[0]?.id_unidad || 0),
+    estado: acta.estado || "Pendiente",
+    fecha: acta.fecha || fechaFinal,
+    hora: acta.hora || horaFinal,
+    entrante: acta.entrante || "",
+    saliente: acta.saliente || "",
+  }), [acta, unidades, fechaFinal, horaFinal]);
+
+  const [formData, setFormData] = useState<ActaForm>(initialFormData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Función de validación optimizada
+  const validateForm = useCallback((data: ActaForm): string | null => {
+    if (!data.unidad_responsable) return "Unidad responsable es requerida";
+    if (!data.entrante?.trim()) return "Nombre del entrante es requerido";
+    if (!data.saliente?.trim()) return "Nombre del saliente es requerido";
+    
+    // Validación adicional para campos de fecha
+    if (data.fecha_oficio_comision && !/^\d{4}-\d{2}-\d{2}$/.test(data.fecha_oficio_comision)) {
+      return "Formato de fecha de oficio de comisión inválido";
+    }
+    
+    if (data.fecha_inicio_labores && !/^\d{4}-\d{2}-\d{2}$/.test(data.fecha_inicio_labores)) {
+      return "Formato de fecha de inicio de labores inválido";
+    }
+    
+    return null;
+  }, []);
+
+  // Manejador de cambios optimizado
+  const handleChange = useCallback((
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: name === 'unidad_responsable' ? Number(value) : value 
+    }));
+  }, []);
+
+  // Función para preparar datos del acta (optimizada)
+const prepareActaData = useCallback((formData: ActaForm): ActaForm => {
+  // Función auxiliar para limpiar strings
+  const cleanString = (str?: string) => (str && str.trim() !== "" ? str.trim() : undefined);
 
   return {
     id: formData.id,
@@ -116,53 +171,20 @@ function prepareActaData(formData: ActaForm): ActaForm {
     observaciones: cleanString(formData.observaciones),
     estado: formData.estado || "Pendiente",
   };
-}
+}, [folioFinal, fechaFinal, horaFinal, normalizeTime]);
 
-interface Props {
-  acta: ActaForm;
-  unidades: Unidad[];
-  onCancel: () => void;
-  onSave: (data: ActaForm) => void;
-}
-
-const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
-  const [formData, setFormData] = useState<ActaForm>({
-    ...acta,
-    unidad_responsable: acta.unidad_responsable || (unidades[0]?.id_unidad || 0),
-    estado: acta.estado || "Pendiente",
-    fecha: acta.fecha || fechaFinal,
-    hora: acta.hora || horaFinal,
-    entrante: acta.entrante || "",
-    saliente: acta.saliente || "",
-  });
-
-  const validateForm = (data: ActaForm): string | null => {
-    if (!data.unidad_responsable) return "Unidad responsable es requerida";
-    if (!data.entrante) return "Nombre del entrante es requerido";
-    if (!data.saliente) return "Nombre del saliente es requerido";
-    return null;
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: name === 'unidad_responsable' ? Number(value) : value 
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Manejador de envío del formulario optimizado
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const validationError = validateForm(formData);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
+    setIsSubmitting(true);
 
     try {
+      const validationError = validateForm(formData);
+      if (validationError) {
+        toast.error(validationError);
+        return;
+      }
+
       const actaToSend = prepareActaData(formData);
       console.log("Datos del acta a enviar:", actaToSend);
       
@@ -170,10 +192,15 @@ const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
         return;
       }
 
-      // Aquí deberías llamar a tu API para crear/actualizar el acta
-      // const response = await createActa(actaToSend);
-      toast.success("Acta guardada exitosamente.");
-      onSave(actaToSend);
+      // Intenta crear el acta
+      const response = await createActa(actaToSend);
+      
+      if (response.success) {
+        toast.success("Acta guardada exitosamente.");
+        onSave(actaToSend);
+      } else {
+        throw new Error(response.error || "Error al guardar el acta");
+      }
 
     } catch (error: any) {
       console.error('Error al guardar acta:', error);
@@ -181,8 +208,22 @@ const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
         error.message ||
         "Error desconocido al guardar acta";
       toast.error(`Error: ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }, [formData, validateForm, prepareActaData, onSave]);
+
+  // Restablecer formulario
+  const handleReset = useCallback(() => {
+    setFormData(initialFormData);
+  }, [initialFormData]);
+
+  // Efecto para limpiar el estado al desmontar
+  React.useEffect(() => {
+    return () => {
+      // Limpiar cualquier estado pendiente si es necesario
+    };
+  }, []);
 
   return (
     <form onSubmit={handleSubmit} className="p-6 bg-white rounded-lg shadow-md space-y-6">
@@ -510,14 +551,24 @@ const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
           type="button" 
           onClick={onCancel} 
           className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+          disabled={isSubmitting}
         >
           Cancelar
         </button>
         <button 
+          type="button" 
+          onClick={handleReset} 
+          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
+          disabled={isSubmitting}
+        >
+          Restablecer
+        </button>
+        <button 
           type="submit" 
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          disabled={isSubmitting}
         >
-          Guardar Acta
+          {isSubmitting ? "Guardando..." : "Guardar Acta"}
         </button>
       </div>
     </form>
