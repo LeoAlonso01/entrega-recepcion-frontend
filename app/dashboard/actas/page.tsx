@@ -161,7 +161,7 @@ export default function ActasPage() {
         // headers['Authorization'] = `Bearer ${token}`
       }
 
-      const response = await fetch(`${API_URL}/actas/`, {
+      const response = await fetch(`${API_URL}/actas`, {
         method: 'GET',
         headers
       })
@@ -246,7 +246,7 @@ export default function ActasPage() {
         return
       }
 
-      const response = await fetch(`${API_URL}/actas/${id}`, {
+      const response = await fetch(`${API_URL}/actas${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -276,7 +276,7 @@ export default function ActasPage() {
         return
       }
 
-      const response = await fetch(`${API_URL}/actas/`, {
+      const response = await fetch(`${API_URL}/actas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
