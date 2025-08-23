@@ -1,6 +1,8 @@
 "use client"
 
 import type React from "react"
+import RectDOM from "react-dom"
+import { useForm, SubmitHandler } from "react-hook-form"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -733,6 +735,58 @@ const claves_anexos = [
   }
 ]
 
+enum CategoriaEnum {
+  RECURSOS_PRESUPUESTALES = "1",
+  CONTRATOS_CONVENIOS = "2",
+  ESTRUCTURA_NORMATIVA = "3",
+  RECURSOS_HUMANOS = "4",
+  INVENTARIO_BIENES = "5",
+  SEGURIDAD_CONTROL = "6",
+  DOCUMENTACION_ARCHIVO = "7",
+  ASUNTOS_LEGALES = "8",
+  PROGRAMAS_PROYECTOS = "9",
+  TRANSPARENCIA = "10",
+  MARCO_JURIDICO = "11",
+  SIN_CATEGORIA = "12",
+  ASUNTOS_RELEVANTES = "13"
+}
+
+const CategoriaLabels = {
+  [CategoriaEnum.RECURSOS_PRESUPUESTALES]: "Recursos Presupuestales y Financieros",
+  [CategoriaEnum.CONTRATOS_CONVENIOS]: "Contratos, Convenios y Licitaciones",
+  [CategoriaEnum.ESTRUCTURA_NORMATIVA]: "Estructura y Normativa Interna",
+  [CategoriaEnum.RECURSOS_HUMANOS]: "Recursos Humanos",
+  [CategoriaEnum.INVENTARIO_BIENES]: "Inventario de Bienes Muebles e Inmuebles",
+  [CategoriaEnum.SEGURIDAD_CONTROL]: "Seguridad y Control de Accesos",
+  [CategoriaEnum.DOCUMENTACION_ARCHIVO]: "Documentación y Archivo",
+  [CategoriaEnum.ASUNTOS_LEGALES]: "Asuntos Legales y de Auditoría",
+  [CategoriaEnum.PROGRAMAS_PROYECTOS]: "Programas y Proyectos:",
+  [CategoriaEnum.TRANSPARENCIA]: "Transparencia",
+  [CategoriaEnum.MARCO_JURIDICO]: "Marco Jurídico",
+  [CategoriaEnum.SIN_CATEGORIA]: "Sin Categoría",
+  [CategoriaEnum.ASUNTOS_RELEVANTES]: "Asuntos Relevantes"
+};
+
+enum CategoriasAnexos {
+  DA = "Documentación Administrativa",
+  ALA = "Asuntos Legales",
+  PP = "Programas y Proyectos",
+  TA = "Transparencia y Acceso a la Información",
+  MJ = "Matriz de Justificación",
+  AR = "Asuntos Relevantes"
+}
+
+interface IFormInput {
+  clave: string;
+  categoria: string;
+  fecha_creacion: string;
+  creador: number;
+  datos: Record<string, any>;
+  estado: string;
+  unidad_responsable_id: string;
+}
+
+
 const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
   const handleEdit = (rowIndex: number, field: string, value: string) => {
     const updated = [...data];
@@ -792,6 +846,8 @@ const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
 
 }
 
+
+
 export default function AnexosPage(user: { username: string }, userrole: { role: string }, unidadresponable: { unidad: string }) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
   const [showForm, setShowForm] = useState(false) // Nuevo estado para controlar la visibilidad
@@ -812,7 +868,13 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     unidad_responsable_id: "",
   })
   const [rows, setRows] = useState<any[]>([])
-  const [activeTab, setActiveTab] = useState<string>("anexos")
+  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////// datos para el form con react hook form ///////////////////////////////////////////
+  const { register, handleSubmit, setValue, watch } = useForm<IFormInput>();
+  const onSubmit: SubmitHandler<IFormInput> = data => {
+    console.log("Datos del formulario:", data);
+  };
+  const [activeTab, setActiveTab] = useState<string>("formulario")
   const router = useRouter()
   const [userName, setUserName] = useState<string>("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
@@ -825,148 +887,148 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [datos, setDatos] = useState<Array<Record<string, any>>>([]);
   const isExcelFile = selectedFile?.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
- /*  useEffect(() => {
+  /*  useEffect(() => {
+     const token = localStorage.getItem("token");
+     const userString = localStorage.getItem("user");
+ 
+     if (!token) {
+       router.push("/");
+       return; // Salir temprano si no hay token
+     }
+ 
+     if (userString) {
+       try {
+         const userData = JSON.parse(userString);
+         setUserName(userData.username);
+         setUserid(userData.id);
+ 
+         console.log("Datos del usuario:", {
+           username: userData.username,
+           id: userData.id
+         });
+       } catch (error) {
+         console.error("Error al parsear los datos del usuario:", error);
+         setUserName("");
+         setUserid(0);
+       }
+     }
+ 
+     if (userid) {
+       const obtenerUnidad = async () => {
+         try {
+           const unidad = await UnidadesPorUsuario(Number(userid));
+           console.log("Unidad responsable:", unidad.id_unidad);
+           console.log("Responsable:", unidad.responsable);
+ 
+           // respuesta correcta
+           setUnidadResponsable(Number(unidad.id_unidad));
+ 
+           // guardarlo en formData
+           setFormData(prev => ({
+             ...prev,
+             unidad_responsable_id: unidad.id_unidad
+           }));
+ 
+ 
+         } catch (error) {
+           console.error("Error al obtener la unidad responsable:", error);
+         }
+       }
+ 
+       obtenerUnidad();
+     }
+ 
+ 
+ 
+     async function mostrarUnidad() {
+       try {
+         const unidad = await UnidadesPorUsuario(1);
+         console.log("Unidad responsable:", unidad.id_unidad);
+         console.log("Responsable:", unidad.responsable);
+       } catch (error) {
+         console.error("Error al obtener la unidad responsable:", error);
+       }
+     }
+ 
+     mostrarUnidad();
+ 
+     // Obtener los anexos
+     getAnexos().then((data) => {
+       setAnexos(data);
+     });
+ 
+   }, [router, userid]); */
+
+
+  useEffect(() => {
     const token = localStorage.getItem("token");
     const userString = localStorage.getItem("user");
 
     if (!token) {
       router.push("/");
-      return; // Salir temprano si no hay token
+      return;
     }
 
+    let currentUserId: number | null = null;
+
+    // Parsear usuario
     if (userString) {
       try {
         const userData = JSON.parse(userString);
         setUserName(userData.username);
-        setUserid(userData.id);
-
-        console.log("Datos del usuario:", {
-          username: userData.username,
-          id: userData.id
-        });
+        currentUserId = userData.id;
+        setUserid(userData.id); // Solo actualizamos el estado si es necesario
       } catch (error) {
         console.error("Error al parsear los datos del usuario:", error);
         setUserName("");
         setUserid(0);
+        return; // Salimos si hay error
       }
+    } else {
+      setUserid(0);
+      return;
     }
 
-    if (userid) {
-      const obtenerUnidad = async () => {
-        try {
-          const unidad = await UnidadesPorUsuario(Number(userid));
-          console.log("Unidad responsable:", unidad.id_unidad);
-          console.log("Responsable:", unidad.responsable);
-
-          // respuesta correcta
-          setUnidadResponsable(Number(unidad.id_unidad));
-
-          // guardarlo en formData
-          setFormData(prev => ({
-            ...prev,
-            unidad_responsable_id: unidad.id_unidad
-          }));
-
-
-        } catch (error) {
-          console.error("Error al obtener la unidad responsable:", error);
-        }
-      }
-
-      obtenerUnidad();
-    }
-
-
-
-    async function mostrarUnidad() {
+    // Usamos currentUserId para evitar depender de `userid` en el estado
+    const obtenerUnidad = async () => {
       try {
-        const unidad = await UnidadesPorUsuario(1);
+        const unidad = await UnidadesPorUsuario(currentUserId!);
         console.log("Unidad responsable:", unidad.id_unidad);
-        console.log("Responsable:", unidad.responsable);
+        setUnidadResponsable(Number(unidad.id_unidad));
+        setFormData((prev) => ({
+          ...prev,
+          unidad_responsable_id: unidad.id_unidad,
+        }));
       } catch (error) {
         console.error("Error al obtener la unidad responsable:", error);
       }
+    };
+
+    // Llamamos a obtenerUnidad solo si tenemos userId válido
+    if (currentUserId) {
+      obtenerUnidad();
     }
 
-    mostrarUnidad();
+    // Esta función parece ser de prueba, considera eliminarla en prod
+    async function mostrarUnidad() {
+      try {
+        const unidad = await UnidadesPorUsuario(1);
+        console.log("Unidad responsable (prueba):", unidad.id_unidad);
+      } catch (error) {
+        console.error("Error al obtener la unidad responsable (prueba):", error);
+      }
+    }
 
-    // Obtener los anexos
+    // Si es solo para debugging, coméntala o elimínala
+    // mostrarUnidad();
+
+    // Obtener anexos (esto debería ejecutarse una vez)
     getAnexos().then((data) => {
       setAnexos(data);
     });
 
-  }, [router, userid]); */
-
-
-  useEffect(() => {
-  const token = localStorage.getItem("token");
-  const userString = localStorage.getItem("user");
-
-  if (!token) {
-    router.push("/");
-    return;
-  }
-
-  let currentUserId: number | null = null;
-
-  // Parsear usuario
-  if (userString) {
-    try {
-      const userData = JSON.parse(userString);
-      setUserName(userData.username);
-      currentUserId = userData.id;
-      setUserid(userData.id); // Solo actualizamos el estado si es necesario
-    } catch (error) {
-      console.error("Error al parsear los datos del usuario:", error);
-      setUserName("");
-      setUserid(0);
-      return; // Salimos si hay error
-    }
-  } else {
-    setUserid(0);
-    return;
-  }
-
-  // Usamos currentUserId para evitar depender de `userid` en el estado
-  const obtenerUnidad = async () => {
-    try {
-      const unidad = await UnidadesPorUsuario(currentUserId!);
-      console.log("Unidad responsable:", unidad.id_unidad);
-      setUnidadResponsable(Number(unidad.id_unidad));
-      setFormData((prev) => ({
-        ...prev,
-        unidad_responsable_id: unidad.id_unidad,
-      }));
-    } catch (error) {
-      console.error("Error al obtener la unidad responsable:", error);
-    }
-  };
-
-  // Llamamos a obtenerUnidad solo si tenemos userId válido
-  if (currentUserId) {
-    obtenerUnidad();
-  }
-
-  // Esta función parece ser de prueba, considera eliminarla en prod
-  async function mostrarUnidad() {
-    try {
-      const unidad = await UnidadesPorUsuario(1);
-      console.log("Unidad responsable (prueba):", unidad.id_unidad);
-    } catch (error) {
-      console.error("Error al obtener la unidad responsable (prueba):", error);
-    }
-  }
-
-  // Si es solo para debugging, coméntala o elimínala
-  // mostrarUnidad();
-
-  // Obtener anexos (esto debería ejecutarse una vez)
-  getAnexos().then((data) => {
-    setAnexos(data);
-  });
-  
-  // Dependencias: solo queremos que se ejecute al montar el componente
-}, []); // ⬅️ Dependencia vacía: se ejecuta solo una vez
+    // Dependencias: solo queremos que se ejecute al montar el componente
+  }, []); // ⬅️ Dependencia vacía: se ejecuta solo una vez
 
   // Manejador de items
   const handleFMJChange = (jsonDataArray: Array<Record<string, any>>) => {
@@ -974,18 +1036,18 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   };
 
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    toast(
-      "Función de creación/edición aún no implementada",
-      {
-        description: "Próximamente podrás crear o editar anexos.",
-        duration: 2000,
-      }
-    )
-
-    console.log("Datos del formulario enviados:", formData, file, datos)
-  }
+  /*  const handleSubmit = (e: React.FormEvent) => {
+     e.preventDefault()
+     toast(
+       "Función de creación/edición aún no implementada",
+       {
+         description: "Próximamente podrás crear o editar anexos.",
+         duration: 2000,
+       }
+     )
+ 
+     console.log("Datos del formulario enviados:", formData, file, datos)
+   } */
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null
@@ -1085,13 +1147,13 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   }
 
 
-/*   const handleExcelUpload = (parsedData: Record<string, any>) => {
-    setFormData((prev) => ({
-      ...prev,
-      datos: parsedData,
-    }));
-    setDatos(parsedData);
-  }; */
+  /*   const handleExcelUpload = (parsedData: Record<string, any>) => {
+      setFormData((prev) => ({
+        ...prev,
+        datos: parsedData,
+      }));
+      setDatos(parsedData);
+    }; */
 
   // manejar el cambio de pestaña Tab
   const handleTabChange = (value: string) => {
@@ -1120,7 +1182,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
             <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
               <TabsTrigger value="documentos">Crear Anexos</TabsTrigger>
-              <TabsTrigger value="historial">Historial</TabsTrigger>
+              <TabsTrigger value="formulario">Formulario</TabsTrigger>
             </TabsList>
             <TabsContent value="anexos" className="mt-4 sm:mt-6 md:mt-8">
 
@@ -1223,7 +1285,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <form onSubmit={handleSubmit}>
+                      <form onSubmit={() => { console.log("Datos del formulario:", formData); }}>
                         <div className="space-y-4">
 
                           <div className="grid w-full sm:grid-cols-3 grid-cols-2 gap-2 sm:gap-3 gap-3 text-sm" >
@@ -1333,7 +1395,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                             {/*   */}
                             {selectedCategory === "Marco Jurídico" && (
                               <div>
-                                
+
                               </div>
                             )}
                           </div>
@@ -1515,9 +1577,40 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
             <TabsContent value="documentos" className="mt-4 sm:mt-6 md:mt-8">
 
             </TabsContent>
-            <TabsContent value="historial" className="mt-4 sm:mt-6 md:mt-8">
+            <TabsContent value="formulario" className="mt-4 sm:mt-6 md:mt-8">
+              <div className="grid w-full sm:grid-cols-3 grid-cols-2 gap-2 sm:gap-3 gap-3 text-sm">
+                <h2 className="text-lg font-medium">Agregar Nuevo Anexo</h2>
+                <form onSubmit={handleSubmit(onSubmit)}>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="clave">Clave</label>
+                    <input id="clave" {...register("clave")} />
+
+                    <label htmlFor="categoria">Categoría</label>
+                    <input id="categoria" {...register("categoria")} />
+                  </div>
+                  <div className="sm:col-span-2" >
+
+                    <label htmlFor="creador">Creador</label>
+                    <input id="creador" {...register("creador")} />
+
+                    <label htmlFor="estado">Estado</label>
+                    <input id="estado" {...register("estado")} />
+
+                  </div>
+                  <div className="sm:col-span-2">
+
+                    <label htmlFor="fecha_creacion">Fecha de Creación</label>
+                    <input id="fecha_creacion" type="date" {...register("fecha_creacion")} />
+
+                    <button className="mt-2 px-4 py-2 bg-[#24356B] text-white rounded hover:bg-[#1a254d] transition-colors" type="submit">
+                      Guardar
+                    </button>
+                  </div>
+                </form>
+              </div>
 
             </TabsContent>
+
           </Tabs>
 
         </div>
