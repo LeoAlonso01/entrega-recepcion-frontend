@@ -11,6 +11,7 @@ import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, Edit, Trash2, Download, ArrowLeft } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 import * as XLSX from "xlsx"
@@ -18,6 +19,7 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
+import FMJList from "@/components/forms/MarcoJuridico/FMJList"
 // import '@react-pdf-viewer/core/lib/styles/index.css';
 // import { Viewer } from '@react-pdf-viewer/core';
 
@@ -33,8 +35,8 @@ interface Usuario {
 }
 
 interface EditableTableProps {
-  data:any[],
-  onChange: (data:any[]) => void;
+  data: any[],
+  onChange: (data: any[]) => void;
 }
 
 export interface Anexo {
@@ -203,11 +205,15 @@ const categoria_anexos = [
   },
   {
     "id": "11",
-    "nombre_categoria": "Otros"
+    "nombre_categoria": "Marco Jurídico"
   },
   {
     "id": "12",
-    "nombre_categoria": "SIN CATEGORÍA"
+    "nombre_categoria": "Sin Categoría"
+  },
+  {
+    "id": "13",
+    "nombre_categoria": "Asuntos Relevantes"
   }
 ]
 
@@ -377,7 +383,7 @@ const claves_anexos = [
   {
     "id": "19",
     "clave": "CCL01",
-    "descripcion": "CONTRATOS Y CONVENIOS VIGENTES (Generales, Coordinaci\u00f3n, Fideicomisos, Bienes y Servicios)",
+    "descripcion": "CONTRATOS Y CONVENIOS VIGENTES (Generales, Coordinación, Fideicomisos, Bienes y Servicios)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -386,7 +392,7 @@ const claves_anexos = [
   {
     "id": "20",
     "clave": "CCL02",
-    "descripcion": "LICITACIONES EN TR\u00c1MITE (Bienes y Servicios, Obra)",
+    "descripcion": "LICITACIONES EN TRÁMITE (Bienes y Servicios, Obra)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -395,7 +401,7 @@ const claves_anexos = [
   {
     "id": "21",
     "clave": "CCL03",
-    "descripcion": "PROGRAMAS DE OBRA Y ADQUISICIONES (Programa Anual de Obra P\u00fablica, Listado de Expedientes de Obra, Programa Anual de Adquisiciones)",
+    "descripcion": "PROGRAMAS DE OBRA Y ADQUISICIONES (Programa Anual de Obra Pública, Listado de Expedientes de Obra, Programa Anual de Adquisiciones)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -422,7 +428,7 @@ const claves_anexos = [
   {
     "id": "24",
     "clave": "ENI03",
-    "descripcion": "ACTAS DE \u00d3RGANOS DE GOBIERNO (Actas de Consejo, Acuerdo de \u00d3rganos de Gobierno)",
+    "descripcion": "ACTAS DE ÓRGANOS DE GOBIERNO (Actas de Consejo, Acuerdo de Órganos de Gobierno)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -431,7 +437,7 @@ const claves_anexos = [
   {
     "id": "25",
     "clave": "ENI04",
-    "descripcion": "REPRESENTACIONES Y CARGOS HONOR\u00cdFICOS VIGENTES",
+    "descripcion": "REPRESENTACIONES Y CARGOS HONORÍFICOS VIGENTES",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -467,7 +473,7 @@ const claves_anexos = [
   {
     "id": "29",
     "clave": "IBM01",
-    "descripcion": "INVENTARIO DE MOBILIARIO Y EQUIPO (Oficina, Veh\u00edculos, Maquinaria y Equipo)",
+    "descripcion": "INVENTARIO DE MOBILIARIO Y EQUIPO (Oficina, Vehículos, Maquinaria y Equipo)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -494,7 +500,7 @@ const claves_anexos = [
   {
     "id": "32",
     "clave": "IBM04",
-    "descripcion": "BIENES INMUEBLES EN POSESI\u00d3N",
+    "descripcion": "BIENES INMUEBLES EN POSESIÓN",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -512,7 +518,7 @@ const claves_anexos = [
   {
     "id": "34",
     "clave": "IBM06",
-    "descripcion": "BIENES CULTURALES Y DECORATIVOS (Obras de Arte y Art\u00edculos de Decoraci\u00f3n)",
+    "descripcion": "BIENES CULTURALES Y DECORATIVOS (Obras de Arte y Artículos de Decoración)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -521,7 +527,7 @@ const claves_anexos = [
   {
     "id": "35",
     "clave": "IBM07",
-    "descripcion": "INVENTARIO FAUN\u00cdSTICO (Espec\u00edmenes, Animales Taxidermizados)",
+    "descripcion": "INVENTARIO FAUNÍSTICO (Especímenes, Animales Taxidermizados)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -539,7 +545,7 @@ const claves_anexos = [
   {
     "id": "37",
     "clave": "IBM09",
-    "descripcion": "INVENTARIO DE TECNOLOG\u00cdA (Paquetes Computacionales, Sistemas y Programas, Equipos de Comunicaci\u00f3n)",
+    "descripcion": "INVENTARIO DE TECNOLOGÍA (Paquetes Computacionales, Sistemas y Programas, Equipos de Comunicación)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -548,7 +554,7 @@ const claves_anexos = [
   {
     "id": "38",
     "clave": "SCA01",
-    "descripcion": "CLAVES Y FIRMAS DE ACCESO (Sistemas, Seguridad, Cancelaci\u00f3n, Solicitudes de Cancelaci\u00f3n)",
+    "descripcion": "CLAVES Y FIRMAS DE ACCESO (Sistemas, Seguridad, Cancelación, Solicitudes de Cancelación)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -557,7 +563,7 @@ const claves_anexos = [
   {
     "id": "39",
     "clave": "SCA02",
-    "descripcion": "RELACI\u00d3N DE LLAVES DE LA DEPENDENCIA",
+    "descripcion": "RELACIÓN DE LLAVES DE LA DEPENDENCIA",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -566,7 +572,7 @@ const claves_anexos = [
   {
     "id": "40",
     "clave": "DA01",
-    "descripcion": "RESPALDOS DE INFORMACI\u00d3N",
+    "descripcion": "RESPALDOS DE INFORMACIÓN",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -575,7 +581,7 @@ const claves_anexos = [
   {
     "id": "41",
     "clave": "DA02",
-    "descripcion": "INVENTARIO DE ACERVO BIBLIOGR\u00c1FICO Y HEMEROGR\u00c1FICO",
+    "descripcion": "INVENTARIO DE ACERVO BIBLIOGRÁFICO Y HEMEROGRÁFICO",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -584,7 +590,7 @@ const claves_anexos = [
   {
     "id": "42",
     "clave": "DA03",
-    "descripcion": "REGISTRO DE DOCUMENTOS (Corte de Formas y Foliadas, Sellos Oficiales)",
+    "descripcion": "CORTE FORMAS YU FOLIADAS",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -593,7 +599,7 @@ const claves_anexos = [
   {
     "id": "43",
     "clave": "DA04",
-    "descripcion": "ARCHIVOS (Tr\u00e1mite y Concentraci\u00f3n)",
+    "descripcion": "SELLOS OFICIALES",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -602,7 +608,7 @@ const claves_anexos = [
   {
     "id": "44",
     "clave": "DA05",
-    "descripcion": "LIBROS Y REGISTROS DE CONTABILIDAD",
+    "descripcion": "ARCHIVOS (Trámite y Concentración)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -611,7 +617,7 @@ const claves_anexos = [
   {
     "id": "45",
     "clave": "DA06",
-    "descripcion": "LISTADO GENERAL DE EXPEDIENTES UNITARIOS DE OBRA (Por Contrato y Administraci\u00f3n Directa - ya incluido en \"Programas de Obra y Adquisiciones\", podr\u00eda omitirse aqu\u00ed o considerarse una subcategor\u00eda)",
+    "descripcion": "LIBROS Y REGISTROS DE CONTABILIDAD",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -619,17 +625,17 @@ const claves_anexos = [
   },
   {
     "id": "46",
-    "clave": "ALA01",
-    "descripcion": "ASUNTOS EN TR\u00c1MITE (Relevantes, Naturaleza Jur\u00eddica)",
+    "clave": "DA07",
+    "descripcion": "LISTADO GENERAL DE EXPEDIENTES UNITARIOS DE OBRA (Por Contrato y Administración Directa - ya incluido en \"Programas de Obra y Adquisiciones\", podría omitirse aquí o considerarse una subcategoría)",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
-    "id_categoria": "8"
+    "id_categoria": "7"
   },
   {
     "id": "47",
-    "clave": "ALA02",
-    "descripcion": "OBSERVACIONES DE AUDITOR\u00cdA PENDIENTES",
+    "clave": "ALA01",
+    "descripcion": "ASUNTOS EN TRAMITE DE NATURALEZA JURÍDICA",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -637,8 +643,8 @@ const claves_anexos = [
   },
   {
     "id": "48",
-    "clave": "ALA03",
-    "descripcion": "P\u00f3lizas de Seguros Vigentes",
+    "clave": "ALA02",
+    "descripcion": "OBSERVACIONES DE AUDITORÍA PENDIENTES",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -646,8 +652,8 @@ const claves_anexos = [
   },
   {
     "id": "49",
-    "clave": "ALA04",
-    "descripcion": "Fianzas Vigente",
+    "clave": "ALA03",
+    "descripcion": "PÓLIZAS Y SEGUROS VIGENTES",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -655,8 +661,8 @@ const claves_anexos = [
   },
   {
     "id": "50",
-    "clave": "ALA05",
-    "descripcion": "Garantias Vigentes",
+    "clave": "ALA04",
+    "descripcion": "FIANZAS VIGENTES",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
@@ -664,6 +670,15 @@ const claves_anexos = [
   },
   {
     "id": "51",
+    "clave": "ALA05",
+    "descripcion": "GARANTÍAS VIGENTES",
+    "creado_en": "2025-07-08 19:28:09.954822+00",
+    "editado_en": "2025-07-08 19:28:09.954822+00",
+    "is_deleted": "False",
+    "id_categoria": "8"
+  },
+  {
+    "id": "52",
     "clave": "PP01",
     "descripcion": "PROGRAMA OPERATIVO ANUAL",
     "creado_en": "2025-07-08 19:28:09.954822+00",
@@ -672,7 +687,7 @@ const claves_anexos = [
     "id_categoria": "9"
   },
   {
-    "id": "52",
+    "id": "53",
     "clave": "PP02",
     "descripcion": "OTROS PROGRAMAS",
     "creado_en": "2025-07-08 19:28:09.954822+00",
@@ -681,27 +696,45 @@ const claves_anexos = [
     "id_categoria": "9"
   },
   {
-    "id": "53",
+    "id": "54",
     "clave": "TA01",
-    "descripcion": "TRANSPARENCIA Y ACCESO A LA INFORMACI\u00d3N",
+    "descripcion": "TRANSPARENCIA Y ACCESO A LA INFORMACIÓN",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
     "id_categoria": "10"
   },
   {
-    "id": "54",
-    "clave": "OT01",
-    "descripcion": "ADMINISTRATIVO DE ACTUACI\u00d3N",
+    "id": "55",
+    "clave": "MJ01",
+    "descripcion": "ADMINISTRATIVO DE ACTUACIÓN",
     "creado_en": "2025-07-08 19:28:09.954822+00",
     "editado_en": "2025-07-08 19:28:09.954822+00",
     "is_deleted": "False",
     "id_categoria": "11"
+  },
+  {
+    "id": "56",
+    "clave": "AR01",
+    "descripcion": "ASUNTOS RELEVANTES EN TRÁMMITE Y ATENCIÓN",
+    "creado_en": "2025-07-08 19:28:09.954822+00",
+    "editado_en": "2025-07-08 19:28:09.954822+00",
+    "is_deleted": "False",
+    "id_categoria": "11"
+  },
+  {
+    "id": "59",
+    "clave": "",
+    "descripcion": "",
+    "creado_en": "",
+    "editado_en": "",
+    "is_deleted": "",
+    "id_categoria": ""
   }
 ]
 
-const EditableTable: React.FC<EditableTableProps> = ({data, onChange}) =>{
-  const handleEdit = (rowIndex: number, field: string, value: string) =>{
+const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
+  const handleEdit = (rowIndex: number, field: string, value: string) => {
     const updated = [...data];
     updated[rowIndex] = { ...updated[rowIndex], [field]: value };
     onChange(updated);
@@ -712,13 +745,13 @@ const EditableTable: React.FC<EditableTableProps> = ({data, onChange}) =>{
     onChange(updated);
   };
 
-    if (!data || data.length === 0) {
+  if (!data || data.length === 0) {
     return <p className="text-gray-500">No hay datos para mostrar</p>;
   }
 
   const columns = Object.keys(data[0]);
 
-   return (
+  return (
     <table className="min-w-full border border-gray-300 rounded-md">
       <thead>
         <tr>
@@ -779,6 +812,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     unidad_responsable_id: "",
   })
   const [rows, setRows] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState<string>("anexos")
   const router = useRouter()
   const [userName, setUserName] = useState<string>("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
@@ -788,10 +822,10 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isInvalidFileType, setIsInvalidFileType] = useState(false)
-  const [datos, setDatos] = useState<Record<string, any>>({})
+  const [datos, setDatos] = useState<Array<Record<string, any>>>([]);
   const isExcelFile = selectedFile?.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
-  useEffect(() => {
+ /*  useEffect(() => {
     const token = localStorage.getItem("token");
     const userString = localStorage.getItem("user");
 
@@ -861,7 +895,83 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       setAnexos(data);
     });
 
-  }, [router, userid]);
+  }, [router, userid]); */
+
+
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+  const userString = localStorage.getItem("user");
+
+  if (!token) {
+    router.push("/");
+    return;
+  }
+
+  let currentUserId: number | null = null;
+
+  // Parsear usuario
+  if (userString) {
+    try {
+      const userData = JSON.parse(userString);
+      setUserName(userData.username);
+      currentUserId = userData.id;
+      setUserid(userData.id); // Solo actualizamos el estado si es necesario
+    } catch (error) {
+      console.error("Error al parsear los datos del usuario:", error);
+      setUserName("");
+      setUserid(0);
+      return; // Salimos si hay error
+    }
+  } else {
+    setUserid(0);
+    return;
+  }
+
+  // Usamos currentUserId para evitar depender de `userid` en el estado
+  const obtenerUnidad = async () => {
+    try {
+      const unidad = await UnidadesPorUsuario(currentUserId!);
+      console.log("Unidad responsable:", unidad.id_unidad);
+      setUnidadResponsable(Number(unidad.id_unidad));
+      setFormData((prev) => ({
+        ...prev,
+        unidad_responsable_id: unidad.id_unidad,
+      }));
+    } catch (error) {
+      console.error("Error al obtener la unidad responsable:", error);
+    }
+  };
+
+  // Llamamos a obtenerUnidad solo si tenemos userId válido
+  if (currentUserId) {
+    obtenerUnidad();
+  }
+
+  // Esta función parece ser de prueba, considera eliminarla en prod
+  async function mostrarUnidad() {
+    try {
+      const unidad = await UnidadesPorUsuario(1);
+      console.log("Unidad responsable (prueba):", unidad.id_unidad);
+    } catch (error) {
+      console.error("Error al obtener la unidad responsable (prueba):", error);
+    }
+  }
+
+  // Si es solo para debugging, coméntala o elimínala
+  // mostrarUnidad();
+
+  // Obtener anexos (esto debería ejecutarse una vez)
+  getAnexos().then((data) => {
+    setAnexos(data);
+  });
+  
+  // Dependencias: solo queremos que se ejecute al montar el componente
+}, []); // ⬅️ Dependencia vacía: se ejecuta solo una vez
+
+  // Manejador de items
+  const handleFMJChange = (jsonDataArray: Array<Record<string, any>>) => {
+    setDatos(jsonDataArray); // Aquí guardas el array de marcos
+  };
 
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -975,15 +1085,18 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   }
 
 
-  const handleExcelUpload = (parsedData: Record<string, any>) => {
+/*   const handleExcelUpload = (parsedData: Record<string, any>) => {
     setFormData((prev) => ({
       ...prev,
       datos: parsedData,
     }));
     setDatos(parsedData);
-  };
+  }; */
 
-
+  // manejar el cambio de pestaña Tab
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+  }
 
   // Filtrar las claves basadas en la categoría seleccionada
   const selectedCategoryId = categoria_anexos.find(cat => cat.nombre_categoria === selectedCategory)?.id;
@@ -1001,370 +1114,414 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
           disableAuthCheck={true}
         />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Anexos</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{anexos.length}</div>
-              </CardContent>
-            </Card>
+        <div className="container whitespace-nowrap overflow-x-auto px-4 py-8">
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completados</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Completado").length}</div>
-              </CardContent>
-            </Card>
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
+              <TabsTrigger value="anexos">Anexos</TabsTrigger>
+              <TabsTrigger value="documentos">Crear Anexos</TabsTrigger>
+              <TabsTrigger value="historial">Historial</TabsTrigger>
+            </TabsList>
+            <TabsContent value="anexos" className="mt-4 sm:mt-6 md:mt-8">
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">En Borrador</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Borrador").length}</div>
-              </CardContent>
-            </Card>
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Total Anexos</CardTitle>
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{anexos.length}</div>
+                    </CardContent>
+                  </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">En Revisión</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Revisión").length}</div>
-              </CardContent>
-            </Card>
-          </div>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Completados</CardTitle>
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Completado").length}</div>
+                    </CardContent>
+                  </Card>
 
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Gestión de Anexos</h2>
-              <p className="text-gray-600">Administra los anexos y documentos del sistema</p>
-            </div>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">En Borrador</CardTitle>
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Borrador").length}</div>
+                    </CardContent>
+                  </Card>
 
-            <div className="flex space-x-2">
-              {!showForm ? (
-                <Button
-                  style={{ backgroundColor: "#24356B", color: "white" }}
-                  onClick={() => setShowForm(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Anexo
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={resetForm}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver a la lista
-                </Button>
-              )}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">En Revisión</CardTitle>
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Revisión").length}</div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-              {/* Botones de exportación */}
-              <Button
-                variant="outline"
-                onClick={() => exportAnexosToPDF(anexos)}
-                className="border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Exportar PDF
-              </Button>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Gestión de Anexos</h2>
+                    <p className="text-gray-600">Administra los anexos y documentos del sistema</p>
+                  </div>
 
-              <Button
-                variant="outline"
-                onClick={() => exportAnexosToExcel(anexos)}
-                className="border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white"
-              >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Exportar Excel
-              </Button>
-            </div>
-          </div>
-
-          {showForm ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{editingAnexo ? "Editar Anexo" : "Nuevo Anexo"}</CardTitle>
-                <CardDescription>
-                  {editingAnexo ? "Modifica los datos del anexo seleccionado" : "Completa los datos para crear un nuevo anexo"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit}>
-                  <div className="space-y-4">
-
-                    {/* <CategoryKeySelector
-                    /> */}
-
-                    <div className="space-y-4">
-                      {/* Selector de Categoría */}
-                      <div className="space-y-2">
-                        <Label htmlFor="categoria">Categoría</Label>
-                        <Select
-                          value={selectedCategory}
-                          onValueChange={(value) => {
-                            setSelectedCategory(value)
-                            setFormData(prev => ({ ...prev, categoria: value, clave: "" }))
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona una categoría" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categoria_anexos.map((categoria) => (
-                              <SelectItem key={categoria.id} value={categoria.nombre_categoria}>
-                                {categoria.nombre_categoria}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Selector de Clave (solo visible si hay una categoría seleccionada) */}
-                      {selectedCategory && (
-                        <div className="space-y-2">
-                          <Label htmlFor="clave">Clave del Anexo</Label>
-                          <Select
-                            value={formData.clave}
-                            onValueChange={(value) => setFormData({ ...formData, clave: value })}
-                            disabled={!selectedCategory}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={filteredKeys.length ? "Selecciona una clave" : "No hay claves disponibles"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {filteredKeys.map((key) => (
-                                <SelectItem key={key.id} value={key.clave}>
-                                  {key.clave} - {key.descripcion}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Sección de archivo (se mantiene igual) */}
-                    <div className="mt-6">
-                      {/* id de quien lo crea, que viene del usuario en su id */}
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Creado por:
-                      </label>
-                      <input
-                        type="text"
-                        value={userName}
-                        readOnly
-                        className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                      />
-                      <input type="hidden" value={userid} readOnly className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" />
-                    </div>
-
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subir Archivo (PDF o Excel)
-                    </label>
-
-                    {selectedCategory && claveRequierePDF(formData.clave) ? (
-                      <div>
-                        <label htmlFor="pdf-uploader">Subir PDF</label>
-                        <PdfUploader
-                          onUploadSuccess={(url) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              datos: { pdf_url: url }, // o como quieras estructurarlo
-                            }))
-                          }
-                        />
-
-                      </div>
+                  <div className="flex space-x-2">
+                    {!showForm ? (
+                      <Button
+                        style={{ backgroundColor: "#24356B", color: "white" }}
+                        onClick={() => setShowForm(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nuevo Anexo
+                      </Button>
                     ) : (
-                      <div>
-                        <label htmlFor="excel-uploader">Subir Excel</label>
-                        <ExcelUploader
-                        onUploadSuccess={(data) =>{
-                          setRows(data);
-                          setFormData((prev) =>({
-                            ...prev,
-                            datos:data, // esto sincroniza directamente con formData
-                          }));
-                        }}
-                        />
-                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={resetForm}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Volver a la lista
+                      </Button>
                     )}
-                    {/* llenar el campo datos con el json desde excel */}
-                    {formData.clave === "Excel" && (
-                      <div>
-                        <label htmlFor="datos">Datos</label>
-                        <textarea
-                          id="datos"
-                          value={JSON.stringify(formData.datos, null, 2)}
-                          onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                        />
-                        <EditableTable
-                        data={Array.isArray(formData.datos) ? formData.datos : []}
-                        onChange={(newData)=>
-                          setFormData({
-                            ...formData,
-                            datos: newData
-                          })
-                        }
-                        />
-                      </div>
-                    )}
-                    {/* en el campo datos subir la url del archivo pdf */}
-                    {formData.clave === "PDF" && (
-                      <div>
-                        <label htmlFor="datos">Datos</label>
-                        {/* <textarea
+
+                    {/* Botones de exportación */}
+                    <Button
+                      variant="outline"
+                      onClick={() => exportAnexosToPDF(anexos)}
+                      className="border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Exportar PDF
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => exportAnexosToExcel(anexos)}
+                      className="border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Exportar Excel
+                    </Button>
+                  </div>
+                </div>
+
+                {showForm ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{editingAnexo ? "Editar Anexo" : "Nuevo Anexo"}</CardTitle>
+                      <CardDescription>
+                        {editingAnexo ? "Modifica los datos del anexo seleccionado" : "Completa los datos para crear un nuevo anexo"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleSubmit}>
+                        <div className="space-y-4">
+
+                          <div className="grid w-full sm:grid-cols-3 grid-cols-2 gap-2 sm:gap-3 gap-3 text-sm" >
+
+                            {/* Selector de Categoría */}
+                            <div className="space-y-2">
+                              <Label htmlFor="categoria">Categoría</Label>
+                              <Select
+                                value={selectedCategory}
+                                onValueChange={(value: string) => {
+                                  setSelectedCategory(value)
+                                  setFormData(prev => ({ ...prev, categoria: value, clave: "" }))
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona una categoría" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categoria_anexos.map((categoria) => (
+                                    <SelectItem key={categoria.id} value={categoria.nombre_categoria}>
+                                      {categoria.nombre_categoria}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Selector de Clave (solo visible si hay una categoría seleccionada) */}
+                            {selectedCategory && (
+                              <div className="space-y-2">
+                                <Label htmlFor="clave">Clave del Anexo</Label>
+                                <Select
+                                  value={formData.clave}
+                                  onValueChange={(value: string) => setFormData({ ...formData, clave: value })}
+                                  disabled={!selectedCategory}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={filteredKeys.length ? "Selecciona una clave" : "No hay claves disponibles"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filteredKeys.map((key) => (
+                                      <SelectItem key={key.id} value={key.clave}>
+                                        {key.clave} - {key.descripcion}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="grid w-full sm:grid-cols-3 grid-cols-2 gap-2 sm:gap-3 gap-3 text-sm" >
+                            <div className="mt-2">
+                              {/* id de quien lo crea, que viene del usuario en su id */}
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Creado por:
+                              </label>
+                              <input
+                                type="text"
+                                value={userName}
+                                readOnly
+                                className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                              />
+                              <input type="hidden" value={userid} readOnly className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" />
+                            </div>
+                            <div className="mt-2">
+                              {/* unidad responsable del anexo */}
+                              <label htmlFor="unidad_responsable" className="block text-sm font-medium text-gray-700 mb-2">
+                                Unidad Responsable
+                              </label>
+                              <input
+                                type="text"
+                                id="unidad_responsable"
+                                value={(unidadResponsable ? unidadResponsable : "NO ASIGNADA")}
+                                /* onChange={(e) => setUnidadResponsable(Number(e.target.value))} */
+                                readOnly
+                                className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                              />
+                            </div>
+                            <div className="mt-2">
+                              {/* estado del anexo */}
+                              <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-2">
+                                Estado del Anexo
+                              </label>
+                              <select
+                                id="estado"
+                                value={formData.estado}
+                                onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                                required
+                              >
+                                <option value="Borrador">Borrador</option>
+                                <option value="Completado">Completado</option>
+                                <option value="Revisión">Revisión</option>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="Cancelado">Cancelado</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Sección de archivo (se mantiene igual) */}
+
+                          <label htmlFor="info-loader" className="block text-sm font-medium text-gray-700 mb-2">
+                            Información
+                          </label>
+                          <div className="grid w-full sm:grid-cols-2 gap-2 gap-3 ">
+                            {/*   */}
+                            {selectedCategory === "Marco Jurídico" && (
+                              <div>
+                                
+                              </div>
+                            )}
+                          </div>
+
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Subir Archivo (PDF o Excel)
+                          </label>
+
+                          {selectedCategory && claveRequierePDF(formData.clave) ? (
+                            <div>
+                              <label htmlFor="pdf-uploader">Subir PDF</label>
+                              <PdfUploader
+                                onUploadSuccess={(url) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    datos: { pdf_url: url }, // o como quieras estructurarlo
+                                  }))
+                                }
+                              />
+
+                            </div>
+                          ) : (
+                            <div>
+                              <label htmlFor="excel-uploader">Subir Excel</label>
+                              <ExcelUploader
+                                onUploadSuccess={(data) => {
+                                  setRows(data);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    datos: data, // esto sincroniza directamente con formData
+                                  }));
+                                }}
+                              />
+                            </div>
+                          )}
+
+
+                          {/* llenar el campo datos con el json desde excel */}
+                          {formData.clave === "Excel" && (
+                            <div>
+                              <label htmlFor="datos">Datos</label>
+                              <textarea
+                                id="datos"
+                                value={JSON.stringify(formData.datos, null, 2)}
+                                onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                              />
+                              <EditableTable
+                                data={Array.isArray(formData.datos) ? formData.datos : []}
+                                onChange={(newData) =>
+                                  setFormData({
+                                    ...formData,
+                                    datos: newData
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                          {/* en el campo datos subir la url del archivo pdf */}
+                          {formData.clave === "PDF" && (
+                            <div>
+                              <label htmlFor="datos">Datos</label>
+                              {/* <textarea
                           id="datos"
                           value={JSON.stringify(formData.datos, null, 2)}
                           onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
                           className="w-full p-2 border border-gray-300 rounded-md"
                         /> */}
-                        <div className="border border-gray-300 rounded-md p-2 overflow-hidden mt-4"
-                          style={
-                            {
-                              width: "60%", // Ancho del contenedor
-                              height: "400px", // Altura del contenedor
-                            }
-                          }
-                        >
-                          {/* Directly use the Viewer component from @react-pdf-viewer/core */}
-                          {/* <Viewer fileUrl={formData.datos.pdf_url} /> */}
-                        </div>
-                      </div>
-                    )}
+                              <div className="border border-gray-300 rounded-md p-2 overflow-hidden mt-4"
+                                style={
+                                  {
+                                    width: "60%", // Ancho del contenedor
+                                    height: "400px", // Altura del contenedor
+                                  }
+                                }
+                              >
+                                {/* Directly use the Viewer component from @react-pdf-viewer/core */}
+                                {/* <Viewer fileUrl={formData.datos.pdf_url} /> */}
+                              </div>
+                            </div>
+                          )}
 
-                    {/* Previsualización del archivo seleccionado */}
-                    {/* <label htmlFor="pdf-uploader">Subir PDF</label>
+                          {/* Previsualización del archivo seleccionado */}
+                          {/* <label htmlFor="pdf-uploader">Subir PDF</label>
                     <PdfUploader /> */}
 
-                    {/* Subir excel */}
-                    {/*   <label htmlFor="excel-uploader">Subir Excel</label>
+                          {/* Subir excel */}
+                          {/*   <label htmlFor="excel-uploader">Subir Excel</label>
                     <ExcelUploader /> */}
 
-                    {/* Previsualización del archivo (si es PDF) */}
-                    {previewUrl && (
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-600">Archivo seleccionado: {selectedFile?.name}</p>
-                        <Button variant="outline" size="sm" onClick={removeFile} className="mt-2">
-                          Eliminar Archivo
-                        </Button>
-                      </div>
-                    )}
+                          {/* Previsualización del archivo (si es PDF) */}
+                          {previewUrl && (
+                            <div className="mt-4">
+                              <p className="text-sm text-gray-600">Archivo seleccionado: {selectedFile?.name}</p>
+                              <Button variant="outline" size="sm" onClick={removeFile} className="mt-2">
+                                Eliminar Archivo
+                              </Button>
+                            </div>
+                          )}
 
-                    {/* unidad responsable del anexo */}
-                    <label htmlFor="unidad_responsable" className="block text-sm font-medium text-gray-700 mb-2">
-                      Unidad Responsable
-                    </label>
-                    <input
-                      type="text"
-                      id="unidad_responsable"
-                      value={(unidadResponsable ? unidadResponsable : "NO ASIGNADA")}
-                      /* onChange={(e) => setUnidadResponsable(Number(e.target.value))} */
-                      readOnly
-                      className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                    />
-                    {/* estado del anexo */}
-                    <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-2">
-                      Estado del Anexo
-                    </label>
-                    <select
-                      id="estado"
-                      value={formData.estado}
-                      onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      required
-                    >
-                      <option value="Borrador">Borrador</option>
-                      <option value="Completado">Completado</option>
-                      <option value="Revisión">Revisión</option>
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="Cancelado">Cancelado</option>
-                    </select>
 
-                    <div className="flex justify-end space-x-4 pt-4">
-                      <Button type="button" variant="outline" onClick={resetForm}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" style={{ backgroundColor: "#24356B", color: "white" }}>
-                        {editingAnexo ? "Actualizar" : "Crear"} Anexo
-                      </Button>
-                    </div>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Lista de Anexos</CardTitle>
-                <CardDescription>Gestiona los anexos registrados en el sistema</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Clave</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {anexos.map((anexo) => (
-                      <TableRow key={anexo.id}>
-                        <TableCell className="font-medium">{anexo.clave}</TableCell>
-                        <TableCell>{anexo.categoria}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(anexo.categoria)}`}>
-                            {anexo.categoria}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(anexo.estado)}`}>
-                            {anexo.estado}
-                          </span>
-                        </TableCell>
-                        <TableCell>{anexo.fecha_creacion}</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" onClick={() => alert(`Descargar ${anexo.clave}`)}>
-                              <Download className="h-4 w-4" />
+
+
+
+                          <div className="flex justify-end space-x-4 pt-4">
+                            <Button type="button" variant="outline" onClick={resetForm}>
+                              Cancelar
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(anexo)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(anexo.id)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <Trash2 className="h-4 w-4" />
+                            <Button type="submit" style={{ backgroundColor: "#24356B", color: "white" }}>
+                              {editingAnexo ? "Actualizar" : "Crear"} Anexo
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </main>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Lista de Anexos</CardTitle>
+                      <CardDescription>Gestiona los anexos registrados en el sistema</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Clave</TableHead>
+                            <TableHead>Categoria</TableHead>
+                            <TableHead>Descripción</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead>Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {anexos.map((anexo) => (
+                            <TableRow key={anexo.id}>
+                              <TableCell className="font-medium">{anexo.clave}</TableCell>
+                              <TableCell>{anexo.categoria}</TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(anexo.categoria)}`}>
+                                  {anexo.categoria}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(anexo.estado)}`}>
+                                  {anexo.estado}
+                                </span>
+                              </TableCell>
+                              <TableCell>{anexo.fecha_creacion}</TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Button variant="outline" size="sm" onClick={() => alert(`Descargar ${anexo.clave}`)}>
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="outline" size="sm" onClick={() => handleEdit(anexo)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(anexo.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                )}
+              </main>
+
+            </TabsContent>
+            <TabsContent value="documentos" className="mt-4 sm:mt-6 md:mt-8">
+
+            </TabsContent>
+            <TabsContent value="historial" className="mt-4 sm:mt-6 md:mt-8">
+
+            </TabsContent>
+          </Tabs>
+
+        </div>
+
       </div>
     </>
   )

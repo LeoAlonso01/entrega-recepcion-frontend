@@ -749,6 +749,8 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                         </div>
                     </TabsContent>
                 </Tabs>
+
+                
                 {/* Dialog para editar la unidad responsable */}
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
                     <DialogContent className="max-w-2xl">
