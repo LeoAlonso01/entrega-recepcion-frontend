@@ -735,6 +735,54 @@ const claves_anexos = [
   }
 ]
 
+// lib/estructuras.ts por ahora en el mismo archivo
+export const EstructuraDatosPorClave: Record<string, string[]> = {
+  // Marco Jurídico
+  MJ01: ["ordenamiento", "Titulo", "Fecha de emision", "Naturaleza", "Estatus"],
+  AR01: ["asunto", "descripcion", "fecha_inicio", "responsable", "estatus"],
+
+  // Recursos Presupuestales
+  RF01: ["partida", "descripcion", "monto_autorizado", "monto_ejercido", "saldo"],
+  RF02: ["ingreso", "monto", "fuente"],
+  RF03: ["recurso", "monto", "entidad", "fecha_asignacion"],
+
+  // Contratos y Convenios
+  CCL01: ["contrato", "tipo", "monto", "proveedor", "fecha_inicio", "fecha_fin"],
+  CCL02: ["licitacion", "estado", "monto", "fecha_apertura"],
+
+  // Estructura Interna
+  ENI01: ["cargo", "nombre", "nivel", "area", "reporta_a"],
+  ENI02: ["manual", "version", "fecha", "responsable"],
+
+  // Recursos Humanos
+  RRH01: ["nombre", "puesto", "tipo", "sueldo", "fecha_ingreso"],
+  RRH02: ["nombre", "actividad", "honorarios", "periodo"],
+
+  // Inventario de Bienes
+  IBM01: ["articulo", "cantidad", "valor", "ubicacion", "responsable"],
+  IBM02: ["material", "existencia", "unidad", "valor_unitario"],
+  IBM04: ["inmueble", "direccion", "uso", "valor_catastral"],
+
+  // Documentación y Archivo
+  DA01: ["sistema", "frecuencia", "ultimo_respaldo", "responsable"],
+  DA02: ["titulo", "autor", "tipo", "ubicacion"],
+  DA07: ["expediente", "proyecto", "ubicacion", "responsable"],
+
+  // Asuntos Legales
+  ALA01: ["asunto", "tipo", "estado", "abogado", "fecha_inicio"],
+  ALA02: ["auditoria", "observacion", "recomendacion", "estatus"],
+
+  // Programas y Proyectos
+  PP01: ["programa", "presupuesto", "ejecutado", "avance", "responsable"],
+  PP02: ["nombre", "objetivo", "presupuesto", "fecha_inicio", "fecha_fin"],
+
+  // Transparencia
+  TA01: ["solicitud", "solicitante", "fecha", "estatus", "respuesta"],
+
+  // Por defecto
+  default: ["campo1", "campo2", "campo3"]
+};
+
 enum CategoriaEnum {
   RECURSOS_PRESUPUESTALES = "1",
   CONTRATOS_CONVENIOS = "2",
@@ -783,7 +831,7 @@ interface IFormInput {
   creador: number;
   datos: Record<string, any>;
   estado: string;
-  unidad_responsable_id: string;
+  unidad_responsable_id: number;
 }
 
 
@@ -853,33 +901,43 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [showForm, setShowForm] = useState(false) // Nuevo estado para controlar la visibilidad
   const [editingAnexo, setEditingAnexo] = useState<Anexo | null>(null)
   const [formData, setFormData] = useState<{
+    id: number | Anexo["id"]
     clave: string | Anexo["clave"]
     categoria: string | Anexo["categoria"]
+    creador: number | Anexo["creador"]
     fecha_creacion: string | Anexo["fecha_creacion"]
     datos: Record<string, any> | Anexo["datos"]
     estado: string | Anexo["estado"]
-    unidad_responsable_id: string | Anexo["unidad_responsable_id"]
+    unidad_responsable_id: number | Anexo["unidad_responsable_id"]
   }>({
+    id: 0,
     clave: "",
     categoria: "",
+    creador: 0,
     fecha_creacion: new Date().toISOString().split("T")[0],
     datos: {},
     estado: "Borrador",
-    unidad_responsable_id: "",
+    unidad_responsable_id: 0,
   })
   const [rows, setRows] = useState<any[]>([])
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////// datos para el form con react hook form ///////////////////////////////////////////
-  const { register, handleSubmit, setValue, watch } = useForm<IFormInput>();
-  const onSubmit: SubmitHandler<IFormInput> = data => {
-    console.log("Datos del formulario:", data);
-  };
+  const [userid, setUserid] = useState<number>(0)
+  const [unidadResponsable, setUnidadResponsable] = useState<number>(0)
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<IFormInput>({
+    defaultValues: {
+      creador: userid,
+      unidad_responsable_id: unidadResponsable,
+      fecha_creacion: new Date().toISOString().split("T")[0],
+      estado: "Borrador",
+      datos: [], // inicializa como array vacío
+    }
+  });
+
   const [activeTab, setActiveTab] = useState<string>("formulario")
   const router = useRouter()
   const [userName, setUserName] = useState<string>("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
-  const [userid, setUserid] = useState<number>(0)
-  const [unidadResponsable, setUnidadResponsable] = useState<number>(0)
   const [file, setFile] = useState<File | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -999,6 +1057,8 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
           ...prev,
           unidad_responsable_id: unidad.id_unidad,
         }));
+        setValue("unidad_responsable_id", unidad.id_unidad);// la unidad responsable también debe estar seteada
+        setValue("creador", currentUserId!); // Aseguramos que creador esté seteado
       } catch (error) {
         console.error("Error al obtener la unidad responsable:", error);
       }
@@ -1020,7 +1080,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     }
 
     // Si es solo para debugging, coméntala o elimínala
-    // mostrarUnidad();
+    mostrarUnidad();
 
     // Obtener anexos (esto debería ejecutarse una vez)
     getAnexos().then((data) => {
@@ -1035,19 +1095,38 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     setDatos(jsonDataArray); // Aquí guardas el array de marcos
   };
 
+  // handleSubmit
+  const onSubmit: SubmitHandler<IFormInput> = (data) => {
+    console.log("🚀 Datos del formulario (RHF):", data);
 
-  /*  const handleSubmit = (e: React.FormEvent) => {
-     e.preventDefault()
-     toast(
-       "Función de creación/edición aún no implementada",
-       {
-         description: "Próximamente podrás crear o editar anexos.",
-         duration: 2000,
-       }
-     )
- 
-     console.log("Datos del formulario enviados:", formData, file, datos)
-   } */
+    // Aseguramos que `datos` sea un array o objeto válido
+    const payload = {
+      ...data,
+      // Aseguramos que `datos` no sea string
+      datos: Array.isArray(data.datos) ? data.datos : (typeof data.datos === 'string' ? JSON.parse(data.datos) : data.datos || []),
+    };
+
+    console.log("✅ Payload final a enviar:", payload);
+
+    // Aquí haces el fetch
+    /* fetch(`${API_URL}/anexos/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(res => res.json())
+      .then(result => {
+        toast.success("Anexo creado", { description: `Clave: ${result.clave}` });
+        reset();
+        setDatos([]);
+      })
+      .catch(err => {
+        toast.error("Error", { description: err.message });
+        console.error(err);
+      }); */
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null
@@ -1056,12 +1135,14 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
 
   const resetForm = () => {
     setFormData({
+      id: 0,
       clave: "",
       categoria: "",
+      creador: userid,
       fecha_creacion: new Date().toISOString().split("T")[0],
       datos: {},
       estado: "Borrador",
-      unidad_responsable_id: "",
+      unidad_responsable_id: 0,
     })
     setEditingAnexo(null)
     setShowForm(false) // Ocultar el formulario al resetear
@@ -1577,40 +1658,202 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
             <TabsContent value="documentos" className="mt-4 sm:mt-6 md:mt-8">
 
             </TabsContent>
+
             <TabsContent value="formulario" className="mt-4 sm:mt-6 md:mt-8">
-              <div className="grid w-full sm:grid-cols-3 grid-cols-2 gap-2 sm:gap-3 gap-3 text-sm">
-                <h2 className="text-lg font-medium">Agregar Nuevo Anexo</h2>
-                <form onSubmit={handleSubmit(onSubmit)}>
-                  <div className="sm:col-span-2">
-                    <label htmlFor="clave">Clave</label>
-                    <input id="clave" {...register("clave")} />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Formulario Dinámico</CardTitle>
+                  <CardDescription>
+                    Completa los campos. Los datos se envían como JSON.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="sm:col-span-2">
+                      <label htmlFor="clave">Clave</label>
+                      <input id="clave" {...register("clave")} />
+                      <label htmlFor="categoria">Categoría</label>
+                      <input id="categoria" {...register("categoria")} />
+                    </div>
+                    {/* Clave del Anexo */}
+                    <div className="space-y-2">
+                      <Label>Clave del Anexo</Label>
+                      <select
+                        {...register("clave", { required: "Clave es obligatoria" })}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        onChange={(e) => {
+                          const clave = e.target.value;
+                          setValue("clave", clave);
+                          // Obtener categoría desde claves_anexos
+                          const claveData = claves_anexos.find(k => k.clave === clave);
+                          if (claveData) {
+                            setValue("categoria", categoria_anexos.find(c => c.id === claveData.id_categoria)?.nombre_categoria || "");
+                          }
+                        }}
+                      >
+                        <option value="">Selecciona una clave</option>
+                        {claves_anexos.map((k) => (
+                          <option key={k.id} value={k.clave}>
+                            {k.clave} - {k.descripcion}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.clave && <p className="text-sm text-red-600">{errors.clave.message}</p>}
+                    </div>
 
-                    <label htmlFor="categoria">Categoría</label>
-                    <input id="categoria" {...register("categoria")} />
-                  </div>
-                  <div className="sm:col-span-2" >
+                    {/* Categoría (autocompletada por clave) */}
+                    <div className="space-y-2">
+                      <Label>Categoría</Label>
+                      <input
+                        {...register("categoria")}
+                        type="text"
+                        disabled
+                        className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
+                        placeholder="Selecciona una clave para autocompletar"
+                      />
+                    </div>
 
-                    <label htmlFor="creador">Creador</label>
-                    <input id="creador" {...register("creador")} />
+                    {/* Fecha de Creación */}
+                    <div className="space-y-2">
+                      <Label>Fecha de Creación</Label>
+                      <input
+                        {...register("fecha_creacion", { required: "Fecha es obligatoria" })}
+                        type="date"
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                      />
+                      {errors.fecha_creacion && <p className="text-sm text-red-600">{errors.fecha_creacion.message}</p>}
+                    </div>
 
-                    <label htmlFor="estado">Estado</label>
-                    <input id="estado" {...register("estado")} />
+                    {/* Estado */}
+                    <div className="space-y-2">
+                      <Label>Estado</Label>
+                      <select
+                        {...register("estado", { required: "Estado es obligatorio" })}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="Borrador">Borrador</option>
+                        <option value="Completado">Completado</option>
+                        <option value="Revisión">Revisión</option>
+                        <option value="Pendiente">Pendiente</option>
+                      </select>
+                      {errors.estado && <p className="text-sm text-red-600">{errors.estado.message}</p>}
+                    </div>
 
-                  </div>
-                  <div className="sm:col-span-2">
+                    {/* Campos ocultos: creador y unidad_responsable_id */}
+                    <input type="hidden" {...register("creador")} value={userid} />
+                    <input type="hidden" {...register("unidad_responsable_id")} value={unidadResponsable} />
 
-                    <label htmlFor="fecha_creacion">Fecha de Creación</label>
-                    <input id="fecha_creacion" type="date" {...register("fecha_creacion")} />
+                    {/* Tabla dinámica o Excel */}
+                    {watch("clave") && (
+                      <div className="space-y-4">
+                        <Label>Datos (agrega manualmente o sube Excel)</Label>
 
-                    <button className="mt-2 px-4 py-2 bg-[#24356B] text-white rounded hover:bg-[#1a254d] transition-colors" type="submit">
-                      Guardar
-                    </button>
-                  </div>
-                </form>
-              </div>
+                        {/* Tabla editable */}
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span>Tabla de datos</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const nuevaFila: Record<string, any> = { campo1: "", campo2: "", campo3: "" };
+                                setDatos(prev => [...prev, nuevaFila]);
+                                setValue("datos", [...datos, nuevaFila]); // sincroniza con RHF
+                              }}
+                            >
+                              + Agregar fila
+                            </Button>
+                          </div>
 
+                          {datos.length === 0 ? (
+                            <p className="text-sm text-gray-500">No hay datos. Usa Excel o agrega manualmente.</p>
+                          ) : (
+                            <table className="min-w-full border border-gray-300 rounded-md text-sm">
+                              <thead>
+                                <tr className="bg-gray-50">
+                                  {Object.keys(datos[0]).map((key) => (
+                                    <th key={key} className="border px-2 py-1 font-semibold">{key}</th>
+                                  ))}
+                                  <th className="border px-2 py-1 font-semibold">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {datos.map((fila, i) => (
+                                  <tr key={i}>
+                                    {Object.keys(fila).map((campo) => (
+                                      <td key={campo} className="border px-2 py-1">
+                                        <input
+                                          type="text"
+                                          value={fila[campo]}
+                                          onChange={(e) => {
+                                            const nuevas = [...datos];
+                                            nuevas[i][campo] = e.target.value;
+                                            setDatos(nuevas);
+                                            setValue("datos", nuevas); // sincroniza con RHF
+                                          }}
+                                          className="w-full p-1 border rounded"
+                                        />
+                                      </td>
+                                    ))}
+                                    <td className="border px-2 py-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-500"
+                                        onClick={() => {
+                                          const nuevas = datos.filter((_, index) => index !== i);
+                                          setDatos(nuevas);
+                                          setValue("datos", nuevas);
+                                        }}
+                                      >
+                                        Eliminar
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+
+                        {/* Subida de Excel */}
+                        <div>
+                          <ExcelUploader
+                            onUploadSuccess={(excelData) => {
+                              setDatos(excelData);
+                              setValue("datos", excelData); // ✅ Sincroniza con react-hook-form
+                              toast.success(`Excel cargado: ${excelData.length} filas`);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botones */}
+                    <div className="flex justify-end space-x-4 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setDatos([]);
+                          reset();
+                        }}
+                      >
+                        Limpiar
+                      </Button>
+                      <Button
+                        type="submit"
+                        style={{ backgroundColor: "#24356B", color: "white" }}
+                      >
+                        Guardar Anexo
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
             </TabsContent>
-
           </Tabs>
 
         </div>
