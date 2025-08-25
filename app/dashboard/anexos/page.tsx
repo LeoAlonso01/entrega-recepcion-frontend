@@ -25,6 +25,62 @@ import FMJList from "@/components/forms/MarcoJuridico/FMJList"
 // import '@react-pdf-viewer/core/lib/styles/index.css';
 // import { Viewer } from '@react-pdf-viewer/core';
 
+// Simple ExcelPreview component definition
+interface ExcelPreviewProps {
+  data: Array<Record<string, any>>;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const ExcelPreview: React.FC<ExcelPreviewProps> = ({ data, onClose, onConfirm }) => {
+  if (!data || data.length === 0) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-96 overflow-hidden">
+        <div className="p-4 border-b">
+          <h3 className="text-lg font-semibold">Previsualización del Excel</h3>
+          <p className="text-sm text-gray-600">Se cargarán {data.length} filas</p>
+        </div>
+        <div className="p-4 max-h-60 overflow-y-auto">
+          <table className="min-w-full border border-gray-300 text-sm">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                {Object.keys(data[0]).map((key) => (
+                  <th key={key} className="border px-2 py-1 font-semibold text-left">
+                    {key}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((fila, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  {Object.values(fila).map((val: any, j) => (
+                    <td key={j} className="border px-2 py-1 truncate max-w-xs">
+                      {String(val)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="p-4 flex justify-end space-x-3 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            style={{ backgroundColor: "#24356B", color: "white" }}
+            onClick={onConfirm}
+          >
+            Confirmar y Cargar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
 interface Usuario {
@@ -738,30 +794,184 @@ const claves_anexos = [
 // lib/estructuras.ts por ahora en el mismo archivo
 export const EstructuraDatosPorClave: Record<string, string[]> = {
   // Marco Jurídico
-  MJ01: ["ordenamiento", "Titulo", "Fecha de emision", "Naturaleza", "Estatus"],
+  MJ01: ["ordenamiento", "Titulo", "Fecha de emision"],
   AR01: ["asunto", "descripcion", "fecha_inicio", "responsable", "estatus"],
 
   // Recursos Presupuestales
   RF01: ["partida", "descripcion", "monto_autorizado", "monto_ejercido", "saldo"],
   RF02: ["ingreso", "monto", "fuente"],
   RF03: ["recurso", "monto", "entidad", "fecha_asignacion"],
+  RF04: ["programa", "monto", "objetivo"],
+  RF05: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
+  RF06: ["recurso", "monto", "entidad", "fecha_asignacion"],
+  RF07: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
+  RF08: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
+  RF09: ["recurso", "monto", "entidad", "fecha_asignacion"],
+  RF10: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
+  RF11: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
+  RF12: ["recurso", "monto", "entidad", "fecha_asignacion"],
+  RF13: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
+  RF14: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
+  RF15: ["recurso", "monto", "entidad", "fecha_asignacion"],
+  RF16: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
+  RF17: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
+  RF18: ["recurso", "monto", "entidad", "fecha_asignacion"],
 
   // Contratos y Convenios
   CCL01: ["contrato", "tipo", "monto", "proveedor", "fecha_inicio", "fecha_fin"],
   CCL02: ["licitacion", "estado", "monto", "fecha_apertura"],
 
   // Estructura Interna
-  ENI01: ["cargo", "nombre", "nivel", "area", "reporta_a"],
-  ENI02: ["manual", "version", "fecha", "responsable"],
+  ENI01: ["url", "blob"], // organigrama pdf libre
+  ENI02: ["Tipo",
+    "Nombre",
+    "Fecha de publicación",
+    "Versión",
+    "Observaciones"
+  ], // reglamento interno y manuales generales
+  ENI03: ["Número de sesión",
+    "Fecha de la sesión",
+    "Ordinaria o Extraordinaria",
+    "Datos del acuerdo: Numero",
+    "Datos del acuerdo: Descripcion breve",
+    "Datos del acuerdo: Responsable",
+    "Datos del acuerdo: Áreas Involucradas",
+    "Estatus del acuerdo: Porcentaje del avance",
+    "Estatus del acuerdo: Observaciones"
+  ], // Acuerdo de organos de gobierno y Actas de consejo
+  ENI04: ["cargo",
+    "Con derecho a",
+    "Fecha inicio del cargo",
+    "Periodicidad de reuniones",
+    "Observaciones"
+  ], // representaciones y cargos honoríficos
+  ENI05: ["Nombre y puesto del servidor que otorga el poder",
+    "Tipo de poder otorgado",
+    "Fecha de otorgamiento",
+    "Notario No.",
+    "Inscrito al registro público de la propiedad y el comercio",
+    "Observaciones"], // poderes otorgados
 
   // Recursos Humanos
-  RRH01: ["nombre", "puesto", "tipo", "sueldo", "fecha_ingreso"],
-  RRH02: ["nombre", "actividad", "honorarios", "periodo"],
+  RRH01: ["Numero de empleado",
+    "nombre",
+    "RFC",
+    "Plaza (categoria)",
+    "Tipo de encargo",
+    "Fecha de ingreso",
+    "Sueldo",
+    "Otras percepciones",
+    "Total",
+    "Unidad de Adscripcion",
+    "Área laboral",
+    "Estatus: Base, Apoyo, Comisionado",
+  ], // plantilla de personal
+  RRH02: ["nombre",
+    "RFC",
+    "Fecha de inicio de contrato",
+    "Fecha de fin de contrato",
+    "Fuente de recurso",
+    "Actividades a desarrollar",
+    "Salario",
+    "Otras Percepciones",
+    "Total",
+    "Unidad de Adscripcion",
+    "Area laboral"
+  ], // personal de honorarios
 
   // Inventario de Bienes
-  IBM01: ["articulo", "cantidad", "valor", "ubicacion", "responsable"],
-  IBM02: ["material", "existencia", "unidad", "valor_unitario"],
-  IBM04: ["inmueble", "direccion", "uso", "valor_catastral"],
+  IBM01: [
+    "Articulo",
+    "Marca",
+    "Modelo",
+    "Numero de serie",
+    "Numero de patrimonio",
+    "Cantidad",
+    "Valor",
+    "Ubicacion",
+    "Responsable",
+
+  ], // MObiliario de oficina, vehiculos, maquinaria y equipo
+  IBM02: ["Clave patrimonial",
+    "Descripcion",
+    "Marca",
+    "Modelo",
+    "No. de serie",
+    "Cantidad",
+    "Valor",
+    "Ubicacion",
+    "Responsable"], // Almacenes de papeleria y plantas de vivero
+  IBM03: ["Tipo de bien",
+    "Descripcion",
+    "Marca",
+    "Modelo",
+    "No. de serie",
+    "Estado físico",
+    "Ubicacion",
+    "Responsable",
+    "Nombre de otorgante",
+    "Fecha de firma de comodato"
+  ], // Inventario de bienes en comodato
+  IBM04: [
+    "Descripcion",
+    "Tipo de predio",
+    "Calle y número",
+    "Localidad",
+    "Observaciones",
+  ], // Bienes inmuebes de la dependencia
+  IBM05: [
+    "No. de registro o inventario",
+    "Titulo de la obra",
+    "Descripcion",
+    "Ubicacion",
+    "Certificado de autenticidad",
+    "Estado fisico",
+    "Observaciones"
+  ], // Inventario de arte
+  IBM06: [
+    "Nombre comun",
+    "nombre cientifico",
+    "Clave",
+    "Origen",
+    "Sexo",
+    "Marcaje",
+    "Fecha de Alta",
+    "Observaciones"
+  ], //Inventario Faunistico (especimen y taxidemnizados)
+  // Inventario de Armamento, accesorios de seguridad y municiones
+  IBM07: [
+    "Tipo de armamento",
+    "Descripción",
+    "Marca",
+    "Modelo",
+    "Número de serie",
+    "Cantidad",
+    "Ubicación",
+    "Responsable",
+    "Observaciones"
+  ],
+  // Inventario de Software (sistemas desarrolados y paquetes computacionales)
+  IBM08: [
+    "Nombre del software",
+    "Versión",
+    "Proveedor",
+    "No. de serie",
+    "Manual",
+    "Licencia",
+    "Equipo en el que opera",
+    "Documentación"
+  ],
+  // Inventario de tecnologia (equipos de computo y telecomunicaciones)
+  IBM09: [
+    "Nombre del equipo",
+    "Marca",
+    "Modelo",
+    "Número de serie",
+    "Cantidad",
+    "Ubicación",
+    "Responsable",
+    "Observaciones"
+  ],
 
   // Documentación y Archivo
   DA01: ["sistema", "frecuencia", "ultimo_respaldo", "responsable"],
@@ -770,11 +980,18 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
 
   // Asuntos Legales
   ALA01: ["asunto", "tipo", "estado", "abogado", "fecha_inicio"],
-  ALA02: ["auditoria", "observacion", "recomendacion", "estatus"],
+  ALA02: ["Tipo de auditoria",
+    "Periodo de la Auditoria",
+    "Datos de la Auditoria: Realizada por",
+    "Datos de la Auditoria: Observaciones", // Observaciones de Auditorias pendientes
+    "Datos de la Auditoria: Observaciones atendidas",
+    "Datos de la Auditoria: Observaciones pendientes",
+    "Estatus de la Auditoria: Situación actual"
+  ],
 
-  // Programas y Proyectos
-  PP01: ["programa", "presupuesto", "ejecutado", "avance", "responsable"],
-  PP02: ["nombre", "objetivo", "presupuesto", "fecha_inicio", "fecha_fin"],
+  // Programas y Proyectos FORMATO LIBRE PDF 
+  PP01: ["url", "blob"],
+  PP02: ["Tipo de Documento", "Nombre", "Fecha", "Observaciones"],
 
   // Transparencia
   TA01: ["solicitud", "solicitante", "fecha", "estatus", "respuesta"],
@@ -894,8 +1111,6 @@ const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
 
 }
 
-
-
 export default function AnexosPage(user: { username: string }, userrole: { role: string }, unidadresponable: { unidad: string }) {
   const [anexos, setAnexos] = useState<Anexo[]>([])
   const [showForm, setShowForm] = useState(false) // Nuevo estado para controlar la visibilidad
@@ -944,6 +1159,10 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [isInvalidFileType, setIsInvalidFileType] = useState(false)
   const [datos, setDatos] = useState<Array<Record<string, any>>>([]);
   const isExcelFile = selectedFile?.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  const [previewData, setPreviewData] = useState<Array<Record<string, any>>>([]);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [pendingFile, setPendingFile] = useState<{ file: File; data: any[] } | null>(null);
+
 
   /*  useEffect(() => {
      const token = localStorage.getItem("token");
@@ -1027,6 +1246,17 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       return;
     }
 
+    const saved = localStorage.getItem(`draft_anexo_${userid}`);
+    if (saved) {
+      const draft = JSON.parse(saved);
+      setValue("clave", draft.clave);
+      setValue("categoria", draft.categoria);
+      setValue("fecha_creacion", draft.fecha_creacion);
+      setValue("estado", draft.estado);
+      setDatos(draft.datos);
+      toast.info("📋 Borrador recuperado", { duration: 3000 });
+    }
+
     let currentUserId: number | null = null;
 
     // Parsear usuario
@@ -1095,6 +1325,18 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     setDatos(jsonDataArray); // Aquí guardas el array de marcos
   };
 
+  // validar el nombre del archivo excel
+  const validarNombreArchivo = (file: File, clave: string) => {
+    const nombre = file.name.toLocaleLowerCase();
+    const regex = new RegExp(`^${clave.toLocaleLowerCase()}_.*\\.xlsx$`);
+
+    if (!regex.test(nombre)) {
+      toast.error(`Nombre incorrecto. Usa: ${clave}_dd_mm_aaaa.xlsx`);
+      return false;
+    }
+    return true;
+  };
+
   // handleSubmit
   const onSubmit: SubmitHandler<IFormInput> = (data) => {
     console.log("🚀 Datos del formulario (RHF):", data);
@@ -1109,7 +1351,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     console.log("✅ Payload final a enviar:", payload);
 
     // Aquí haces el fetch
-    /* fetch(`${API_URL}/anexos/`, {
+    fetch(`${API_URL}/anexos/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1125,7 +1367,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       .catch(err => {
         toast.error("Error", { description: err.message });
         console.error(err);
-      }); */
+      });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1502,12 +1744,35 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                             <div>
                               <label htmlFor="excel-uploader">Subir Excel</label>
                               <ExcelUploader
-                                onUploadSuccess={(data) => {
-                                  setRows(data);
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    datos: data, // esto sincroniza directamente con formData
-                                  }));
+                                onUploadSuccess={(excelData) => {
+                                  const clave = watch("clave");
+                                  const estructura = EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default;
+
+                                  if (estructura.length > 0 && excelData.length > 0) {
+                                    const columnasExcel = Object.keys(excelData[0]);
+                                    const faltantes = estructura.filter(campo => !columnasExcel.includes(campo));
+                                    const extras = columnasExcel.filter(campo => !estructura.includes(campo));
+
+                                    if (faltantes.length > 0) {
+                                      toast.warning(
+                                        `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
+                                        { duration: 5000 }
+                                      );
+                                    };
+                                    if (extras.length > 0) {
+                                      toast.warning(
+                                        `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
+                                        { duration: 5000 }
+                                      );
+                                    }
+
+                                    setRows(excelData);
+                                    setValue("datos", excelData); // sincroniza con RHF
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      datos: excelData, // esto sincroniza directamente con formData
+                                    }));
+                                  }
                                 }}
                               />
                             </div>
@@ -1822,14 +2087,103 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                         <div>
                           <ExcelUploader
                             onUploadSuccess={(excelData) => {
-                              setDatos(excelData);
-                              setValue("datos", excelData); // ✅ Sincroniza con react-hook-form
-                              toast.success(`Excel cargado: ${excelData.length} filas`);
+                              const clave = watch("clave");
+                              const estructura = EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default;
+
+                              if (estructura.length > 0 && excelData.length > 0) {
+                                const columnasExcel = Object.keys(excelData[0]);
+                                const faltantes = estructura.filter(campo => !columnasExcel.includes(campo));
+                                const extras = columnasExcel.filter(campo => !estructura.includes(campo));
+
+                                if (faltantes.length > 0) {
+                                  toast.warning(
+                                    `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
+                                    { duration: 5000 }
+                                  );
+                                };
+                                if (extras.length > 0) {
+                                  toast.warning(
+                                    `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
+                                    { duration: 5000 }
+                                  );
+                                }
+                                setDatos(excelData);
+                                setValue("datos", excelData); // sincroniza con RHF
+                                toast.success
+                              }
+                            }}
+                          />
+                          <ExcelPreview
+                            data={previewData}
+                            onClose={() => setShowPreview(false)}
+                            onConfirm={() => {
+                              if (pendingFile) {
+                                setDatos(pendingFile.data);
+                                setValue("datos", pendingFile.data);
+                                toast.success(`✅ ${pendingFile.data.length} filas cargadas`);
+                              }
+                              setShowPreview(false);
+                              setPendingFile(null);
                             }}
                           />
                         </div>
                       </div>
                     )}
+                    {showPreview && (
+                      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg max-w-4xl w-full max-h-96 overflow-hidden">
+                          <div className="p-4 border-b">
+                            <h3 className="text-lg font-semibold">Previsualización del Excel</h3>
+                            <p className="text-sm text-gray-600">Se cargarán {previewData.length} filas</p>
+                          </div>
+                          <div className="p-4 max-h-60 overflow-y-auto">
+                            <table className="min-w-full border border-gray-300 text-sm">
+                              <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                  {Object.keys(previewData[0]).map((key) => (
+                                    <th key={key} className="border px-2 py-1 font-semibold text-left">
+                                      {key}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {previewData.map((fila, i) => (
+                                  <tr key={i} className="hover:bg-gray-50">
+                                    {Object.values(fila).map((val: any, j) => (
+                                      <td key={j} className="border px-2 py-1 truncate max-w-xs">
+                                        {String(val)}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="p-4 flex justify-end space-x-3 border-t">
+                            <Button variant="outline" onClick={() => setShowPreview(false)}>
+                              Cancelar
+                            </Button>
+                            <Button
+                              style={{ backgroundColor: "#24356B", color: "white" }}
+                              onClick={() => {
+                                if (pendingFile) {
+                                  setDatos(pendingFile.data);
+                                  setValue("datos", pendingFile.data);
+                                  toast.success(`✅ ${pendingFile.data.length} filas cargadas`);
+                                }
+                                setShowPreview(false);
+                                setPendingFile(null);
+                              }}
+                            >
+                              Confirmar y Cargar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+
+                    }
 
                     {/* Botones */}
                     <div className="flex justify-end space-x-4 pt-4">
@@ -1845,15 +2199,40 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                       </Button>
                       <Button
                         type="submit"
+                        onClick={() => {
+                          setValue("datos", datos);
+                          console.log("Datos a enviar:", watch());
+                        }}
                         style={{ backgroundColor: "#24356B", color: "white" }}
                       >
                         Guardar Anexo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const draft = {
+                            clave: watch("clave"),
+                            categoria: watch("categoria"),
+                            fecha_creacion: watch("fecha_creacion"),
+                            estado: watch("estado"),
+                            datos,
+                            timestamp: new Date().toISOString(),
+                          };
+                          localStorage.setItem(`draft_anexo_${userid}`, JSON.stringify(draft));
+                          toast.success("✅ Borrador guardado");
+                        }}
+                        className="mt-2"
+                      >
+                        Guardar como Borrador
                       </Button>
                     </div>
                   </form>
                 </CardContent>
               </Card>
             </TabsContent>
+
+
           </Tabs>
 
         </div>
