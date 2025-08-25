@@ -1,578 +1,545 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { createActa } from './../../app/services/api';
-import { toast } from 'sonner';
+"use client"
 
+import React, { useMemo, useCallback } from "react"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+
+import { createActa } from "@/app/services/api"
+
+// Tipos
 interface Unidad {
-  id_unidad: number;
-  nombre: string;
+  id_unidad: number
+  nombre: string
 }
 
 interface ActaForm {
-  id: number;
-  unidad_responsable: number;
-  folio?: string;
-  fecha: string;
-  hora: string;
-  comisionado?: string;
-  oficio_comision?: string;
-  fecha_oficio_comision?: string;
-  entrante: string;
-  ine_entrante?: string;
-  fecha_inicio_labores?: string;
-  nombramiento?: string;
-  fecha_nombramiento?: string;
-  asignacion?: string;
-  asignado_por?: string;
-  domicilio_entrante?: string;
-  telefono_entrante?: string;
-  saliente: string;
-  fecha_fin_labores?: string;
-  testigo_entrante?: string;
-  ine_testigo_entrante?: string;
-  testigo_saliente?: string;
-  ine_testigo_saliente?: string;
-  fecha_cierre_acta?: string;
-  hora_cierre_acta?: string;
-  observaciones?: string;
-  estado: "Pendiente" | "Completada" | "Revisión";
+  id: number
+  unidad_responsable: number
+  folio?: string
+  fecha: string
+  hora: string
+  comisionado?: string
+  oficio_comision?: string
+  fecha_oficio_comision?: string
+  entrante: string
+  ine_entrante?: string
+  fecha_inicio_labores?: string
+  nombramiento?: string
+  fecha_nombramiento?: string
+  asignacion?: string
+  asignado_por?: string
+  domicilio_entrante?: string
+  telefono_entrante?: string
+  saliente: string
+  fecha_fin_labores?: string
+  testigo_entrante?: string
+  ine_testigo_entrante?: string
+  testigo_saliente?: string
+  ine_testigo_saliente?: string
+  fecha_cierre_acta?: string
+  hora_cierre_acta?: string
+  observaciones?: string
+  estado: "Pendiente" | "Completada" | "Revisión"
 }
+
 interface Props {
-  acta: ActaForm;
-  unidades: Unidad[];
-  onCancel: () => void;
-  onSave: (data: ActaForm) => void;
+  acta: ActaForm
+  unidades: Unidad[]
+  onCancel: () => void
+  onSave: (data: ActaForm) => void
 }
 
-const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
-  // Función para crear folio (optimizada)
-const createFolio = useCallback(() => {
-  const year = new Date().getFullYear();
-  const randomNumber = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-  return `FOLIO-${year}-${randomNumber}`;
-}, []);
+// Esquema de validación con Zod
+const actaSchema = z.object({
+  unidad_responsable: z.number().int().positive("Unidad responsable es requerida"),
+  entrante: z.string().min(1, "Nombre del entrante es requerido").trim(),
+  saliente: z.string().min(1, "Nombre del saliente es requerido").trim(),
+  folio: z.string().optional().nullable().transform((val) => val ?? undefined),
+  fecha: z.string().nonempty("Fecha es requerida"),
+  hora: z.string().nonempty("Hora es requerida"),
+  comisionado: z.string().optional().nullable().transform((val) => val ?? undefined),
+  oficio_comision: z.string().optional().nullable().transform((val) => val ?? undefined),
+  fecha_oficio_comision: z.string().optional().nullable().transform((val) => val ?? undefined),
+  ine_entrante: z.string().optional().nullable().transform((val) => val ?? undefined),
+  fecha_inicio_labores: z.string().optional().nullable().transform((val) => val ?? undefined),
+  nombramiento: z.string().optional().nullable().transform((val) => val ?? undefined),
+  fecha_nombramiento: z.string().optional().nullable().transform((val) => val ?? undefined),
+  asignacion: z.enum(["nombramiento", "designacion", "jerarquia"]).optional().nullable().transform((val) => val ?? undefined),
+  asignado_por: z.enum(["rectoria", "h_consejo"]).optional().nullable().transform((val) => val ?? undefined),
+  domicilio_entrante: z.string().optional().nullable().transform((val) => val ?? undefined),
+  telefono_entrante: z.string().optional().nullable().transform((val) => val ?? undefined),
+  fecha_fin_labores: z.string().optional().nullable().transform((val) => val ?? undefined),
+  testigo_entrante: z.string().optional().nullable().transform((val) => val ?? undefined),
+  ine_testigo_entrante: z.string().optional().nullable().transform((val) => val ?? undefined),
+  testigo_saliente: z.string().optional().nullable().transform((val) => val ?? undefined),
+  ine_testigo_saliente: z.string().optional().nullable().transform((val) => val ?? undefined),
+  fecha_cierre_acta: z.string().optional().nullable().transform((val) => val ?? undefined),
+  hora_cierre_acta: z.string().optional().nullable().transform((val) => val ?? undefined),
+  observaciones: z.string().optional().nullable().transform((val) => val ?? undefined),
+  estado: z.enum(["Pendiente", "Completada", "Revisión"]),
+})
 
-// Función para crear fecha (optimizada)
-const createDate = useCallback(() => {
-  return new Date().toISOString().split("T")[0];
-}, []);
+type FormData = z.infer<typeof actaSchema>
 
-// Función para crear hora final (optimizada)
-const createHoraFinal = useCallback((): string => {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
-}, []);
+// Helpers: Generación de folio, fecha, hora
+const createFolio = () => {
+  const year = new Date().getFullYear()
+  const randomNumber = Math.floor(Math.random() * 10000).toString().padStart(4, "0")
+  return `FOLIO-${year}-${randomNumber}`
+}
 
-// Valores por defecto memorizados
-const folioFinal = useMemo(() => createFolio(), [createFolio]);
-const fechaFinal = useMemo(() => createDate(), [createDate]);
-const horaFinal = useMemo(() => createHoraFinal(), [createHoraFinal]);
+const createDate = () => new Date().toISOString().split("T")[0]
 
-// Función para normalizar tiempo (optimizada)
-const normalizeTime = useCallback((timeStr?: string): string | undefined => {
-  if (!timeStr) return undefined;
-  
-  // Si ya está en formato HH:mm
-  if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) {
-    return timeStr;
-  }
-  
-  // Intenta parsear formatos AM/PM
-  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)$/i);
+const createHoraFinal = () => {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, "0")
+  const minutes = String(now.getMinutes()).padStart(2, "0")
+  return `${hours}:${minutes}`
+}
+
+// Normaliza hora (AM/PM → HH:mm)
+const normalizeTime = (timeStr?: string): string | undefined => {
+  if (!timeStr) return undefined
+  if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr)) return timeStr
+
+  const match = timeStr.match(/^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)$/i)
   if (match) {
-    let hours = parseInt(match[1]);
-    const minutes = match[2];
-    const period = match[3].toLowerCase();
-    
-    if (period.startsWith('p') && hours < 12) hours += 12;
-    if (period.startsWith('a') && hours === 12) hours = 0;
-    
-    return `${String(hours).padStart(2, '0')}:${minutes}`;
+    let hours = parseInt(match[1])
+    const minutes = match[2]
+    const period = match[3].toLowerCase()
+
+    if (period.startsWith("p") && hours < 12) hours += 12
+    if (period.startsWith("a") && hours === 12) hours = 0
+
+    return `${String(hours).padStart(2, "0")}:${minutes}`
   }
+  return undefined
+}
 
-  return undefined;
-}, []);
-  // Estado inicial optimizado
-  const initialFormData = useMemo(() => ({
-    ...acta,
-    unidad_responsable: acta.unidad_responsable || (unidades[0]?.id_unidad || 0),
-    estado: acta.estado || "Pendiente",
-    fecha: acta.fecha || fechaFinal,
-    hora: acta.hora || horaFinal,
-    entrante: acta.entrante || "",
-    saliente: acta.saliente || "",
-  }), [acta, unidades, fechaFinal, horaFinal]);
+// Componente principal
+const FormActa: React.FC<Props> = ({ acta, unidades, onCancel, onSave }) => {
+  const defaultFolio = useMemo(() => acta.folio || createFolio(), [acta.folio])
+  const defaultFecha = useMemo(() => acta.fecha || createDate(), [acta.fecha])
+  const defaultHora = useMemo(() => normalizeTime(acta.hora) || createHoraFinal(), [acta.hora])
 
-  const [formData, setFormData] = useState<ActaForm>(initialFormData);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const defaultValues = useMemo<FormData>(
+    () => ({
+      unidad_responsable: acta.unidad_responsable || unidades[0]?.id_unidad || 0,
+      folio: acta.folio || defaultFolio,
+      fecha: acta.fecha || defaultFecha,
+      hora: normalizeTime(acta.hora) || defaultHora,
+      comisionado: acta.comisionado || "",
+      oficio_comision: acta.oficio_comision || "",
+      fecha_oficio_comision: acta.fecha_oficio_comision || "",
+      entrante: acta.entrante || "",
+      ine_entrante: acta.ine_entrante || "",
+      fecha_inicio_labores: acta.fecha_inicio_labores || "",
+      nombramiento: acta.nombramiento || "",
+      fecha_nombramiento: acta.fecha_nombramiento || "",
+      asignacion: ["nombramiento", "designacion", "jerarquia"].includes(acta.asignacion as string)
+        ? (acta.asignacion as "nombramiento" | "designacion" | "jerarquia")
+        : undefined,
+      asignado_por: ["rectoria", "h_consejo"].includes(acta.asignado_por as string)
+        ? (acta.asignado_por as "rectoria" | "h_consejo")
+        : undefined,
+      domicilio_entrante: acta.domicilio_entrante || "",
+      telefono_entrante: acta.telefono_entrante || "",
+      saliente: acta.saliente || "",
+      fecha_fin_labores: acta.fecha_fin_labores || "",
+      testigo_entrante: acta.testigo_entrante || "",
+      ine_testigo_entrante: acta.ine_testigo_entrante || "",
+      testigo_saliente: acta.testigo_saliente || "",
+      ine_testigo_saliente: acta.ine_testigo_saliente || "",
+      fecha_cierre_acta: acta.fecha_cierre_acta || "",
+      hora_cierre_acta: acta.hora_cierre_acta || "",
+      observaciones: acta.observaciones || "",
+      estado: acta.estado || "Pendiente",
+    }),
+    [acta, unidades, defaultFolio, defaultFecha, defaultHora]
+  )
 
-  // Función de validación optimizada
-  const validateForm = useCallback((data: ActaForm): string | null => {
-    if (!data.unidad_responsable) return "Unidad responsable es requerida";
-    if (!data.entrante?.trim()) return "Nombre del entrante es requerido";
-    if (!data.saliente?.trim()) return "Nombre del saliente es requerido";
-    
-    // Validación adicional para campos de fecha
-    if (data.fecha_oficio_comision && !/^\d{4}-\d{2}-\d{2}$/.test(data.fecha_oficio_comision)) {
-      return "Formato de fecha de oficio de comisión inválido";
-    }
-    
-    if (data.fecha_inicio_labores && !/^\d{4}-\d{2}-\d{2}$/.test(data.fecha_inicio_labores)) {
-      return "Formato de fecha de inicio de labores inválido";
-    }
-    
-    return null;
-  }, []);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(actaSchema),
+    defaultValues,
+  })
 
-  // Manejador de cambios optimizado
-  const handleChange = useCallback((
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: name === 'unidad_responsable' ? Number(value) : value 
-    }));
-  }, []);
+  const onSubmit = useCallback(
+    async (data: FormData) => {
+      if (!window.confirm("¿Estás seguro de que deseas guardar los cambios?")) return
 
-  // Función para preparar datos del acta (optimizada)
-const prepareActaData = useCallback((formData: ActaForm): ActaForm => {
-  // Función auxiliar para limpiar strings
-  const cleanString = (str?: string) => (str && str.trim() !== "" ? str.trim() : undefined);
+      try {
+        const actaToSend = {
+          ...data,
+          id: acta.id,
+          folio: data.folio || defaultFolio,
+          fecha: data.fecha || defaultFecha,
+          hora: normalizeTime(data.hora) || defaultHora,
+        } as ActaForm
 
-  return {
-    id: formData.id,
-    unidad_responsable: Number(formData.unidad_responsable),
-    folio: cleanString(formData.folio) || folioFinal,
-    fecha: cleanString(formData.fecha) || fechaFinal,
-    hora: normalizeTime(cleanString(formData.hora)) || horaFinal,
-    comisionado: cleanString(formData.comisionado),
-    oficio_comision: cleanString(formData.oficio_comision),
-    fecha_oficio_comision: cleanString(formData.fecha_oficio_comision),
-    entrante: cleanString(formData.entrante) || "",
-    ine_entrante: cleanString(formData.ine_entrante),
-    fecha_inicio_labores: cleanString(formData.fecha_inicio_labores),
-    nombramiento: cleanString(formData.nombramiento),
-    fecha_nombramiento: cleanString(formData.fecha_nombramiento),
-    asignacion: cleanString(formData.asignacion),
-    asignado_por: cleanString(formData.asignado_por),
-    domicilio_entrante: cleanString(formData.domicilio_entrante),
-    telefono_entrante: cleanString(formData.telefono_entrante),
-    saliente: cleanString(formData.saliente) || "",
-    fecha_fin_labores: cleanString(formData.fecha_fin_labores),
-    testigo_entrante: cleanString(formData.testigo_entrante),
-    ine_testigo_entrante: cleanString(formData.ine_testigo_entrante),
-    testigo_saliente: cleanString(formData.testigo_saliente),
-    ine_testigo_saliente: cleanString(formData.ine_testigo_saliente),
-    fecha_cierre_acta: cleanString(formData.fecha_cierre_acta),
-    hora_cierre_acta: cleanString(formData.hora_cierre_acta),
-    observaciones: cleanString(formData.observaciones),
-    estado: formData.estado || "Pendiente",
-  };
-}, [folioFinal, fechaFinal, horaFinal, normalizeTime]);
+        console.log("Datos del acta a enviar:", actaToSend)
 
-  // Manejador de envío del formulario optimizado
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const validationError = validateForm(formData);
-      if (validationError) {
-        toast.error(validationError);
-        return;
+        const response = await createActa(actaToSend)
+        if (response.success) {
+          toast.success("Acta guardada exitosamente.")
+          onSave(actaToSend)
+        } else {
+          throw new Error(response.error || "Error al guardar acta")
+        }
+      } catch (error: any) {
+        console.error("Error al guardar acta:", error)
+        const message =
+          error.response?.data?.detail || error.message || "Error desconocido al guardar acta"
+        toast.error(`Error: ${message}`)
       }
+    },
+    [acta.id, onSave, defaultFolio, defaultFecha, defaultHora]
+  )
 
-      const actaToSend = prepareActaData(formData);
-      console.log("Datos del acta a enviar:", actaToSend);
-      
-      if (!window.confirm("¿Estás seguro de que deseas guardar los cambios?")) {
-        return;
-      }
-
-      // Intenta crear el acta
-      const response = await createActa(actaToSend);
-      
-      if (response.success) {
-        toast.success("Acta guardada exitosamente.");
-        onSave(actaToSend);
-      } else {
-        throw new Error(response.error || "Error al guardar el acta");
-      }
-
-    } catch (error: any) {
-      console.error('Error al guardar acta:', error);
-      const errorMessage = error.response?.data?.detail ||
-        error.message ||
-        "Error desconocido al guardar acta";
-      toast.error(`Error: ${errorMessage}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [formData, validateForm, prepareActaData, onSave]);
-
-  // Restablecer formulario
   const handleReset = useCallback(() => {
-    setFormData(initialFormData);
-  }, [initialFormData]);
-
-  // Efecto para limpiar el estado al desmontar
-  React.useEffect(() => {
-    return () => {
-      // Limpiar cualquier estado pendiente si es necesario
-    };
-  }, []);
+    reset(defaultValues)
+  }, [reset, defaultValues])
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 bg-white rounded-lg shadow-md space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="p-6 bg-white rounded-lg shadow-md space-y-6">
       <h2 className="text-2xl font-bold text-gray-700">
         {acta.id ? "Editar Acta" : "Nueva Acta"}
       </h2>
 
+      {/* Sección 1: Datos generales */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Folio</label>
-          <input 
-            name="folio" 
-            value={formData.folio || folioFinal} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Folio</Label>
+          <Controller
+            name="folio"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Folio" />}
+          />
+          {errors.folio && <p className="text-sm text-red-500">{errors.folio.message}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <Label>Fecha *</Label>
+          <Controller
+            name="fecha"
+            control={control}
+            render={({ field }) => <Input type="date" {...field} />}
+          />
+          {errors.fecha && <p className="text-sm text-red-500">{errors.fecha.message}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <Label>Hora *</Label>
+          <Controller
+            name="hora"
+            control={control}
+            render={({ field }) => <Input type="time" {...field} />}
+          />
+          {errors.hora && <p className="text-sm text-red-500">{errors.hora.message}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <Label>Unidad Responsable *</Label>
+          <Controller
+            name="unidad_responsable"
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar unidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unidades.map((u) => (
+                    <SelectItem key={u.id_unidad} value={u.id_unidad.toString()}>
+                      {u.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.unidad_responsable && (
+            <p className="text-sm text-red-500">{errors.unidad_responsable.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <Label>Comisionado</Label>
+          <Controller
+            name="comisionado"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Comisionado" />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Fecha</label>
-          <input 
-            name="fecha" 
-            type="date" 
-            value={formData.fecha || fechaFinal} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Oficio de Comisión</Label>
+          <Controller
+            name="oficio_comision"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Oficio" />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Hora</label>
-          <input 
-            name="hora" 
-            type="time" 
-            value={formData.hora || horaFinal} 
-            onChange={handleChange} 
-            className="input w-full" 
-          />
-        </div>
-        
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Unidad Responsable *</label>
-          <select 
-            name="unidad_responsable" 
-            value={formData.unidad_responsable} 
-            onChange={handleChange} 
-            className="input w-full"
-            required
-          >
-            {unidades.map(u => (
-              <option key={u.id_unidad} value={u.id_unidad}>{u.nombre}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Comisionado</label>
-          <input 
-            name="comisionado" 
-            placeholder="Comisionado" 
-            value={formData.comisionado || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
-          />
-        </div>
-        
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Oficio de Comisión</label>
-          <input 
-            name="oficio_comision" 
-            placeholder="Oficio" 
-            value={formData.oficio_comision || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
-          />
-        </div>
-        
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Fecha Oficio Comisión</label>
-          <input 
-            name="fecha_oficio_comision" 
-            type="date" 
-            value={formData.fecha_oficio_comision || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Fecha Oficio Comisión</Label>
+          <Controller
+            name="fecha_oficio_comision"
+            control={control}
+            render={({ field }) => <Input type="date" {...field} />}
           />
         </div>
       </div>
 
+      {/* Funcionario Entrante */}
       <h3 className="text-lg font-semibold text-gray-600 mt-6">Funcionario Entrante</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Nombre *</label>
-          <input 
-            name="entrante" 
-            placeholder="Nombre" 
-            value={formData.entrante || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
-            required
+          <Label>Nombre *</Label>
+          <Controller
+            name="entrante"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Nombre" />}
+          />
+          {errors.entrante && <p className="text-sm text-red-500">{errors.entrante.message}</p>}
+        </div>
+
+        <div className="space-y-1">
+          <Label>INE</Label>
+          <Controller
+            name="ine_entrante"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="INE" />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">INE</label>
-          <input 
-            name="ine_entrante" 
-            placeholder="INE" 
-            value={formData.ine_entrante || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Fecha Inicio Labores</Label>
+          <Controller
+            name="fecha_inicio_labores"
+            control={control}
+            render={({ field }) => <Input type="date" {...field} />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Fecha Inicio Labores</label>
-          <input 
-            name="fecha_inicio_labores" 
-            type="date" 
-            value={formData.fecha_inicio_labores || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Nombramiento</Label>
+          <Controller
+            name="nombramiento"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Nombramiento" />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Nombramiento</label>
-          <input 
-            name="nombramiento" 
-            placeholder="Nombramiento" 
-            value={formData.nombramiento || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Fecha Nombramiento</Label>
+          <Controller
+            name="fecha_nombramiento"
+            control={control}
+            render={({ field }) => <Input type="date" {...field} />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Fecha Nombramiento</label>
-          <input 
-            name="fecha_nombramiento" 
-            type="date" 
-            value={formData.fecha_nombramiento || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Asignación</Label>
+          <Controller
+            name="asignacion"
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar asignación" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nombramiento">Nombramiento</SelectItem>
+                  <SelectItem value="designacion">Designación</SelectItem>
+                  <SelectItem value="jerarquia">Jerarquía</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Asignación</label>
-          <select 
-            name="asignacion" 
-            value={formData.asignacion || ''} 
-            onChange={handleChange} 
-            className="input w-full"
-          >
-            <option value="">Seleccionar asignación</option>
-            <option value="nombramiento">Nombramiento</option>
-            <option value="designacion">Designación</option>
-            <option value="jerarquia">Jerarquía</option>
-          </select>
-        </div>
-        
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Asignado por</label>
-          <select 
-            name="asignado_por" 
-            value={formData.asignado_por || ''} 
-            onChange={handleChange} 
-            className="input w-full"
-          >
-            <option value="">Seleccionar asignado por</option>
-            <option value="rectoria">Rectoría</option>
-            <option value="h_consejo">H. Consejo</option>
-          </select>
-        </div>
-        
-        <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Domicilio</label>
-          <input 
-            name="domicilio_entrante" 
-            placeholder="Domicilio" 
-            value={formData.domicilio_entrante || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Asignado por</Label>
+          <Controller
+            name="asignado_por"
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar asignado por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="rectoria">Rectoría</SelectItem>
+                  <SelectItem value="h_consejo">H. Consejo</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-          <input 
-            name="telefono_entrante" 
-            placeholder="Teléfono" 
-            value={formData.telefono_entrante || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Domicilio</Label>
+          <Controller
+            name="domicilio_entrante"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Domicilio" />}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label>Teléfono</Label>
+          <Controller
+            name="telefono_entrante"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Teléfono" />}
           />
         </div>
       </div>
 
+      {/* Funcionario Saliente */}
       <h3 className="text-lg font-semibold text-gray-600 mt-6">Funcionario Saliente</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Nombre *</label>
-          <input 
-            name="saliente" 
-            placeholder="Nombre" 
-            value={formData.saliente || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
-            required
+          <Label>Nombre *</Label>
+          <Controller
+            name="saliente"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Nombre" />}
           />
+          {errors.saliente && <p className="text-sm text-red-500">{errors.saliente.message}</p>}
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Fecha Fin Labores</label>
-          <input 
-            name="fecha_fin_labores" 
-            type="date" 
-            value={formData.fecha_fin_labores || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Fecha Fin Labores</Label>
+          <Controller
+            name="fecha_fin_labores"
+            control={control}
+            render={({ field }) => <Input type="date" {...field} />}
           />
         </div>
       </div>
 
+      {/* Testigos */}
       <h3 className="text-lg font-semibold text-gray-600 mt-6">Testigos</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Testigo Entrante</label>
-          <input 
-            name="testigo_entrante" 
-            placeholder="Testigo Entrante" 
-            value={formData.testigo_entrante || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Testigo Entrante</Label>
+          <Controller
+            name="testigo_entrante"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Testigo Entrante" />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">INE Testigo Entrante</label>
-          <input 
-            name="ine_testigo_entrante" 
-            placeholder="INE" 
-            value={formData.ine_testigo_entrante || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>INE Testigo Entrante</Label>
+          <Controller
+            name="ine_testigo_entrante"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="INE" />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Testigo Saliente</label>
-          <input 
-            name="testigo_saliente" 
-            placeholder="Testigo Saliente" 
-            value={formData.testigo_saliente || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Testigo Saliente</Label>
+          <Controller
+            name="testigo_saliente"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="Testigo Saliente" />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">INE Testigo Saliente</label>
-          <input 
-            name="ine_testigo_saliente" 
-            placeholder="INE" 
-            value={formData.ine_testigo_saliente || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>INE Testigo Saliente</Label>
+          <Controller
+            name="ine_testigo_saliente"
+            control={control}
+            render={({ field }) => <Input {...field} placeholder="INE" />}
           />
         </div>
       </div>
 
+      {/* Cierre del Acta */}
       <h3 className="text-lg font-semibold text-gray-600 mt-6">Cierre del Acta</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Fecha Cierre</label>
-          <input 
-            name="fecha_cierre_acta" 
-            type="date" 
-            value={formData.fecha_cierre_acta || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Fecha Cierre</Label>
+          <Controller
+            name="fecha_cierre_acta"
+            control={control}
+            render={({ field }) => <Input type="date" {...field} />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Hora Cierre</label>
-          <input 
-            name="hora_cierre_acta" 
-            type="time" 
-            value={formData.hora_cierre_acta || ''} 
-            onChange={handleChange} 
-            className="input w-full" 
+          <Label>Hora Cierre</Label>
+          <Controller
+            name="hora_cierre_acta"
+            control={control}
+            render={({ field }) => <Input type="time" {...field} />}
           />
         </div>
-        
+
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Estado</label>
-          <select 
-            name="estado" 
-            value={formData.estado || 'Pendiente'} 
-            onChange={handleChange} 
-            className="input w-full"
-          >
-            <option value="Pendiente">Pendiente</option>
-            <option value="Completada">Completada</option>
-            <option value="Revisión">Revisión</option>
-          </select>
+          <Label>Estado</Label>
+          <Controller
+            name="estado"
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pendiente">Pendiente</SelectItem>
+                  <SelectItem value="Completada">Completada</SelectItem>
+                  <SelectItem value="Revisión">Revisión</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.estado && <p className="text-sm text-red-500">{errors.estado.message}</p>}
         </div>
-        
+
         <div className="md:col-span-3 space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Observaciones</label>
-          <textarea 
-            name="observaciones" 
-            placeholder="Observaciones" 
-            value={formData.observaciones || ''} 
-            onChange={handleChange} 
-            className="input w-full h-24 resize-none" 
+          <Label>Observaciones</Label>
+          <Controller
+            name="observaciones"
+            control={control}
+            render={({ field }) => (
+              <Textarea {...field} placeholder="Observaciones" className="resize-none h-24" />
+            )}
           />
         </div>
       </div>
 
+      {/* Botones */}
       <div className="flex justify-end gap-4 mt-8">
-        <button 
-          type="button" 
-          onClick={onCancel} 
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-          disabled={isSubmitting}
-        >
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancelar
-        </button>
-        <button 
-          type="button" 
-          onClick={handleReset} 
-          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
-          disabled={isSubmitting}
-        >
+        </Button>
+        <Button type="button" variant="secondary" onClick={handleReset} disabled={isSubmitting}>
           Restablecer
-        </button>
-        <button 
-          type="submit" 
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-          disabled={isSubmitting}
-        >
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando..." : "Guardar Acta"}
-        </button>
+        </Button>
       </div>
     </form>
-  );
-};
+  )
+}
 
-export default FormActa;
+export default FormActa

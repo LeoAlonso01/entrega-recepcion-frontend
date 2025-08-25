@@ -1018,9 +1018,34 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
    }, [router, userid]); */
 
 
+  const guardarBorrador = () => {
+    const draft = {
+      clave: watch("clave"),
+      categoria: watch("categoria"),
+      fecha_creacion: watch("fecha_creacion"),
+      estado: watch("estado"),
+      datos,
+      timestamp: new Date().toISOString(),
+    };
+
+    localStorage.setItem(`draft_anexo_${userid}`, JSON.stringify(draft));
+    toast.success("✅ Borrador guardado");
+  };
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userString = localStorage.getItem("user");
+
+    // funcion para guardar el anexo en el navegador
+    const guardado = localStorage.getItem(`draft_anexo_${userid}`);
+    if (guardado) {
+      const draft = JSON.parse(guardado);
+      setValue("clave", draft.clave);
+      setValue("categoria", draft.categoria);
+      setValue("fecha_creacion", draft.fecha_creacion);
+      setValue("estado", draft.estado);
+      setValue("datos", draft.datos);
+      toast.info("Borrador de anexo restaurado");
+    }
 
     if (!token) {
       router.push("/");
@@ -1660,14 +1685,14 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
             </TabsContent>
 
             <TabsContent value="formulario" className="mt-4 sm:mt-6 md:mt-8">
-              <Card>
+              <Card >
                 <CardHeader>
                   <CardTitle>Formulario Dinámico</CardTitle>
                   <CardDescription>
                     Completa los campos. Los datos se envían como JSON.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="sm:max-w-3xl md:max-w-4xl xl:max-w-5xl">
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     <div className="sm:col-span-2">
                       <label htmlFor="clave">Clave</label>
@@ -1680,7 +1705,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                       <Label>Clave del Anexo</Label>
                       <select
                         {...register("clave", { required: "Clave es obligatoria" })}
-                        className="w-full p-2 border border-gray-300 rounded-md"
+                        className="w-full p-2 border border-gray-300 rounded-md md:col-span-2 sm:col-span-2"
                         onChange={(e) => {
                           const clave = e.target.value;
                           setValue("clave", clave);
@@ -1848,6 +1873,14 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                         style={{ backgroundColor: "#24356B", color: "white" }}
                       >
                         Guardar Anexo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={guardarBorrador}
+                      >
+                        Guardar como borrador
                       </Button>
                     </div>
                   </form>
