@@ -95,13 +95,25 @@ interface Usuario {
 interface EditableTableProps {
   data: any[],
   onChange: (data: any[]) => void;
+
+  
+}
+
+interface IFormInput {
+  clave: string;
+  categoria: string;
+  fecha_creacion: string;
+  creador_id: number; // ← debe ser creador_id
+  datos: Record<string, any>;
+  estado: string;
+  unidad_responsable_id: number;
 }
 
 export interface Anexo {
   id: number
   clave: string
   categoria: string
-  creador: number
+  creador_id: number
   fecha_creacion: string       // formato ISO, ej: "2025-08-07"
   datos: Record<string, any>   // o simplemente `any` si prefieres
   estado: string
@@ -109,17 +121,26 @@ export interface Anexo {
 }
 
 const getAnexos = async () => {
-  const response = await fetch(`${API_URL}/anexos/`,
-    {
+  try {
+    const response = await fetch(`${API_URL}/anexos/`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json"
-      },
-    })
-  const data = await response.json()
-  console.log("Anexos obtenidos:", data)
-  return data
-}
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Error en la respuesta");
+    }
+
+    const data = await response.json();
+    console.log("Anexos obtenidos:", data);
+    return data;
+  } catch (error) {
+    console.error("Error al obtener anexos:", error);
+    toast.error("No se pudieron cargar los anexos");
+    return [];
+  }
+};
 
 const exportAnexosToPDF = (anexos: Anexo[], title = "Reporte de Anexos") => {
   const doc = new jsPDF()
@@ -1119,7 +1140,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     id: number | Anexo["id"]
     clave: string | Anexo["clave"]
     categoria: string | Anexo["categoria"]
-    creador: number | Anexo["creador"]
+    creador_id: number | Anexo["creador_id"]
     fecha_creacion: string | Anexo["fecha_creacion"]
     datos: Record<string, any> | Anexo["datos"]
     estado: string | Anexo["estado"]
@@ -1128,7 +1149,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     id: 0,
     clave: "",
     categoria: "",
-    creador: 0,
+    creador_id: 0,
     fecha_creacion: new Date().toISOString().split("T")[0],
     datos: {},
     estado: "Borrador",
@@ -1250,6 +1271,8 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     localStorage.setItem(`draft_anexo_${userid}`, JSON.stringify(draft));
     toast.success("✅ Borrador guardado");
   };
+
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userString = localStorage.getItem("user");
@@ -1368,20 +1391,22 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
 
     // Aseguramos que `datos` sea un array o objeto válido
     const payload = {
-      ...data,
-      // Aseguramos que `datos` no sea string
-      datos: Array.isArray(data.datos) ? data.datos : (typeof data.datos === 'string' ? JSON.parse(data.datos) : data.datos || []),
-    };
+    ...data,
+    creador_id: userid,
+    unidad_responsable_id: unidadResponsable,
+    datos: Array.isArray(data.datos) ? data.datos : [data.datos],
+  };
 
     console.log("✅ Payload final a enviar:", payload);
 
     // Aquí haces el fetch
-    fetch(`${API_URL}/anexos/`, {
+    fetch(`${API_URL}/anexos`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        // encoders
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: JSON.stringify(payload),
+      body: new URLSearchParams(payload as any).toString(),
     })
       .then(res => res.json())
       .then(result => {
@@ -1405,7 +1430,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       id: 0,
       clave: "",
       categoria: "",
-      creador: userid,
+      creador_id: userid,
       fecha_creacion: new Date().toISOString().split("T")[0],
       datos: {},
       estado: "Borrador",
