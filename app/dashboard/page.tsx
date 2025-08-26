@@ -57,7 +57,8 @@ export default function Dashboard() {
           <p className="text-gray-600">Gestiona las actas, anexos y administración del sistema</p>
         </div>
         {user.role === "USER" && (
-          <div>
+          <div className=" grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+            {/* Tarjeta Llenado en Anexos */}
             <Link href="/dashboard/anexos">
               <Card
                 className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
@@ -71,12 +72,99 @@ export default function Dashboard() {
                   <CardDescription>Gestión de anexos y documentos</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600">Crear y gestionar anexos de documentación</p>
+                  <p className="text-sm text-gray-600">
+                    Crear y gestionar anexos de documentación
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
+                style={{ borderLeftColor: "#24356B" }}>
+                <CardHeader>
+                  <div className="flex items-center space-x-2">
+                    <ClipboardList className="h-6 w-6" style={{ color: "#24356B" }} />
+                    <CardTitle>Recursos Disponibles</CardTitle>
+                  </div>
+                  <CardDescription>Recursos para el llenado del anexo</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mt-3 flex flex-col gap-2 text-sm">
+                    <a
+                      href="https://www.contraloria.umich.mx/archivos/normatividad/lineamientos_entrega_recepcion_umsnh.pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
+                    >
+                      📄 Lineamientos del Proceso de Entrega-Recepción
+                    </a>
+
+                    <a
+                      href="https://www.contraloria.umich.mx/entregarecepcion/archivos/archivos_contraloria/guia_usuario_serumich.pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
+                    >
+                      📄 Guía del Usuario SERUMICH
+                    </a>
+
+                    <a
+                      href="https://www.contraloria.umich.mx/entregarecepcion/archivos/archivos_contraloria/instructivo_llenado_serumich.pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
+                    >
+                      📄 Instructivo de Llenado de Anexos
+                    </a>
+
+                    <a
+                      href="https://www.contraloria.umich.mx/entregarecepcion/archivos/anexos/plantillas_anexos.zip"
+                      download="plantillas_anexos.zip"
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
+                    >
+                      ⬇️ Plantillas de Anexos
+                    </a>
+
+                    <a
+                      href="https://www.contraloria.umich.mx/index.php/portal/entrega_recepcion"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
+                    >
+                      📨 Circulares emitidas por la Contraloría
+                    </a>
+                  </div>
                 </CardContent>
               </Card>
             </Link>
+
+            {/* 🔹 Video explicativo */}
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
+              style={{ borderLeftColor: "#24356B" }}>
+              <CardHeader>
+                <CardTitle>📹 Cómo llenar los anexos</CardTitle>
+                <CardDescription>
+                  Mira este video para aprender a completar los anexos correctamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="aspect-w-16 aspect-h-9">
+                  {/* <iframe
+                    className="w-full h-64 rounded-lg"
+                    src="https://www.youtube.com/embed/Hl3szd4NaTU"
+                    title="Video explicativo sobre llenado de anexos"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe> */}
+                  <div className="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg">
+
+                    <p className="text-lg font-semibold text-gray-700">¡Próximamente!</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
+
         {user.role === "ADMIN" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Actas Card */}
@@ -145,7 +233,7 @@ export default function Dashboard() {
         )}
 
         {/* Stats Section */}
-       {/*  <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/*  <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
 
           {user.role === "USER" && (
             <div className="bg-white p-6 rounded-lg shadow">

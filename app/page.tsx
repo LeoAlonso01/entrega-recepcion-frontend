@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { EyeIcon, EyeOffIcon, Loader2 } from "lucide-react"
 import * as Tooltip from "@radix-ui/react-tooltip"
+import Recursos from "@/components/Recursos"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -120,27 +121,27 @@ export default function LoginPage() {
   // Validar fortaleza de la contraseña
   const validatePasswordStrength = (password: string): string[] => {
     const errors: string[] = [];
-    
+
     if (password.length < 8) {
       errors.push("La contraseña debe tener al menos 8 caracteres");
     }
-    
+
     if (!/(?=.*[a-z])/.test(password)) {
       errors.push("Debe contener al menos una letra minúscula");
     }
-    
+
     if (!/(?=.*[A-Z])/.test(password)) {
       errors.push("Debe contener al menos una letra mayúscula");
     }
-    
+
     if (!/(?=.*\d)/.test(password)) {
       errors.push("Debe contener al menos un número");
     }
-    
+
     if (!/(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(password)) {
       errors.push("Debe contener al menos un carácter especial");
     }
-    
+
     return errors;
   }
 
@@ -148,7 +149,7 @@ export default function LoginPage() {
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     setFormData(prev => ({ ...prev, password: value }));
-    
+
     // Validar fortaleza de la contraseña
     const errors = validatePasswordStrength(value);
     setPasswordErrors(errors);
@@ -161,7 +162,7 @@ export default function LoginPage() {
       toast.error("Las contraseñas no coinciden")
       return false
     }
-    
+
     // Validar que la contraseña cumpla con los requisitos
     const errors = validatePasswordStrength(password);
     if (errors.length > 0) {
@@ -369,9 +370,9 @@ export default function LoginPage() {
                       </button>
                     </div>
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full py-3 text-base font-medium" 
+                  <Button
+                    type="submit"
+                    className="w-full py-3 text-base font-medium"
                     style={{ backgroundColor: "#751518", color: "white" }}
                     disabled={isLoginLoading}
                   >
@@ -546,8 +547,12 @@ export default function LoginPage() {
                 </form>
               </TabsContent>
             </Tabs>
+            {/* 🔹 Apartado de Recursos */}
+            <Recursos />
+
           </CardContent>
         </Card>
+
       </div>
     </Tooltip.Provider>
   )

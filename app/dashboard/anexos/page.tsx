@@ -12,7 +12,7 @@ import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Download, ArrowLeft } from "lucide-react"
+import { Plus, Edit, Trash2, Download, ArrowLeft, Eye } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
@@ -21,6 +21,7 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
+
 import FMJList from "@/components/forms/MarcoJuridico/FMJList"
 // import '@react-pdf-viewer/core/lib/styles/index.css';
 // import { Viewer } from '@react-pdf-viewer/core';
@@ -1066,7 +1067,7 @@ interface IFormInput {
   clave: string;
   categoria: string;
   fecha_creacion: string;
-  creador: number;
+  creado_id: number;
   datos: Record<string, any>;
   estado: string;
   unidad_responsable_id: number;
@@ -1162,7 +1163,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [unidadResponsable, setUnidadResponsable] = useState<number>(0)
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<IFormInput>({
     defaultValues: {
-      creador: userid,
+      creador_id: userid,
       unidad_responsable_id: unidadResponsable,
       fecha_creacion: new Date().toISOString().split("T")[0],
       estado: "Borrador",
@@ -1336,7 +1337,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
           unidad_responsable_id: unidad.id_unidad,
         }));
         setValue("unidad_responsable_id", unidad.id_unidad);// la unidad responsable también debe estar seteada
-        setValue("creador", currentUserId!); // Aseguramos que creador esté seteado
+        setValue("creador_id", currentUserId!); // Aseguramos que creador esté seteado
       } catch (error) {
         console.error("Error al obtener la unidad responsable:", error);
       }
@@ -1391,9 +1392,12 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
 
     // Aseguramos que `datos` sea un array o objeto válido
     const payload = {
-    ...data,
+    clave: data.clave,
+    categoria: data.categoria,
     creador_id: userid,
     unidad_responsable_id: unidadResponsable,
+    fecha_creacion: new Date(data.fecha_creacion).toISOString(), // formato ISO
+    estado: data.estado,
     datos: Array.isArray(data.datos) ? data.datos : [data.datos],
   };
 
@@ -1404,9 +1408,9 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       method: "POST",
       headers: {
         // encoders
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "application/json",
       },
-      body: new URLSearchParams(payload as any).toString(),
+      body: JSON.stringify(payload),
     })
       .then(res => res.json())
       .then(result => {
@@ -1557,6 +1561,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
               <TabsTrigger value="documentos">Crear Anexos</TabsTrigger>
               <TabsTrigger value="formulario">Formulario</TabsTrigger>
             </TabsList>
+
             <TabsContent value="anexos" className="mt-4 sm:mt-6 md:mt-8">
 
               <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1919,8 +1924,6 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                         <TableHeader>
                           <TableRow>
                             <TableHead>Clave</TableHead>
-                            <TableHead>Categoria</TableHead>
-                            <TableHead>Descripción</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead>Fecha</TableHead>
                             <TableHead>Acciones</TableHead>
@@ -1930,12 +1933,6 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                           {anexos.map((anexo) => (
                             <TableRow key={anexo.id}>
                               <TableCell className="font-medium">{anexo.clave}</TableCell>
-                              <TableCell>{anexo.categoria}</TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(anexo.categoria)}`}>
-                                  {anexo.categoria}
-                                </span>
-                              </TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(anexo.estado)}`}>
                                   {anexo.estado}
@@ -1949,6 +1946,10 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                                   </Button>
                                   <Button variant="outline" size="sm" onClick={() => handleEdit(anexo)}>
                                     <Edit className="h-4 w-4" />
+                                  </Button>
+                                  {/* boton para ver el anexo por id */}
+                                  <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}>
+                                    <Eye className="h-4 w-4" />
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -1970,6 +1971,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
               </main>
 
             </TabsContent>
+
             <TabsContent value="documentos" className="mt-4 sm:mt-6 md:mt-8">
 
             </TabsContent>
@@ -2055,7 +2057,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                     </div>
 
                     {/* Campos ocultos: creador y unidad_responsable_id */}
-                    <input type="hidden" {...register("creador")} value={userid} />
+                    <input type="hidden" {...register("creador_id")} value={userid} />
                     <input type="hidden" {...register("unidad_responsable_id")} value={unidadResponsable} />
 
                     {/* Tabla dinámica o Excel */}

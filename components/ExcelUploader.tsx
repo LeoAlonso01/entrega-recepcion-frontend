@@ -9,6 +9,7 @@ interface ExcelUploaderProps {
 
 const ExcelUploader = ({ onUploadSuccess }: ExcelUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
@@ -62,6 +63,7 @@ const ExcelUploader = ({ onUploadSuccess }: ExcelUploaderProps) => {
   return (
     <div
       onDragOver={handleDragOver}
+      onClick={() => inputRef.current?.click()}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={`flex items-center space-x-2 bg-green-600 text-white py-2 px-4 rounded-md cursor-pointer w-fit hover:bg-green-700 transition ${
@@ -71,6 +73,7 @@ const ExcelUploader = ({ onUploadSuccess }: ExcelUploaderProps) => {
       <FileSpreadsheet className="w-5 h-5" />
       <span>Subir Excel</span>
       <input
+        ref={inputRef}
         type="file"
         accept=".xlsx, .xls"
         onChange={handleChange}
