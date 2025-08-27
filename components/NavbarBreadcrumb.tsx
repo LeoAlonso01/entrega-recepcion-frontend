@@ -66,7 +66,7 @@ function getBreadcrumbs(pathname: string) {
 
 interface NavbarWithBreadcrumbProps {
   user?: string | null;
-  role ?: string | null;
+  role?: string | null;
   disableAuthCheck?: boolean; // Para pruebas
 }
 

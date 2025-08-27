@@ -88,16 +88,28 @@ interface Usuario {
   id: number
   username: string
   email: string
-  role: "USER" | "ADMIN"
+  role: string
   is_active: boolean
   created_at: string
+}
+
+interface AnexosPageProps {
+  user?: {
+    username: string;
+  };
+  userrole?: {
+    role: string;
+  };
+  unidadresponsable?: {
+    unidad: string;
+  };
 }
 
 interface EditableTableProps {
   data: any[],
   onChange: (data: any[]) => void;
 
-  
+
 }
 
 interface IFormInput {
@@ -1133,7 +1145,7 @@ const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
 
 }
 
-export default function AnexosPage(user: { username: string }, userrole: { role: string }, unidadresponable: { unidad: string }) {
+export default function AnexosPage() {
   const [anexos, setAnexos] = useState<Anexo[]>([])
   const [showForm, setShowForm] = useState(false) // Nuevo estado para controlar la visibilidad
   const [editingAnexo, setEditingAnexo] = useState<Anexo | null>(null)
@@ -1159,7 +1171,9 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [rows, setRows] = useState<any[]>([])
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////// datos para el form con react hook form ///////////////////////////////////////////
-  const [userid, setUserid] = useState<number>(0)
+  const [userName, setUserName] = useState<string>("");
+  const [userid, setUserid] = useState<number>(0);
+  const [userrole, setUserrole] = useState<string>("USER"); // valor por defecto
   const [unidadResponsable, setUnidadResponsable] = useState<number>(0)
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<IFormInput>({
     defaultValues: {
@@ -1171,9 +1185,8 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     }
   });
 
-  const [activeTab, setActiveTab] = useState<string>("formulario")
+  const [activeTab, setActiveTab] = useState<string>("documentos")
   const router = useRouter()
-  const [userName, setUserName] = useState<string>("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [file, setFile] = useState<File | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -1184,79 +1197,9 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
   const [previewData, setPreviewData] = useState<Array<Record<string, any>>>([]);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [pendingFile, setPendingFile] = useState<{ file: File; data: any[] } | null>(null);
+  const [anexosFiltrados, setAnexosFiltrados] = useState<Anexo[]>(anexos);
 
-
-  /*  useEffect(() => {
-     const token = localStorage.getItem("token");
-     const userString = localStorage.getItem("user");
- 
-     if (!token) {
-       router.push("/");
-       return; // Salir temprano si no hay token
-     }
- 
-     if (userString) {
-       try {
-         const userData = JSON.parse(userString);
-         setUserName(userData.username);
-         setUserid(userData.id);
- 
-         console.log("Datos del usuario:", {
-           username: userData.username,
-           id: userData.id
-         });
-       } catch (error) {
-         console.error("Error al parsear los datos del usuario:", error);
-         setUserName("");
-         setUserid(0);
-       }
-     }
- 
-     if (userid) {
-       const obtenerUnidad = async () => {
-         try {
-           const unidad = await UnidadesPorUsuario(Number(userid));
-           console.log("Unidad responsable:", unidad.id_unidad);
-           console.log("Responsable:", unidad.responsable);
- 
-           // respuesta correcta
-           setUnidadResponsable(Number(unidad.id_unidad));
- 
-           // guardarlo en formData
-           setFormData(prev => ({
-             ...prev,
-             unidad_responsable_id: unidad.id_unidad
-           }));
- 
- 
-         } catch (error) {
-           console.error("Error al obtener la unidad responsable:", error);
-         }
-       }
- 
-       obtenerUnidad();
-     }
- 
- 
- 
-     async function mostrarUnidad() {
-       try {
-         const unidad = await UnidadesPorUsuario(1);
-         console.log("Unidad responsable:", unidad.id_unidad);
-         console.log("Responsable:", unidad.responsable);
-       } catch (error) {
-         console.error("Error al obtener la unidad responsable:", error);
-       }
-     }
- 
-     mostrarUnidad();
- 
-     // Obtener los anexos
-     getAnexos().then((data) => {
-       setAnexos(data);
-     });
- 
-   }, [router, userid]); */
+  // Primer UseEffect
 
 
   const guardarBorrador = () => {
@@ -1273,102 +1216,101 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     toast.success("✅ Borrador guardado");
   };
 
-
+  // useEffect para manejar el guardado del borrador y la restauración
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userString = localStorage.getItem("user");
-
-    // funcion para guardar el anexo en el navegador
-    const guardado = localStorage.getItem(`draft_anexo_${userid}`);
-    if (guardado) {
-      const draft = JSON.parse(guardado);
-      setValue("clave", draft.clave);
-      setValue("categoria", draft.categoria);
-      setValue("fecha_creacion", draft.fecha_creacion);
-      setValue("estado", draft.estado);
-      setValue("datos", draft.datos);
-      toast.info("Borrador de anexo restaurado");
-    }
+    const roleString = localStorage.getItem("role");
 
     if (!token) {
       router.push("/");
       return;
     }
 
-    const saved = localStorage.getItem(`draft_anexo_${userid}`);
-    if (saved) {
-      const draft = JSON.parse(saved);
-      setValue("clave", draft.clave);
-      setValue("categoria", draft.categoria);
-      setValue("fecha_creacion", draft.fecha_creacion);
-      setValue("estado", draft.estado);
-      setDatos(draft.datos);
-      toast.info("📋 Borrador recuperado", { duration: 3000 });
-    }
+    let currentUserId: number;
+    let currentUserRole = "USER";
 
-    let currentUserId: number | null = null;
-
-    // Parsear usuario
+    // 1. Parsear usuario y rol
     if (userString) {
       try {
         const userData = JSON.parse(userString);
         setUserName(userData.username);
         currentUserId = userData.id;
-        setUserid(userData.id); // Solo actualizamos el estado si es necesario
+        setUserid(userData.id);
+        currentUserRole = userData.role || roleString || "USER";
+        setUserrole(currentUserRole); // Asegúrate de tener este estado
       } catch (error) {
         console.error("Error al parsear los datos del usuario:", error);
         setUserName("");
         setUserid(0);
-        return; // Salimos si hay error
+        setUserrole("USER");
+        return;
       }
     } else {
       setUserid(0);
+      setUserrole("USER");
       return;
     }
 
-    // Usamos currentUserId para evitar depender de `userid` en el estado
+    // 2. Recuperar borrador (ahora que tenemos userid)
+    const guardado = localStorage.getItem(`draft_anexo_${currentUserId}`);
+    if (guardado) {
+      try {
+        const draft = JSON.parse(guardado);
+        setValue("clave", draft.clave);
+        setValue("categoria", draft.categoria);
+        setValue("fecha_creacion", draft.fecha_creacion);
+        setValue("estado", draft.estado);
+        setValue("unidad_responsable_id", draft.unidad_responsable_id);
+        setValue("creador_id", currentUserId);
+        setDatos(draft.datos);
+        toast.info("📋 Borrador recuperado", { duration: 3000 });
+      } catch (error) {
+        console.error("Error al recuperar el borrador:", error);
+      }
+    }
+
+    // 3. Obtener unidad responsable
     const obtenerUnidad = async () => {
       try {
         const unidad = await UnidadesPorUsuario(currentUserId!);
         console.log("Unidad responsable:", unidad.id_unidad);
-        setUnidadResponsable(Number(unidad.id_unidad));
-        setFormData((prev) => ({
-          ...prev,
-          unidad_responsable_id: unidad.id_unidad,
-        }));
-        setValue("unidad_responsable_id", unidad.id_unidad);// la unidad responsable también debe estar seteada
-        setValue("creador_id", currentUserId!); // Aseguramos que creador esté seteado
+        setUnidadResponsable(unidad.id_unidad);
+        setValue("unidad_responsable_id", unidad.id_unidad);
+        setValue("creador_id", currentUserId!);
       } catch (error) {
         console.error("Error al obtener la unidad responsable:", error);
       }
     };
 
-    // Llamamos a obtenerUnidad solo si tenemos userId válido
     if (currentUserId) {
       obtenerUnidad();
     }
 
-    // Esta función parece ser de prueba, considera eliminarla en prod
-    async function mostrarUnidad() {
-      try {
-        const unidad = await UnidadesPorUsuario(1);
-        console.log("Unidad responsable (prueba):", unidad.id_unidad);
-      } catch (error) {
-        console.error("Error al obtener la unidad responsable (prueba):", error);
-      }
-    }
+    // 4. Obtener anexos
+    // Obtener y filtrar anexos
+    getAnexos()
+      .then((data) => {
+        const filtrados = data.filter((anexo: Anexo) => anexo.creador_id === currentUserId);
+        setAnexos(filtrados);
+      })
+      .catch((error) => {
+        console.error("Error al obtener anexos:", error);
+        toast.error("No se pudieron cargar los anexos");
+      });
 
-    // Si es solo para debugging, coméntala o elimínala
-    mostrarUnidad();
+    // 5. (Opcional) Elimina esta llamada de prueba en producción
+    // async function mostrarUnidad() {
+    //   try {
+    //     const unidad = await UnidadesPorUsuario(1);
+    //     console.log("Unidad responsable (prueba):", unidad.id_unidad);
+    //   } catch (error) {
+    //     console.error("Error al obtener la unidad responsable (prueba):", error);
+    //   }
+    // }
+    // mostrarUnidad();
 
-    // Obtener anexos (esto debería ejecutarse una vez)
-    getAnexos().then((data) => {
-      setAnexos(data);
-    });
-
-    // Dependencias: solo queremos que se ejecute al montar el componente
-  }, []); // ⬅️ Dependencia vacía: se ejecuta solo una vez
-
+  }, []); // Dependencia vacía: se ejecuta una vez
   // Manejador de items
   const handleFMJChange = (jsonDataArray: Array<Record<string, any>>) => {
     setDatos(jsonDataArray); // Aquí guardas el array de marcos
@@ -1392,14 +1334,14 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
 
     // Aseguramos que `datos` sea un array o objeto válido
     const payload = {
-    clave: data.clave,
-    categoria: data.categoria,
-    creador_id: userid,
-    unidad_responsable_id: unidadResponsable,
-    fecha_creacion: new Date(data.fecha_creacion).toISOString(), // formato ISO
-    estado: data.estado,
-    datos: Array.isArray(data.datos) ? data.datos : [data.datos],
-  };
+      clave: data.clave,
+      categoria: data.categoria,
+      creador_id: userid,
+      unidad_responsable_id: unidadResponsable,
+      fecha_creacion: new Date(data.fecha_creacion).toISOString(), // formato ISO
+      estado: data.estado,
+      datos: Array.isArray(data.datos) ? data.datos : [data.datos],
+    };
 
     console.log("✅ Payload final a enviar:", payload);
 
@@ -1456,6 +1398,16 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
       "Función de eliminación aún no implementada",
       {
         description: "Próximamente podrás eliminar anexos.",
+        duration: 1000,
+      }
+    )
+  }
+
+  const handleDownload = (id: number) => {
+    toast(
+      "Función de descarga aún no implementada",
+      {
+        description: "Próximamente podrás descargar anexos.",
         duration: 1000,
       }
     )
@@ -1523,19 +1475,33 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     return !claveRequierePDF(clave); // Todos los demás son Excel
   }
 
-
-  /*   const handleExcelUpload = (parsedData: Record<string, any>) => {
-      setFormData((prev) => ({
-        ...prev,
-        datos: parsedData,
-      }));
-      setDatos(parsedData);
-    }; */
-
   // manejar el cambio de pestaña Tab
   const handleTabChange = (value: string) => {
     setActiveTab(value)
   }
+
+  // manejo de edicion de anexos por usuario y por unidad responsable
+  const canEdit = (anexo: Anexo): boolean => {
+    // Si el estado es "Cerrado", nadie puede editar
+    if (anexo.estado === "Cerrado") return false;
+
+    // Si el usuario es ADMIN, puede editar (excepto si está cerrado)
+    if (userrole === "ADMIN") return true;
+
+    // Si es el creador y el estado es "Borrador", puede editar
+    if (anexo.creador_id === userid && anexo.estado === "Borrador") return true;
+
+    // Si es el creador y está en "Revisión" o "Pendiente", puede editar (opcional)
+    if (
+      anexo.creador_id === userid &&
+      ["Revisión", "Pendiente"].includes(anexo.estado)
+    ) {
+      return true;
+    }
+
+    // En cualquier otro caso, no puede editar
+    return false;
+  };
 
   // Filtrar las claves basadas en la categoría seleccionada
   const selectedCategoryId = categoria_anexos.find(cat => cat.nombre_categoria === selectedCategory)?.id;
@@ -1549,7 +1515,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
     <>
       <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
         <NavbarWithBreadcrumb
-          user={user.username}
+          user={userName}
           disableAuthCheck={true}
         />
 
@@ -1924,6 +1890,7 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                         <TableHeader>
                           <TableRow>
                             <TableHead>Clave</TableHead>
+                            <TableHead>Categoría</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead>Fecha</TableHead>
                             <TableHead>Acciones</TableHead>
@@ -1934,6 +1901,11 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                             <TableRow key={anexo.id}>
                               <TableCell className="font-medium">{anexo.clave}</TableCell>
                               <TableCell>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(anexo.categoria)}`}>
+                                  {anexo.categoria}
+                                </span>
+                              </TableCell>
+                              <TableCell>
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(anexo.estado)}`}>
                                   {anexo.estado}
                                 </span>
@@ -1941,23 +1913,20 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
                               <TableCell>{anexo.fecha_creacion}</TableCell>
                               <TableCell>
                                 <div className="flex space-x-2">
-                                  <Button variant="outline" size="sm" onClick={() => alert(`Descargar ${anexo.clave}`)}>
+                                  <Button variant="outline" size="sm" onClick={() => handleDownload(anexo.id)}>
                                     <Download className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="outline" size="sm" onClick={() => handleEdit(anexo)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  {/* boton para ver el anexo por id */}
-                                  <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}>
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
+                                  {canEdit(anexo) && (
+                                    <Button variant="outline" size="sm" onClick={() => handleEdit(anexo)}>
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleDelete(anexo.id)}
-                                    className="text-red-600 hover:text-red-800"
+                                    onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Eye className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -1973,6 +1942,284 @@ export default function AnexosPage(user: { username: string }, userrole: { role:
             </TabsContent>
 
             <TabsContent value="documentos" className="mt-4 sm:mt-6 md:mt-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{editingAnexo ? "Editar Anexo" : "Nuevo Anexo"}</CardTitle>
+                  <CardDescription>
+                    {editingAnexo
+                      ? "Modifica los datos del anexo seleccionado"
+                      : "Completa los datos para crear un nuevo anexo"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Clave del Anexo */}
+                    <div className="space-y-2 col-span-6 grid-cols-3">
+                      <Label>Clave del Anexo</Label>
+                      <div className="text-sm text-gray-500 mb-1">
+                        <select
+                          {...register("clave", { required: "Clave es obligatoria" })}
+                          className="w-full p-2 sm:p-2 md:p-2 border border-gray-300 "
+                          onChange={(e) => {
+                            const clave = e.target.value;
+                            setValue("clave", clave);
+                            const claveData = claves_anexos.find((k) => k.clave === clave);
+                            if (claveData) {
+                              const categoria = categoria_anexos.find(
+                                (c) => c.id === claveData.id_categoria
+                              )?.nombre_categoria || "";
+                              setValue("categoria", categoria);
+                            }
+                          }}
+                        >
+                          <option value="">Selecciona una clave</option>
+                          {claves_anexos.map((k) => (
+                            <option key={k.id} value={k.clave}>
+                              {k.clave} - {k.descripcion}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {errors.clave && (
+                        <p className="text-sm text-red-600">{errors.clave.message}</p>
+                      )}
+                    </div>
+
+                    {/* Categoría (autocompletada) */}
+                    <div className="space-y-2 col-span-6 grid-cols-3">
+                      <Label>Categoría</Label>
+                      <div className="text-sm text-gray-500 mb-1">
+                        <input
+                          {...register("categoria")}
+                          type="text"
+                          disabled
+                          className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
+                        />
+                      </div>
+
+                    </div>
+
+                    {/* Fecha de Creación */}
+                    <div className="space-y-2 col-span-6 grid-cols-3">
+                      <Label>Fecha de Creación</Label>
+                      <div className="text-sm text-gray-500 mb-1">
+                        <input
+                          {...register("fecha_creacion", { required: "Fecha es obligatoria" })}
+                          type="date"
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                      {errors.fecha_creacion && (
+                        <p className="text-sm text-red-600">{errors.fecha_creacion.message}</p>
+                      )}
+                    </div>
+
+                    {/* Estado */}
+                    <div className="space-y-2 col-span-6 grid-cols-3">
+                      <Label>Estado</Label>
+                      <div className="text-sm text-gray-500 mb-1"></div>
+                      <select
+                        {...register("estado", { required: "Estado es obligatorio" })}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="Borrador">Borrador</option>
+                        <option value="Completado">Completado</option>
+                        <option value="Revisión">Revisión</option>
+                        <option value="Pendiente">Pendiente</option>
+                      </select>
+                      {errors.estado && (
+                        <p className="text-sm text-red-600">{errors.estado.message}</p>
+                      )}
+                    </div>
+
+                    {/* Campos ocultos */}
+                    <input type="hidden" {...register("creador_id")} value={userid} />
+                    <input
+                      type="hidden"
+                      {...register("unidad_responsable_id")}
+                      value={unidadResponsable}
+                    />
+
+                    {/* Tabla dinámica o Excel */}
+                    
+                    <div className="text-sm text-gray-500 mb-1">
+                      {watch("clave") && (
+                        <div className="space-y-4">
+                          <Label>Datos (agrega manualmente o sube Excel)</Label>
+
+                          {/* Tabla editable */}
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span>Tabla de datos</span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const nuevaFila: Record<string, any> = {
+                                    campo1: "",
+                                    campo2: "",
+                                    campo3: "",
+                                  };
+                                  const nuevas = [...datos, nuevaFila];
+                                  setDatos(nuevas);
+                                  setValue("datos", nuevas);
+                                }}
+                              >
+                                + Agregar fila
+                              </Button>
+                            </div>
+
+                            {datos.length === 0 ? (
+                              <p className="text-sm text-gray-500">
+                                No hay datos. Usa Excel o agrega manualmente.
+                              </p>
+                            ) : (
+                              <table className="min-w-full border border-gray-300 rounded-md text-sm">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    {Object.keys(datos[0]).map((key) => (
+                                      <th
+                                        key={key}
+                                        className="border px-2 py-1 font-semibold"
+                                      >
+                                        {key}
+                                      </th>
+                                    ))}
+                                    <th className="border px-2 py-1 font-semibold">
+                                      Acciones
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {datos.map((fila, i) => (
+                                    <tr key={i}>
+                                      {Object.keys(fila).map((campo) => (
+                                        <td key={campo} className="border px-2 py-1">
+                                          <input
+                                            type="text"
+                                            value={fila[campo]}
+                                            onChange={(e) => {
+                                              const nuevas = [...datos];
+                                              nuevas[i][campo] = e.target.value;
+                                              setDatos(nuevas);
+                                              setValue("datos", nuevas);
+                                            }}
+                                            className="w-full p-1 border rounded"
+                                          />
+                                        </td>
+                                      ))}
+                                      <td className="border px-2 py-1">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-red-500"
+                                          onClick={() => {
+                                            const nuevas = datos.filter(
+                                              (_, index) => index !== i
+                                            );
+                                            setDatos(nuevas);
+                                            setValue("datos", nuevas);
+                                          }}
+                                        >
+                                          Eliminar
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+
+                          {/* Subida de Excel */}
+                          <div>
+                            <ExcelUploader
+                              onUploadSuccess={(excelData) => {
+                                const clave = watch("clave");
+                                const estructura =
+                                  EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default;
+
+                                if (estructura.length > 0 && excelData.length > 0) {
+                                  const columnasExcel = Object.keys(excelData[0]);
+                                  const faltantes = estructura.filter(
+                                    (campo) => !columnasExcel.includes(campo)
+                                  );
+                                  const extras = columnasExcel.filter(
+                                    (campo) => !estructura.includes(campo)
+                                  );
+
+                                  if (faltantes.length > 0) {
+                                    toast.warning(
+                                      `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
+                                      { duration: 5000 }
+                                    );
+                                  }
+                                  if (extras.length > 0) {
+                                    toast.warning(
+                                      `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
+                                      { duration: 5000 }
+                                    );
+                                  }
+                                }
+
+                                setDatos(excelData);
+                                setValue("datos", excelData);
+                                toast.success(`✅ Excel cargado: ${excelData.length} filas`);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+
+                    {/* Botones */}
+                    <div className="flex justify-end space-x-4 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          reset();
+                          setDatos([]);
+                          setShowForm(false);
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="submit"
+                        style={{ backgroundColor: "#24356B", color: "white" }}
+                      >
+                        {editingAnexo ? "Actualizar" : "Guardar Anexo"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const draft = {
+                            clave: watch("clave"),
+                            categoria: watch("categoria"),
+                            fecha_creacion: watch("fecha_creacion"),
+                            estado: watch("estado"),
+                            datos,
+                            timestamp: new Date().toISOString(),
+                          };
+                          localStorage.setItem(
+                            `draft_anexo_${userid}`,
+                            JSON.stringify(draft)
+                          );
+                          toast.success("✅ Borrador guardado");
+                        }}
+                      >
+                        Guardar como Borrador
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
 
             </TabsContent>
 
