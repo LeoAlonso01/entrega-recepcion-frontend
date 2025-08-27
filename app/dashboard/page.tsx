@@ -59,6 +59,7 @@ export default function Dashboard() {
         {user.role === "USER" && (
           <div className=" grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {/* Tarjeta Llenado en Anexos */}
+            
             <Link href="/dashboard/anexos">
               <Card
                 className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"

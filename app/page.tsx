@@ -549,7 +549,6 @@ export default function LoginPage() {
             </Tabs>
             {/* 🔹 Apartado de Recursos */}
             <Recursos />
-
           </CardContent>
         </Card>
 
