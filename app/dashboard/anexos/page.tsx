@@ -2052,9 +2052,18 @@ export default function AnexosPage() {
                                 size="sm"
                                 onClick={() => {
                                   const nuevaFila: Record<string, any> = {
-                                    campo1: "",
-                                    campo2: "",
-                                    campo3: "",
+                                    "Numero de empleado": "",
+                                    "nombre": "",
+                                    "RFC": "",
+                                    "Plaza (categoria)": "",
+                                    "Tipo de encargo": "",
+                                    "Fecha de ingreso": "",
+                                    "Sueldo": "",
+                                    "Otras percepciones": "",
+                                    "Total": "",
+                                    "Unidad de Adscripcion": "",
+                                    "Área laboral": "",
+                                    "Estatus: Base, Apoyo, Comisionado": "",
                                   };
                                   const nuevas = [...datos, nuevaFila];
                                   setDatos(nuevas);
@@ -2222,7 +2231,7 @@ export default function AnexosPage() {
 
             <TabsContent value="formulario" className="mt-4 sm:mt-6 md:mt-8">
 
-              
+
             </TabsContent>
 
 
