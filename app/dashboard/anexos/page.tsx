@@ -1034,6 +1034,11 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
   default: ["campo1", "campo2", "campo3"]
 };
 
+export const CALVES_CON_PDF: Record<string, string[]> = {
+  PP01: ["url", "blob"],
+  ENI01: ["url", "blob"]
+}
+
 enum CategoriaEnum {
   RECURSOS_PRESUPUESTALES = "1",
   CONTRATOS_CONVENIOS = "2",
@@ -1465,11 +1470,13 @@ export default function AnexosPage() {
     setIsInvalidFileType(false)
   }
 
-  const clavesConPDF = ["ENI01", "PP01"];
+  const requierePDF = (clave: string): boolean => {
+    return ["ENI01", "PP01"].includes(clave.toUpperCase().trim());
+  };
 
   function claveRequierePDF(clave?: string): boolean {
     if (!clave) return false;
-    return clavesConPDF.includes(clave.toUpperCase().trim());
+    return requierePDF(clave);
   }
 
   function claveRequiereExcel(clave?: string): boolean {
@@ -1740,7 +1747,7 @@ export default function AnexosPage() {
                             Subir Archivo (PDF o Excel)
                           </label>
 
-                          {selectedCategory && claveRequierePDF(formData.clave) ? (
+                          {selectedCategory && requierePDF(formData.clave) ? (
                             <div>
                               <label htmlFor="pdf-uploader">Subir PDF</label>
                               <PdfUploader
@@ -1813,16 +1820,17 @@ export default function AnexosPage() {
                               />
                             </div>
                           )}
+
                           {/* en el campo datos subir la url del archivo pdf */}
                           {formData.clave === "PDF" && (
                             <div>
                               <label htmlFor="datos">Datos</label>
-                              {/* <textarea
-                          id="datos"
-                          value={JSON.stringify(formData.datos, null, 2)}
-                          onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                        /> */}
+                              <textarea
+                                id="datos"
+                                value={JSON.stringify(formData.datos, null, 2)}
+                                onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
+                                className="w-full p-2 border border-gray-300 rounded-md"
+                              />
                               <div className="border border-gray-300 rounded-md p-2 overflow-hidden mt-4"
                                 style={
                                   {
@@ -2040,9 +2048,21 @@ export default function AnexosPage() {
                     <div className="text-sm text-gray-500 mb-1">
                       {watch("clave") && (
                         <div className="space-y-4">
-                          <Label>Datos (agrega manualmente o sube Excel)</Label>
+                          <Label>
+                            Datos del anexo: <strong>{watch("clave")}</strong>
+                          </Label>
 
-                          {/* Tabla editable */}
+                          {/** Condición para mostrar mensaje de archivo PDF requerido */}
+                          {watch("clave") && requierePDF(watch("clave")) ? (
+                            <p className="text-sm text-gray-500">
+                              Este anexo requiere un archivo PDF.
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-500">
+                              Este anexo no requiere un archivo PDF.
+                            </p>
+                          )}
+
                           <div>
                             <div className="flex justify-between items-center mb-2">
                               <span>Tabla de datos</span>
