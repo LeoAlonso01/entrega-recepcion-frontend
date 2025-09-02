@@ -23,8 +23,6 @@ export default function SolicitudPermisosPage() {
     domicilio: "",
     telefono_whatsapp: "",
     puesto_desempenar: "",
-    dependencia: "",
-    tipo_nombramiento: "",
     descripcion_funciones: "",
     justificacion_acceso: "",
   })
@@ -129,10 +127,6 @@ export default function SolicitudPermisosPage() {
 
     doc.text(`Puesto a desempeñar: ${formData.puesto_desempenar}`, margin, yPosition)
     yPosition += 8
-    doc.text(`Dependencia/Área: ${formData.dependencia}`, margin, yPosition)
-    yPosition += 8
-    doc.text(`Tipo de nombramiento: ${formData.tipo_nombramiento}`, margin, yPosition)
-    yPosition += 15
 
     // Descripción de funciones
     doc.setFontSize(12)
@@ -500,51 +494,7 @@ export default function SolicitudPermisosPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="dependencia">Dependencia/Área *</Label>
-                    <Input
-                      id="dependencia"
-                      name="dependencia"
-                      value={formData.dependencia}
-                      onChange={handleInputChange}
-                      placeholder="Ej: Facultad de Derecho, Rectoría, etc."
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tipo_nombramiento">Tipo de Nombramiento *</Label>
-                  <Select
-                    value={formData.tipo_nombramiento}
-                    onValueChange={(value) => setFormData({ ...formData, tipo_nombramiento: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona el tipo de nombramiento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Personal de Base">Personal de Base</SelectItem>
-                      <SelectItem value="Personal de Confianza">Personal de Confianza</SelectItem>
-                      <SelectItem value="Personal Eventual">Personal Eventual</SelectItem>
-                      <SelectItem value="Por Honorarios">Por Honorarios</SelectItem>
-                      <SelectItem value="Becario">Becario</SelectItem>
-                      <SelectItem value="Servicio Social">Servicio Social</SelectItem>
-                      <SelectItem value="Prácticas Profesionales">Prácticas Profesionales</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="descripcion_funciones">Descripción de Funciones a Realizar *</Label>
-                  <Textarea
-                    id="descripcion_funciones"
-                    name="descripcion_funciones"
-                    value={formData.descripcion_funciones}
-                    onChange={handleInputChange}
-                    placeholder="Describe detalladamente las funciones que realizarás en tu puesto..."
-                    rows={4}
-                    required
-                  />
+                 
                 </div>
 
                 <div className="space-y-2">

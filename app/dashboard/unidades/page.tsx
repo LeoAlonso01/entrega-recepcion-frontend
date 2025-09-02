@@ -194,7 +194,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
             router.push("/");
             return;
         } else {
-            console.log("Token de acceso encontrado y valido!! :", token);
+            setToken(token);
         }
         try {
             // Aquí puedes hacer una llamada a la API para obtener las unidades responsables
@@ -273,8 +273,6 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
             handleGetUnidadesJerarquicas();
         }
     };
-
-
 
     // Renderizar nodo del árbol jerárquico
     const toggleNode = (id: number) => {

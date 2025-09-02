@@ -1151,6 +1151,8 @@ const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
 }
 
 export default function AnexosPage() {
+  const [userName, setUserName] = useState<string>("");
+  const [user, setUser] = useState<{ username: string; role?: string } | null>({ username: "", role: "" });
   const [anexos, setAnexos] = useState<Anexo[]>([])
   const [showForm, setShowForm] = useState(false) // Nuevo estado para controlar la visibilidad
   const [editingAnexo, setEditingAnexo] = useState<Anexo | null>(null)
@@ -1176,7 +1178,6 @@ export default function AnexosPage() {
   const [rows, setRows] = useState<any[]>([])
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////// datos para el form con react hook form ///////////////////////////////////////////
-  const [userName, setUserName] = useState<string>("");
   const [userid, setUserid] = useState<number>(0);
   const [userrole, setUserrole] = useState<string>("USER"); // valor por defecto
   const [unidadResponsable, setUnidadResponsable] = useState<number>(0)
@@ -1518,13 +1519,12 @@ export default function AnexosPage() {
     ? claves_anexos.filter(key => key.id_categoria === selectedCategoryId)
     : [];
 
-
   return (
     <>
       <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
         <NavbarWithBreadcrumb
-          user={userName}
-          disableAuthCheck={true}
+          user={user ? user.username : ''} // Pass the username property of the user object if user is not null
+          disableAuthCheck={true} // Deshabilitar la verificación de autenticación para esta página 
         />
 
         <div className="container whitespace-nowrap overflow-x-auto px-4 py-8">
@@ -1533,7 +1533,7 @@ export default function AnexosPage() {
             <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
               <TabsTrigger value="documentos">Crear Anexos</TabsTrigger>
-              <TabsTrigger value="formulario">Formulario</TabsTrigger>
+              <TabsTrigger value="formulario">Anexos por usuario</TabsTrigger>
             </TabsList>
 
             <TabsContent value="anexos" className="mt-4 sm:mt-6 md:mt-8">
@@ -1896,7 +1896,7 @@ export default function AnexosPage() {
                         <TableBody>
                           {anexos.map((anexo) => (
                             <TableRow key={anexo.id}>
-                              <TableCell className="font-medium">{anexo.clave}</TableCell>  
+                              <TableCell className="font-medium">{anexo.clave}</TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(anexo.estado)}`}>
                                   {anexo.estado}

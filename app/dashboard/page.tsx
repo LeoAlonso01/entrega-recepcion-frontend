@@ -169,7 +169,7 @@ export default function Dashboard() {
         {user.role === "ADMIN" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Actas Card */}
-            {/* <Link href="/dashboard/actas">
+            <Link href="/dashboard/actas">
               <Card
                 className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
                 style={{ borderLeftColor: "#B59E60" }}
@@ -185,7 +185,7 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-600">Crear, editar y consultar actas de entrega recepción</p>
                 </CardContent>
               </Card>
-            </Link> */}
+            </Link>
 
             {/* Administración Card */}
             <Link href="/dashboard/administracion">
@@ -196,7 +196,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <div className="flex items-center space-x-2">
                     <Users className="h-6 w-6" style={{ color: "#751518" }} />
-                    <CardTitle>Administración</CardTitle>
+                    <CardTitle>Administración de Usuarios</CardTitle>
                   </div>
                   <CardDescription>Gestión de usuarios y configuración</CardDescription>
                 </CardHeader>
@@ -207,6 +207,27 @@ export default function Dashboard() {
             </Link>
 
             {/* Anexos Card */}
+
+            <Link href="/dashboard/anexos">
+              <Card
+                className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
+                style={{ borderLeftColor: "#24356B" }}
+              >
+                <CardHeader>
+                  <div className="flex items-center space-x-2">
+                    <ClipboardList className="h-6 w-6" style={{ color: "#24356B" }} />
+                    <CardTitle>Llenado en Anexos</CardTitle>
+                  </div>
+                  <CardDescription>Gestión de anexos, documentos y más</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600">
+                    Crear y gestionar anexos de documentación
+                  </p>
+                </CardContent>
+              </Card>
+
+            </Link>
 
           </div>
         )}

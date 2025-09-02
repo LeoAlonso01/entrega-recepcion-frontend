@@ -12,6 +12,7 @@ import path from "path";
 interface NavLink {
   name: string;
   href: string;
+  icon?: string;
 }
 
 // Intreface para el usuario y su role
@@ -21,32 +22,31 @@ interface User {
   unidas_a_cargo: string[];
 }
 
-
 // Rutas de navegación
 const navLinks: NavLink[] = [
-  { name: "Administración", href: "/dashboard/administracion" },
-  { name: "Actas", href: "/dashboard/actas" },
-  { name: "Anexos", href: "/dashboard/anexos" },
-  { name: "Unidades", href: "/dashboard/unidades" },
-  { name : "Detalles", href: path.join("/dashboard/administracion/usuarios", "[id]")}
+  { name: "Administración", href: "/dashboard/administracion", icon: "📊" },
+    { name: "Actas", href: "/dashboard/actas", icon: "📝" },
+    { name: "Anexos", href: "/dashboard/anexos", icon: "📎" },
+    { name: "Unidades", href: "/dashboard/unidades", icon: "🏢" },
+    { name: "Detalles", href: path.join("/dashboard/administracion/usuarios", "[id]"), icon: "👤" }
 ];
 
-// funcon que revisa el rol y muestra las rutas correspondientes
+// función que revisa el rol y muestra las rutas correspondientes
 const getNavLinksByRole = (role: string): NavLink[] => {
   switch (role) {
     case "ADMIN":
       return [
-        { name: "Administración", href: "/dashboard/administracion" },
-        { name: "Actas", href: "/dashboard/actas" },
-        { name: "Unidades", href: "/dashboard/unidades" },
-        { name: "Anexos", href: "/dashboard/anexos" },
+        { name: "Administración", href: "/dashboard/administracion", icon: "📊" },
+        { name: "Actas", href: "/dashboard/actas", icon: "📝" },
+        { name: "Unidades", href: "/dashboard/unidades", icon: "🏢" },
+        { name: "Anexos", href: "/dashboard/anexos", icon: "📎" },
       ];
     case "USER":
-      return [{ name: "Anexos", href: "/dashboard/anexos" }];
+      return [{ name: "Anexos", href: "/dashboard/anexos", icon: "📎" }];
     case "AUDITOR":
       return [
-        { name: "Anexos", href: "/dashboard/anexos" },
-        { name: "Actas", href: "/dashboard/actas" },
+        { name: "Anexos", href: "/dashboard/anexos", icon: "📎" },
+        { name: "Actas", href: "/dashboard/actas", icon: "📝" },
       ];
     default:
       return [];
@@ -80,15 +80,40 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
   const displayedNavLinks = role ? getNavLinksByRole(role) : [];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [localUser, setLocalUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // detectar el dispositivo 
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+    };
+  }, []);
 
   // Verificar si hay usuario autenticado
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem("user");
+      const userRole = localStorage.getItem("role");
+      const parsedUser = userData ? JSON.parse(userData) : null;
+
+      // Usar el prop si existe, sino usar el localStorage
+      const currentUser = propUser || parsedUser;
+      setLocalUser(propUser || parsedUser);
+
     // Solo acceder a localStorage en el cliente
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem("user");
       const userRole = localStorage.getItem("role");
       const parsedUser = userData ? JSON.parse(userData) : null;
-      
+
       // Usar el prop si existe, sino usar el localStorage
       const currentUser = propUser || parsedUser;
       setLocalUser(propUser || parsedUser);
@@ -103,11 +128,56 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
       // Determinar el rol
       const currentRole = userRole || (parsedUser?.role ? parsedUser.role : null);
       setRole(currentRole);
+      setLoading(false);
     }
   }, [propUser, disableAuthCheck]);
 
   if (!localUser) {
     return null; // O un loading spinner si prefieres
+  }
+
+  if (loading) {
+    return (
+      <header className="w-full bg-[#24356B] shadow-sm animate-pulse">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* NAV */}
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              {/* Logo skeleton */}
+              <div className="h-6 w-40 bg-gray-400 rounded-md"></div>
+            </div>
+
+            {/* Desktop Navigation skeleton */}
+            <nav className="hidden md:flex items-center space-x-6">
+              {[1, 2, 3, 4].map((item) => (
+                <div
+                  key={item}
+                  className="h-4 w-20 bg-gray-400 rounded"
+                ></div>
+              ))}
+              {/* User skeleton */}
+              <div className="h-8 w-8 bg-gray-400 rounded-full"></div>
+            </nav>
+
+            {/* Mobile Menu Button skeleton */}
+            <div className="md:hidden">
+              <div className="h-6 w-6 bg-gray-400 rounded"></div>
+            </div>
+          </div>
+
+          {/* BREADCRUMB skeleton */}
+          <nav className="text-sm text-white py-2">
+            <div className="flex space-x-2">
+              <div className="h-4 w-16 bg-gray-400 rounded"></div>
+              <div className="h-4 w-4 bg-gray-400 rounded"></div>
+              <div className="h-4 w-24 bg-gray-400 rounded"></div>
+              <div className="h-4 w-4 bg-gray-400 rounded"></div>
+              <div className="h-4 w-32 bg-gray-400 rounded"></div>
+            </div>
+          </nav>
+        </div>
+      </header>
+    );
   }
 
   return (
@@ -135,7 +205,7 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
           </nav>
 
           {/* Mobile Menu Button */}
-         
+
           <button
             className="md:hidden text-white focus:outline-none"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -162,7 +232,7 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
             </svg>
           </button>
           {/* user wellcome and logout mobile  */}
-          
+
         </div>
 
         {/* Mobile Menu */}
@@ -199,8 +269,8 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
                     <Link
                       href={href}
                       className={`hover:underline ${idx === breadcrumbs.length - 1
-                          ? "text-yellow-300"
-                          : "text-gray-300"
+                        ? "text-yellow-300"
+                        : "text-gray-300"
                         }`}
                     >
                       {decodeURIComponent(name)}
