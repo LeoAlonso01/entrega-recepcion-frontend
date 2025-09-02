@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Search, Building2, Mail } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,27 @@ interface Usuario {
   role: "USER" | "ADMIN" | "AUDITOR"
   is_deleted?: boolean // Optional property for soft delete
   created_at: string
+}
+
+interface Unidad {
+  id_unidad: number;
+  nombre: string;
+  telefono: string;
+  domicilio: string;
+  municipio: string;
+  localidad: string;
+  codigo_postal: string;
+  rfc: string;
+  correo_electronico: string;
+  tipo_unidad: string;
+  responsable: { id: number; username: string } | null;
+  fecha_creacion: string;
+}
+
+interface AsignarResponsableModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  // onConfirm: (responsableId: number) => void;
 }
 
 const exportUsersToPDF = (usuarios: Usuario[], title = "Reporte de Usuarios") => {
@@ -116,13 +138,24 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
 }
 
 export default function AdministracionPage(user: { role: string } | null) {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([
-  ])
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   // Estados para el manejo del diálogo y formulario
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [error, setError] = useState<Error | null>(null)
+  const [unidadesOriginales, setUnidadesOriginales] = useState<Unidad[]>([]);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [pendingAssignment, setPendingAssignment] = useState<{
+    unidadId: number;
+    unidadNombre: string;
+    usuarioId: number;
+    usuarioNombre: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true)
-  const [isDeliting, setIsDeleting] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [searchUser, setSearchUser] = useState<string>("")
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
   const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
   const [formData, setFormData] = useState<{
@@ -136,6 +169,8 @@ export default function AdministracionPage(user: { role: string } | null) {
     password: "",
     role: "",
   })
+  const [unidades, setUnidades] = useState<Unidad[]>([]);
+  const [loadingUnidades, setLoadingUnidades] = useState(true);
   const router = useRouter()
 
   const handleGetUsers = async () => {
@@ -176,13 +211,40 @@ export default function AdministracionPage(user: { role: string } | null) {
 
   }
 
+
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (!token) {
       router.push("/")
     }
+
     // Obtener los usuarios desde la API
     handleGetUsers();
+
+    // Obtener unidades
+    const handleGetUnidades = async () => {
+      try {
+        const response = await fetch(`${API_URL}/unidades_responsables`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) throw new Error("Error al obtener las unidades");
+
+        const data: Unidad[] = await response.json();
+        setUnidades(data);
+        console.log("Unidades obtenidas:", data);
+        setLoadingUnidades(false);
+      } catch (error) {
+        console.error("Error al obtener unidades:", error);
+        toast.error("No se pudieron cargar las unidades");
+        setLoadingUnidades(false);
+      }
+    };
+
+    handleGetUnidades();
   }, [router])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -243,6 +305,8 @@ export default function AdministracionPage(user: { role: string } | null) {
     toast.success("Usuario eliminado correctamente.")
 
   }
+
+
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
@@ -413,103 +477,267 @@ export default function AdministracionPage(user: { role: string } | null) {
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Exportar Excel
             </Button>
+            <Button
+              style={{ backgroundColor: "#24356B", color: "white" }}
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Building2 className="h-4 w-4 mr-2" />
+              Asignar Responsables
+            </Button>
           </div>
         </div>
 
         {isLoading ? (
-              <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48 mb-2" />
-          <Skeleton className="h-4 w-72" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="flex items-center space-x-4">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-32 rounded-md" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-        )
-        :(
           <Card>
-          <CardHeader>
-            <CardTitle>Lista de Usuarios</CardTitle>
-            <CardDescription>Gestiona los usuarios registrados en el sistema</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Rol</TableHead>
-                  {/* <TableHead>Estado</TableHead> */}
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usuarios.map((usuario) => (
-                  <TableRow key={usuario.id}>
-                    <TableCell className="font-medium">{usuario.username}</TableCell>
-                    <TableCell>{usuario.email}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          usuario.role === "ADMIN"
-                            ? "default"
-                            : usuario.role === "AUDITOR"
-                            ? "outline"
-                            : "secondary"
-                        }
-                        className="capitalize">
-                        {usuario.role === "ADMIN" ? "Administrador" : ""}
-                        {usuario.role === "AUDITOR" ? "Auditor" : ""}
-                        {usuario.role === "USER" ? "Usuario" : ""}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-
-                        {/* Botón para ver detalles de los  usuarios */}
-                        <Link href={`/dashboard/administracion/usuarios/${usuario.id}`}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-1 hover:bg-blue-50 hover:text-blue-600"
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">Ver detalles</span>
-                          </Button>
-                        </Link>
-                        {/* Botón para activar/desactivar usuarios */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsDeleting(true)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-72" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-32 rounded-md" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )
+          : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Lista de Usuarios</CardTitle>
+                <CardDescription>Gestiona los usuarios registrados en el sistema</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Usuario</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Rol</TableHead>
+                      {/* <TableHead>Estado</TableHead> */}
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usuarios.map((usuario) => (
+                      <TableRow key={usuario.id}>
+                        <TableCell className="font-medium">{usuario.username}</TableCell>
+                        <TableCell>{usuario.email}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              usuario.role === "ADMIN"
+                                ? "default"
+                                : usuario.role === "AUDITOR"
+                                  ? "outline"
+                                  : "secondary"
+                            }
+                            className="capitalize">
+                            {usuario.role === "ADMIN" ? "Administrador" : ""}
+                            {usuario.role === "AUDITOR" ? "Auditor" : ""}
+                            {usuario.role === "USER" ? "Usuario" : ""}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+
+                            {/* Botón para ver detalles de los  usuarios */}
+                            <Link href={`/dashboard/administracion/usuarios/${usuario.id}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-1 hover:bg-blue-50 hover:text-blue-600"
+                              >
+                                <Eye className="h-4 w-4" />
+                                <span className="sr-only">Ver detalles</span>
+                              </Button>
+                            </Link>
+                            {/* Botón para activar/desactivar usuarios */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setIsDeleting(true)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )
         }
-        {/* componente para eliminar usuarios (sift delete) */}
+
+
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="sm:max-w-4xl max-h-96 overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Asignar Responsable a Unidad</DialogTitle>
+              <DialogDescription>
+                Asigna un usuario como responsable de una unidad responsable.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4 max-h-64 overflow-y-auto">
+              {loadingUnidades ? (
+                <p>Cargando unidades...</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Unidad</TableHead>
+                      <TableHead>Contacto</TableHead>
+                      <TableHead>Responsable Actual</TableHead>
+                      <TableHead>Asignar Nuevo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unidades.map((unidad) => (
+                      <TableRow key={unidad.id_unidad}>
+                        <TableCell className="font-medium">{unidad.nombre}</TableCell>
+                        <TableCell>
+                          <div>{unidad.correo_electronico}</div>
+                          <div className="text-sm text-gray-500">{unidad.telefono}</div>
+                        </TableCell>
+                        <TableCell>
+                          {unidad.responsable ? (
+                            <Badge variant="default">
+                              {unidad.responsable.username}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Sin asignar</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            onValueChange={async (value) => {
+                              const usuarioId = parseInt(value);
+                              const usuario = usuarios.find((u) => u.id === usuarioId);
+
+                              // guardamos la asignacion pendiente
+                              setPendingAssignment({
+                                unidadId: unidad.id_unidad,
+                                unidadNombre: unidad.nombre,
+                                usuarioId,
+                                usuarioNombre: usuario?.username || "",
+                              });
+
+                              // abrimos el modal de confirmacion
+                              setIsConfirmOpen(true);
+
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar usuario" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {usuarios.map((usuario) => (
+                                <SelectItem key={usuario.id} value={usuario.id.toString()}>
+                                  {usuario.username} ({usuario.email})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Confirmación */}
+        <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirmar Asignación</DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro de que deseas asignar a <strong>{pendingAssignment?.usuarioNombre}</strong> como responsable de{" "}
+                <strong>{pendingAssignment?.unidadNombre}</strong>?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-end">
+              <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                style={{ backgroundColor: "#24356B", color: "white" }}
+                onClick={async () => {
+                  if (!pendingAssignment) return;
+
+                  const { unidadId, usuarioId } = pendingAssignment;
+
+                  try {
+                    const res = await fetch(
+                      `${API_URL}/unidades_responsables/${unidadId}/asignar-responsable`,
+                      {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ usuario_id: usuarioId }),
+                      }
+                    );
+
+                    if (!res.ok) throw new Error("Error al asignar");
+
+                    const data = await res.json();
+                    toast.success(
+                      `✅ ${data.unidad.responsable_nombre} asignado a ${data.unidad.nombre}`
+                    );
+
+                    // Actualizar estado local
+                    setUnidades((prev) =>
+                      prev.map((u) =>
+                        u.id_unidad === unidadId
+                          ? {
+                            ...u,
+                            responsable: {
+                              id: usuarioId,
+                              username: usuarios.find((u) => u.id === usuarioId)!.username,
+                            },
+                          }
+                          : u
+                      )
+                    );
+
+                    // Cerrar modales
+                    setIsConfirmOpen(false);
+                    // Opcional: cerrar el modal principal después de asignar
+                    // setIsModalOpen(false);
+                  } catch (error) {
+                    toast.error("No se pudo asignar el responsable");
+                    setIsConfirmOpen(false);
+                  }
+                }}
+              >
+                Confirmar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
+        {/* componente para eliminar usuarios (soft delete) */}
         {/* Aquí podrías agregar un componente para manejar la eliminación suave de usuarios si es necesario */}
-        <Dialog open={isDeliting} onOpenChange={setIsDeleting}>
+        <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Eliminar Usuario</DialogTitle>
@@ -542,6 +770,7 @@ export default function AdministracionPage(user: { role: string } | null) {
     </div>
   )
 }
+
 
 
 

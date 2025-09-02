@@ -1888,7 +1888,6 @@ export default function AnexosPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Clave</TableHead>
-                            <TableHead>Categoría</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead>Fecha</TableHead>
                             <TableHead>Acciones</TableHead>
@@ -1897,12 +1896,7 @@ export default function AnexosPage() {
                         <TableBody>
                           {anexos.map((anexo) => (
                             <TableRow key={anexo.id}>
-                              <TableCell className="font-medium">{anexo.clave}</TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(anexo.categoria)}`}>
-                                  {anexo.categoria}
-                                </span>
-                              </TableCell>
+                              <TableCell className="font-medium">{anexo.clave}</TableCell>  
                               <TableCell>
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(anexo.estado)}`}>
                                   {anexo.estado}
@@ -2053,147 +2047,163 @@ export default function AnexosPage() {
                           </Label>
 
                           {/** Condición para mostrar mensaje de archivo PDF requerido */}
-                          {watch("clave") && requierePDF(watch("clave")) ? (
-                            <p className="text-sm text-gray-500">
-                              Este anexo requiere un archivo PDF.
-                            </p>
+                          {requierePDF(watch("clave")) ? (
+                            <div className="space-y-4">
+                              <p className="text-sm text-gray-600">
+                                Este anexo requiere un archivo PDF.
+                              </p>
+                              <PdfUploader
+                                onUploadSuccess={(fileUrl) => {
+                                  const datosPDF = { pdf_url: fileUrl };
+                                  setDatos([datosPDF]);
+                                  setValue("datos", datosPDF);
+                                  toast.success("✅ PDF subido correctamente");
+                                }}
+                              />
+                              {datos.length > 0 && datos[0]?.pdf_url && (
+                                <div className="mt-4">
+
+                                  <p className="text-sm text-gray-600">PDF cargado:</p>
+                                  <a
+                                    href={datos[0].pdf_url}
+                                    target="_blank"
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    Ver documento
+                                  </a>
+                                </div>
+                              )}
+                            </div>
                           ) : (
-                            <p className="text-sm text-gray-500">
-                              Este anexo no requiere un archivo PDF.
-                            </p>
+                            <>
+                              <p className="text-sm text-gray-500">
+                                Este anexo requiere un archivo excel o carga manual.
+                              </p>
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span>Tabla de datos</span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const estructura = EstructuraDatosPorClave[watch("clave")] || [];
+                                      const nuevaFila: Record<string, any> = {};
+                                      estructura.forEach(campo => nuevaFila[campo] = "");
+                                      const nuevas = [...datos, nuevaFila];
+                                      setDatos(nuevas);
+                                      setValue("datos", nuevas);
+                                    }}
+                                  >
+                                    + Agregar fila
+                                  </Button>
+                                </div>
+
+                                {datos.length === 0 ? (
+                                  <p className="text-sm text-gray-500">
+                                    No hay datos. Usa Excel o agrega manualmente.
+                                  </p>
+                                ) : (
+                                  <table className="min-w-full border border-gray-300 rounded-md text-sm">
+                                    <thead>
+                                      <tr className="bg-gray-50">
+                                        {Object.keys(datos[0]).map((key) => (
+                                          <th
+                                            key={key}
+                                            className="border px-2 py-1 font-semibold"
+                                          >
+                                            {key}
+                                          </th>
+                                        ))}
+                                        <th className="border px-2 py-1 font-semibold">
+                                          Acciones
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {datos.map((fila, i) => (
+                                        <tr key={i}>
+                                          {Object.keys(fila).map((campo) => (
+                                            <td key={campo} className="border px-2 py-1">
+                                              <input
+                                                type="text"
+                                                value={fila[campo]}
+                                                onChange={(e) => {
+                                                  const nuevas = [...datos];
+                                                  nuevas[i][campo] = e.target.value;
+                                                  setDatos(nuevas);
+                                                  setValue("datos", nuevas);
+                                                }}
+                                                className="w-full p-1 border rounded"
+                                              />
+                                            </td>
+                                          ))}
+                                          <td className="border px-2 py-1">
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              className="text-red-500"
+                                              onClick={() => {
+                                                const nuevas = datos.filter(
+                                                  (_, index) => index !== i
+                                                );
+                                                setDatos(nuevas);
+                                                setValue("datos", nuevas);
+                                              }}
+                                            >
+                                              Eliminar
+                                            </Button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+                              <div>
+                                <ExcelUploader
+                                  onUploadSuccess={(excelData) => {
+                                    const clave = watch("clave");
+                                    const estructura =
+                                      EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default;
+
+                                    if (estructura.length > 0 && excelData.length > 0) {
+                                      const columnasExcel = Object.keys(excelData[0]);
+                                      const faltantes = estructura.filter(
+                                        (campo) => !columnasExcel.includes(campo)
+                                      );
+                                      const extras = columnasExcel.filter(
+                                        (campo) => !estructura.includes(campo)
+                                      );
+
+                                      if (faltantes.length > 0) {
+                                        toast.warning(
+                                          `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
+                                          { duration: 5000 }
+                                        );
+                                      }
+                                      if (extras.length > 0) {
+                                        toast.warning(
+                                          `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
+                                          { duration: 5000 }
+                                        );
+                                      }
+                                    }
+
+                                    setDatos(excelData);
+                                    setValue("datos", excelData);
+                                    toast.success(`✅ Excel cargado: ${excelData.length} filas`);
+                                  }}
+                                />
+                              </div>
+                            </>
                           )}
 
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span>Tabla de datos</span>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const nuevaFila: Record<string, any> = {
-                                    "Numero de empleado": "",
-                                    "nombre": "",
-                                    "RFC": "",
-                                    "Plaza (categoria)": "",
-                                    "Tipo de encargo": "",
-                                    "Fecha de ingreso": "",
-                                    "Sueldo": "",
-                                    "Otras percepciones": "",
-                                    "Total": "",
-                                    "Unidad de Adscripcion": "",
-                                    "Área laboral": "",
-                                    "Estatus: Base, Apoyo, Comisionado": "",
-                                  };
-                                  const nuevas = [...datos, nuevaFila];
-                                  setDatos(nuevas);
-                                  setValue("datos", nuevas);
-                                }}
-                              >
-                                + Agregar fila
-                              </Button>
-                            </div>
 
-                            {datos.length === 0 ? (
-                              <p className="text-sm text-gray-500">
-                                No hay datos. Usa Excel o agrega manualmente.
-                              </p>
-                            ) : (
-                              <table className="min-w-full border border-gray-300 rounded-md text-sm">
-                                <thead>
-                                  <tr className="bg-gray-50">
-                                    {Object.keys(datos[0]).map((key) => (
-                                      <th
-                                        key={key}
-                                        className="border px-2 py-1 font-semibold"
-                                      >
-                                        {key}
-                                      </th>
-                                    ))}
-                                    <th className="border px-2 py-1 font-semibold">
-                                      Acciones
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {datos.map((fila, i) => (
-                                    <tr key={i}>
-                                      {Object.keys(fila).map((campo) => (
-                                        <td key={campo} className="border px-2 py-1">
-                                          <input
-                                            type="text"
-                                            value={fila[campo]}
-                                            onChange={(e) => {
-                                              const nuevas = [...datos];
-                                              nuevas[i][campo] = e.target.value;
-                                              setDatos(nuevas);
-                                              setValue("datos", nuevas);
-                                            }}
-                                            className="w-full p-1 border rounded"
-                                          />
-                                        </td>
-                                      ))}
-                                      <td className="border px-2 py-1">
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-red-500"
-                                          onClick={() => {
-                                            const nuevas = datos.filter(
-                                              (_, index) => index !== i
-                                            );
-                                            setDatos(nuevas);
-                                            setValue("datos", nuevas);
-                                          }}
-                                        >
-                                          Eliminar
-                                        </Button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            )}
-                          </div>
 
                           {/* Subida de Excel */}
-                          <div>
-                            <ExcelUploader
-                              onUploadSuccess={(excelData) => {
-                                const clave = watch("clave");
-                                const estructura =
-                                  EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default;
 
-                                if (estructura.length > 0 && excelData.length > 0) {
-                                  const columnasExcel = Object.keys(excelData[0]);
-                                  const faltantes = estructura.filter(
-                                    (campo) => !columnasExcel.includes(campo)
-                                  );
-                                  const extras = columnasExcel.filter(
-                                    (campo) => !estructura.includes(campo)
-                                  );
-
-                                  if (faltantes.length > 0) {
-                                    toast.warning(
-                                      `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
-                                      { duration: 5000 }
-                                    );
-                                  }
-                                  if (extras.length > 0) {
-                                    toast.warning(
-                                      `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
-                                      { duration: 5000 }
-                                    );
-                                  }
-                                }
-
-                                setDatos(excelData);
-                                setValue("datos", excelData);
-                                toast.success(`✅ Excel cargado: ${excelData.length} filas`);
-                              }}
-                            />
-                          </div>
                         </div>
                       )}
                     </div>
