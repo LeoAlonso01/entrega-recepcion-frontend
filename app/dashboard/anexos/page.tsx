@@ -1010,6 +1010,9 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
   // Documentación y Archivo
   DA01: ["sistema", "frecuencia", "ultimo_respaldo", "responsable"],
   DA02: ["titulo", "autor", "tipo", "ubicacion"],
+  DA03: ["tipo", "descripcion", "fecha_inicio", "fecha_fin", "responsable"],
+  DA04: ["tipo", "descripcion", "fecha_inicio", "fecha_fin", "responsable"],
+  DA05: ["tipo", "descripcion", "fecha_inicio", "fecha_fin", "responsable"],
   DA07: ["expediente", "proyecto", "ubicacion", "responsable"],
 
   // Asuntos Legales

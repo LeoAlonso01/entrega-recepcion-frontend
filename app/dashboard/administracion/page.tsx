@@ -4,6 +4,11 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -33,6 +38,26 @@ import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { Eye } from "lucide-react"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
+
+type AsignationForm = {
+  asignation: Record<string, string>; // {"unidadId": "userId"}
+}
+
+type CreateUserForm = {
+  username: string;
+  email: string;
+  password: string;
+  role: "USER" | "ADMIN" | "AUDITOR";
+  asignaciones?: Record<string, string>;
+}
+
+// Esquema de validación
+const userSchema = z.object({
+  username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres"),
+  email: z.string().email("Email inválido"),
+  password: z.string().optional().or(z.literal("")),
+  role: z.enum(["USER", "ADMIN", "AUDITOR"], { message: "Rol inválido" }),
+});
 
 interface Usuario {
   id: number
@@ -145,6 +170,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<Error | null>(null)
   const [unidadesOriginales, setUnidadesOriginales] = useState<Unidad[]>([]);
+  const [isModalLoading, setIsModalLoading] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState<{
     unidadId: number;
@@ -172,6 +198,22 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [unidades, setUnidades] = useState<Unidad[]>([]);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
   const router = useRouter()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    control,
+    setValue,
+  } = useForm<CreateUserForm>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+      role: "USER",
+    },
+  });
 
   const handleGetUsers = async () => {
     // llamada a la api
@@ -247,54 +289,55 @@ export default function AdministracionPage(user: { role: string } | null) {
     handleGetUnidades();
   }, [router])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleCreateUser: SubmitHandler<CreateUserForm> = (data) => {
     if (editingUsuario) {
+      // Edición
       setUsuarios(
         usuarios.map((usuario) =>
           usuario.id === editingUsuario.id
-            ? { ...usuario, username: formData.username, email: formData.email, role: formData.role as "USER" | "ADMIN" | "AUDITOR" }
-            : usuario,
-        ),
-      )
+            ? {
+              ...usuario,
+              username: data.username,
+              email: data.email,
+              role: data.role,
+            }
+            : usuario
+        )
+      );
+      toast.success("Usuario actualizado correctamente");
     } else {
+      // Creación
       const newUsuario: Usuario = {
-        // Generate a new unique ID
-        id: usuarios.length > 0 ? Math.max(...usuarios.map(u => u.id)) + 1 : 1, // Generate a new unique ID
-        username: formData.username,
-        email: formData.email,
-        role: formData.role as "USER" | "ADMIN" | "AUDITOR",
-        is_deleted: false, // Default value for new users
+        id: usuarios.length > 0 ? Math.max(...usuarios.map((u) => u.id)) + 1 : 1,
+        username: data.username,
+        email: data.email,
+        role: data.role,
+        is_deleted: false,
         created_at: new Date().toISOString().split("T")[0],
-      }
-      setUsuarios([...usuarios, newUsuario])
+      };
+      setUsuarios([...usuarios, newUsuario]);
+      toast.success("Usuario creado correctamente");
     }
 
-    resetForm()
-  }
+    resetForm();
+  };
 
   const resetForm = () => {
-    setFormData({
-      username: "",
-      email: "",
-      password: "",
-      role: "",
-    })
-    setEditingUsuario(null)
-    setIsDialogOpen(false)
-  }
+    reset(); // ← Limpia el estado de react-hook-form
+    setEditingUsuario(null);
+    setIsDialogOpen(false);
+  };
 
   const handleEdit = (usuario: Usuario) => {
-    setEditingUsuario(usuario)
-    setFormData({
+    setEditingUsuario(usuario);
+    reset({
       username: usuario.username,
       email: usuario.email,
-      password: "",
       role: usuario.role,
-    })
-    setIsDialogOpen(true)
-  }
+      password: "", // No se puede editar la contraseña aquí
+    });
+    setIsDialogOpen(true);
+  };
 
   const handleDelete = (id: number) => {/* 
     if (confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
@@ -374,6 +417,7 @@ export default function AdministracionPage(user: { role: string } | null) {
             <p className="text-gray-600">Administra los usuarios del sistema</p>
           </div>
 
+          {/** Botón para agregar un nuevo usuario */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button style={{ backgroundColor: "#751518", color: "white" }}>
@@ -390,62 +434,81 @@ export default function AdministracionPage(user: { role: string } | null) {
                     : "Completa la información para crear un nuevo usuario"}
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit}>
+
+              <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4">
                 <div className="grid gap-4 py-4">
+                  {/* Nombre de usuario */}
                   <div className="space-y-2">
                     <Label htmlFor="username">Nombre de Usuario</Label>
                     <Input
                       id="username"
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      {...register("username")}
                       placeholder="usuario123"
-                      required
                     />
+                    {errors.username && (
+                      <p className="text-sm text-red-600">{errors.username.message}</p>
+                    )}
                   </div>
 
+                  {/* Email */}
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      {...register("email")}
                       placeholder="usuario@ejemplo.com"
-                      required
                     />
+                    {errors.email && (
+                      <p className="text-sm text-red-600">{errors.email.message}</p>
+                    )}
                   </div>
 
+                  {/* Contraseña (solo en creación) */}
                   {!editingUsuario && (
                     <div className="space-y-2">
                       <Label htmlFor="password">Contraseña</Label>
                       <Input
                         id="password"
                         type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        {...register("password")}
                         placeholder="••••••••"
-                        required
                       />
+                      {errors.password && (
+                        <p className="text-sm text-red-600">{errors.password.message}</p>
+                      )}
                     </div>
                   )}
 
+                  {/* Rol */}
                   <div className="space-y-2">
                     <Label htmlFor="role">Rol</Label>
-                    <Select
-                      value={formData.role}
-                      onValueChange={(value: any) => setFormData({ ...formData, role: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona el rol" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USER">Usuario</SelectItem>
-                        <SelectItem value="ADMIN">Administrador</SelectItem>
-                        <SelectItem value="AUDITOR">Auditor</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      name="role"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          defaultValue={field.value}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona el rol" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USER">Usuario</SelectItem>
+                            <SelectItem value="ADMIN">Administrador</SelectItem>
+                            <SelectItem value="AUDITOR">Auditor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.role && (
+                      <p className="text-sm text-red-600">{errors.role.message}</p>
+                    )}
                   </div>
                 </div>
+
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={resetForm}>
                     Cancelar
@@ -459,7 +522,7 @@ export default function AdministracionPage(user: { role: string } | null) {
           </Dialog>
 
           <div className="flex space-x-2">
-
+            {/** Botón para agregar un nuevo usuario */}
             <Button
               variant="outline"
               onClick={() => exportUsersToPDF(usuarios)}
@@ -468,7 +531,7 @@ export default function AdministracionPage(user: { role: string } | null) {
               <FileText className="h-4 w-4 mr-2" />
               Exportar PDF
             </Button>
-
+            {/** Botón para agregar un nuevo usuario */}
             <Button
               variant="outline"
               onClick={() => exportUsersToExcel(usuarios)}
@@ -477,16 +540,33 @@ export default function AdministracionPage(user: { role: string } | null) {
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Exportar Excel
             </Button>
+            {/** Botón para asignar usuario a unidad responsable */}
             <Button
               style={{ backgroundColor: "#24356B", color: "white" }}
-              onClick={() => setIsModalOpen(true)}
+              onClick={async () => {
+                setIsModalLoading(true);
+                setIsModalOpen(true);
+
+                // Simula una pequeña carga (opcional, si hay mucho contenido)
+                await new Promise((resolve) => setTimeout(resolve, 200));
+                setIsModalLoading(false);
+              }}
             >
-              <Building2 className="h-4 w-4 mr-2" />
-              Asignar Responsables
+              {isModalLoading ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  <span className="ml-2">Cargando...</span>
+                </>
+              ) : (
+                <>
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Asignar Responsables
+                </>
+              )}
             </Button>
           </div>
         </div>
-
+        {/** Aquí va el contenido adicional */}
         {isLoading ? (
           <Card>
             <CardHeader>
@@ -506,6 +586,7 @@ export default function AdministracionPage(user: { role: string } | null) {
           </Card>
         )
           : (
+            // Card donde estan los usuarios
             <Card>
               <CardHeader>
                 <CardTitle>Lista de Usuarios</CardTitle>
@@ -579,7 +660,7 @@ export default function AdministracionPage(user: { role: string } | null) {
           )
         }
 
-
+        {/** Asignacion de usuario cambiar a useForm */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="sm:max-w-4xl max-h-96 overflow-hidden">
             <DialogHeader>
@@ -589,10 +670,25 @@ export default function AdministracionPage(user: { role: string } | null) {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-4 max-h-64 overflow-y-auto">
-              {loadingUnidades ? (
-                <p>Cargando unidades...</p>
-              ) : (
+            {/* Spinner o Skeleton */}
+            {isModalLoading ? (
+              <div className="py-4 space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex space-x-4 items-center">
+                    <div className="w-1/3">
+                      <Skeleton className="h-4" />
+                    </div>
+                    <div className="w-1/4">
+                      <Skeleton className="h-4" />
+                    </div>
+                    <div className="w-1/4">
+                      <Skeleton className="h-10" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-4 max-h-64 overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -620,46 +716,64 @@ export default function AdministracionPage(user: { role: string } | null) {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Select
-                            onValueChange={async (value) => {
-                              const usuarioId = parseInt(value);
-                              const usuario = usuarios.find((u) => u.id === usuarioId);
-
-                              // guardamos la asignacion pendiente
-                              setPendingAssignment({
-                                unidadId: unidad.id_unidad,
-                                unidadNombre: unidad.nombre,
-                                usuarioId,
-                                usuarioNombre: usuario?.username || "",
-                              });
-
-                              // abrimos el modal de confirmacion
-                              setIsConfirmOpen(true);
-
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccionar usuario" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {usuarios.map((usuario) => (
-                                <SelectItem key={usuario.id} value={usuario.id.toString()}>
-                                  {usuario.username} ({usuario.email})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Controller
+                            name={`asignaciones.${unidad.id_unidad}`}
+                            control={control}
+                            render={({ field }) => (
+                              <Select
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  const usuarioId = parseInt(value);
+                                  const usuario = usuarios.find((u) => u.id === usuarioId);
+                                  setPendingAssignment({
+                                    unidadId: unidad.id_unidad,
+                                    unidadNombre: unidad.nombre,
+                                    usuarioId,
+                                    usuarioNombre: usuario?.username || "",
+                                  });
+                                  setIsConfirmOpen(true);
+                                }}
+                                value={field.value}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Seleccionar usuario" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {usuarios.map((usuario) => (
+                                    <SelectItem key={usuario.id} value={usuario.id.toString()}>
+                                      {usuario.username} ({usuario.email})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              )}
-            </div>
+              </div>
+            )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                Cerrar
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Si está cargando, no se puede cerrar hasta que termine
+                  if (isModalLoading) return;
+                  setIsModalOpen(false);
+                }}
+                disabled={isModalLoading}
+              >
+                {isModalLoading ? (
+                  <span className="flex items-center">
+                    <span className="animate-spin mr-2">⏳</span>
+                    Procesando...
+                  </span>
+                ) : (
+                  "Cancelar"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
