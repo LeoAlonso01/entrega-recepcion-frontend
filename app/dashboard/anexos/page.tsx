@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
 
 import FMJList from "@/components/forms/MarcoJuridico/FMJList"
+import { validarEstructuraExcel } from "@/lib/valildaciones"
 // import '@react-pdf-viewer/core/lib/styles/index.css';
 // import { Viewer } from '@react-pdf-viewer/core';
 
@@ -131,6 +132,14 @@ export interface Anexo {
   datos: Record<string, any>   // o simplemente `any` si prefieres
   estado: string
   unidad_responsable_id: number
+}
+
+// funcion para validar clave
+// Debe estar dentro del componente o recibir anexos y userid como argumentos
+function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number): boolean {
+  if (!clave || !anexos || !userid) return false;
+
+  return anexos.some(anexo => anexo.clave === clave && anexo.creador_id === userid);
 }
 
 const getAnexos = async () => {
@@ -1768,36 +1777,37 @@ export default function AnexosPage() {
                               <label htmlFor="excel-uploader">Subir Excel</label>
                               <ExcelUploader
                                 onUploadSuccess={(excelData) => {
-                                  const clave = watch("clave");
-                                  const estructura = EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default;
+                                  const clave = watch("clave")
+                                  const estructura = EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default
 
                                   if (estructura.length > 0 && excelData.length > 0) {
-                                    const columnasExcel = Object.keys(excelData[0]);
-                                    const faltantes = estructura.filter(campo => !columnasExcel.includes(campo));
-                                    const extras = columnasExcel.filter(campo => !estructura.includes(campo));
+                                    const columnasExcel = Object.keys(excelData[0])
+                                    const faltantes = estructura.filter(campo => !columnasExcel.includes(campo))
+                                    const extras = columnasExcel.filter(campo => !estructura.includes(campo))
 
                                     if (faltantes.length > 0) {
                                       toast.warning(
                                         `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
                                         { duration: 5000 }
-                                      );
+                                      )
                                     };
                                     if (extras.length > 0) {
                                       toast.warning(
                                         `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
                                         { duration: 5000 }
-                                      );
+                                      )
                                     }
 
-                                    setRows(excelData);
-                                    setValue("datos", excelData); // sincroniza con RHF
+                                    setRows(excelData)
+                                    setValue("datos", excelData) // sincroniza con RHF
                                     setFormData((prev) => ({
                                       ...prev,
                                       datos: excelData, // esto sincroniza directamente con formData
-                                    }));
+                                    }))
                                   }
-                                }}
-                              />
+                                }} onUploadError={function (error: string): void {
+                                  throw new Error("Function not implemented.")
+                                }} />
                             </div>
                           )}
 
@@ -1951,10 +1961,10 @@ export default function AnexosPage() {
                     {/* Clave del Anexo */}
                     <div className="space-y-2 col-span-6 grid-cols-3">
                       <Label>Clave del Anexo</Label>
-                      <div className="text-sm text-gray-500 mb-1">
+                      <div className="text-sm text-gray-500 border border-gray-300 mb-1 ">
                         <select
                           {...register("clave", { required: "Clave es obligatoria" })}
-                          className="w-full p-2 sm:p-2 md:p-2 border border-gray-300 "
+                          className="w-full text-sm p-2 sm:p-2 md:p-2 border border-gray-300 "
                           onChange={(e) => {
                             const clave = e.target.value;
                             setValue("clave", clave);
@@ -2085,6 +2095,7 @@ export default function AnexosPage() {
                               <div>
                                 <div className="flex justify-between items-center mb-2">
                                   <span>Tabla de datos</span>
+                                  {/** Botón para agregar fila manualmente */}
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -2097,6 +2108,8 @@ export default function AnexosPage() {
                                       setDatos(nuevas);
                                       setValue("datos", nuevas);
                                     }}
+                                    disabled={watch("clave") === ""} // Deshabilitar si no hay clave seleccionada
+                                    className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
                                   >
                                     + Agregar fila
                                   </Button>
@@ -2144,7 +2157,7 @@ export default function AnexosPage() {
                                           <td className="border px-2 py-1">
                                             <Button
                                               type="button"
-                                              variant="ghost"
+                                              variant="outline"
                                               size="sm"
                                               className="text-red-500"
                                               onClick={() => {
@@ -2166,37 +2179,49 @@ export default function AnexosPage() {
                               </div>
                               <div>
                                 <ExcelUploader
-                                  onUploadSuccess={(excelData) => {
+                                  onUploadSuccess={async (excelData) => {
                                     const clave = watch("clave");
-                                    const estructura =
-                                      EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default;
-
-                                    if (estructura.length > 0 && excelData.length > 0) {
-                                      const columnasExcel = Object.keys(excelData[0]);
-                                      const faltantes = estructura.filter(
-                                        (campo) => !columnasExcel.includes(campo)
-                                      );
-                                      const extras = columnasExcel.filter(
-                                        (campo) => !estructura.includes(campo)
-                                      );
-
-                                      if (faltantes.length > 0) {
-                                        toast.warning(
-                                          `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
-                                          { duration: 5000 }
-                                        );
-                                      }
-                                      if (extras.length > 0) {
-                                        toast.warning(
-                                          `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
-                                          { duration: 5000 }
-                                        );
-                                      }
+                                    if (!clave) {
+                                      toast.error("Por favor, proporciona una clave válida.");
+                                      return;
                                     }
 
+                                    if (yaTieneAnexoConClave(clave, anexos, userid)) {
+                                      toast.warning(`Ya tienes un anexo con la clave ${clave}. No es necesario subir uno más.
+                                        `);
+                                      return;
+                                    }
+
+                                    // 2. Validar estructura del Excel
+                                    const estructura = EstructuraDatosPorClave[clave];
+                                    if (!estructura) {
+                                      toast.error("Estructura no definida para esta clave");
+                                      return;
+                                    }
+
+                                    const { valido, errores } = validarEstructuraExcel(excelData, estructura);
+                                    if (!valido) {
+                                      toast.error(
+                                        <div>
+                                          <p>Errores en el archivo:</p>
+                                          <ul className="list-disc list-inside text-sm">
+                                            {errores.map((err, i) => (
+                                              <li key={i}>{err}</li>
+                                            ))}
+                                          </ul>
+                                        </div>,
+                                        { duration: 8000 }
+                                      );
+                                      return;
+                                    }
+
+                                    // 3. Todo valido -> procesar datos
                                     setDatos(excelData);
                                     setValue("datos", excelData);
                                     toast.success(`✅ Excel cargado: ${excelData.length} filas`);
+                                  }}
+                                  onUploadError={(error: string) => {
+                                    toast.error(`Error al subir el archivo: ${error}`);
                                   }}
                                 />
                               </div>

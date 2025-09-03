@@ -2,18 +2,26 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { FileSpreadsheet } from "lucide-react";
+import { validarNombredeArchivo } from "@/lib/valildaciones"; // Asegúrate del nombre correcto del archivo
 
 interface ExcelUploaderProps {
   onUploadSuccess: (rows: any[]) => void;
+  onUploadError?: (error: string) => void;
+  clave?: string;
 }
 
-const ExcelUploader = ({ onUploadSuccess }: ExcelUploaderProps) => {
+const ExcelUploader = ({ onUploadSuccess, onUploadError, clave }: ExcelUploaderProps) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      toast.error("Solo se permiten archivos Excel (.xlsx, .xls)");
+      const errorMsg = "Solo se permiten archivos Excel (.xlsx, .xls)";
+      setError(errorMsg);
+      onUploadError?.(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
@@ -29,19 +37,41 @@ const ExcelUploader = ({ onUploadSuccess }: ExcelUploaderProps) => {
           onUploadSuccess(json);
           toast.success(`✅ Excel cargado: ${json.length} filas`);
         } else {
-          toast.warning("El archivo está vacío o no tiene datos válidos.");
+          const errorMsg = "El archivo está vacío o no tiene datos válidos.";
+          setError(errorMsg);
+          onUploadError?.(errorMsg);
+          toast.warning(errorMsg);
         }
-      } catch (error) {
-        toast.error("Error al procesar el Excel");
-        console.error(error);
+      } catch (err) {
+        const errorMsg = "Error al procesar el Excel";
+        console.error(errorMsg, err);
+        setError(errorMsg);
+        onUploadError?.(errorMsg);
+        toast.error(errorMsg);
       }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (!file) return;
+
+    setFile(file);
+    setError(null);
+
+    // Validar nombre si hay clave
+    if (clave) {
+      const { valido, mensaje } = validarNombredeArchivo(file, clave);
+      if (!valido) {
+        setError(mensaje ?? "Nombre de archivo inválido");
+        toast.error(mensaje);
+        return;
+      }
+    }
+
+    // Procesar archivo
+    handleFile(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -57,15 +87,25 @@ const ExcelUploader = ({ onUploadSuccess }: ExcelUploaderProps) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    if (file) {
+      // Validar nombre si hay clave
+      if (clave) {
+        const { valido, mensaje } = validarNombredeArchivo(file, clave);
+        if (!valido) {
+          toast.error(mensaje);
+          return;
+        }
+      }
+      handleFile(file);
+    }
   };
 
   return (
     <div
       onDragOver={handleDragOver}
-      onClick={() => inputRef.current?.click()}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onClick={() => inputRef.current?.click()}
       className={`flex items-center space-x-2 bg-green-600 text-white py-2 px-4 rounded-md cursor-pointer w-fit hover:bg-green-700 transition ${
         isDragging ? "bg-green-800" : ""
       }`}
@@ -76,12 +116,12 @@ const ExcelUploader = ({ onUploadSuccess }: ExcelUploaderProps) => {
         ref={inputRef}
         type="file"
         accept=".xlsx, .xls"
-        onChange={handleChange}
+        onChange={handleFileChange}
         className="hidden"
       />
+      {error && <p className="text-sm text-red-200 mt-1">{error}</p>}
     </div>
   );
 };
 
 export default ExcelUploader;
-
