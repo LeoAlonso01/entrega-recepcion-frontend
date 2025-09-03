@@ -693,7 +693,6 @@ export default function AdministracionPage(user: { role: string } | null) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Unidad</TableHead>
-                      <TableHead>Contacto</TableHead>
                       <TableHead>Responsable Actual</TableHead>
                       <TableHead>Asignar Nuevo</TableHead>
                     </TableRow>
@@ -702,10 +701,6 @@ export default function AdministracionPage(user: { role: string } | null) {
                     {unidades.map((unidad) => (
                       <TableRow key={unidad.id_unidad}>
                         <TableCell className="font-medium">{unidad.nombre}</TableCell>
-                        <TableCell>
-                          <div>{unidad.correo_electronico}</div>
-                          <div className="text-sm text-gray-500">{unidad.telefono}</div>
-                        </TableCell>
                         <TableCell>
                           {unidad.responsable ? (
                             <Badge variant="default">
