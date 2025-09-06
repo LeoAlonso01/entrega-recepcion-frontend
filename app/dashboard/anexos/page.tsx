@@ -21,9 +21,11 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
-
+import { z } from "zod";
+import { inferirTipo } from "@/lib/inferirTipo"
 import FMJList from "@/components/forms/MarcoJuridico/FMJList"
-import { validarEstructuraExcel } from "@/lib/valildaciones"
+import { EstructuraDatosPorClave, CALVES_CON_PDF } from "@/lib/estructuraPorClave"
+import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
 // import '@react-pdf-viewer/core/lib/styles/index.css';
 // import { Viewer } from '@react-pdf-viewer/core';
 
@@ -211,6 +213,17 @@ const exportAnexosToPDF = (anexos: Anexo[], title = "Reporte de Anexos") => {
 
   doc.save(`anexos_reporte_${new Date().toISOString().split("T")[0]}.pdf`)
 }
+
+// validacion con zod
+const anexosSchema = z.object({
+  clave: z.string().min(1, "La clave es obligatoria"),
+  categoria: z.string(),
+  datos: z.array(z.record(z.any())).min(1, "Debe haber al menos una fila de datos"),
+  estado: z.string(),
+  fecha_creacion: z.string().datetime(),
+})
+
+type IFormInputz = z.infer<typeof anexosSchema>;
 
 const exportAnexosToExcel = (anexos: Anexo[], title = "Reporte de Anexos") => {
   const worksheet = XLSX.utils.json_to_sheet(
@@ -834,223 +847,6 @@ const claves_anexos = [
   }
 ]
 
-// lib/estructuras.ts por ahora en el mismo archivo
-export const EstructuraDatosPorClave: Record<string, string[]> = {
-  // Marco Jurídico
-  MJ01: ["ordenamiento", "Titulo", "Fecha de emision"],
-  AR01: ["asunto", "descripcion", "fecha_inicio", "responsable", "estatus"],
-
-  // Recursos Presupuestales
-  RF01: ["partida", "descripcion", "monto_autorizado", "monto_ejercido", "saldo"],
-  RF02: ["ingreso", "monto", "fuente"],
-  RF03: ["recurso", "monto", "entidad", "fecha_asignacion"],
-  RF04: ["programa", "monto", "objetivo"],
-  RF05: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
-  RF06: ["recurso", "monto", "entidad", "fecha_asignacion"],
-  RF07: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
-  RF08: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
-  RF09: ["recurso", "monto", "entidad", "fecha_asignacion"],
-  RF10: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
-  RF11: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
-  RF12: ["recurso", "monto", "entidad", "fecha_asignacion"],
-  RF13: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
-  RF14: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
-  RF15: ["recurso", "monto", "entidad", "fecha_asignacion"],
-  RF16: ["programa", "monto", "objetivo", "fecha_inicio", "fecha_fin"],
-  RF17: ["actividad", "monto", "responsable", "fecha_inicio", "fecha_fin"],
-  RF18: ["recurso", "monto", "entidad", "fecha_asignacion"],
-
-  // Contratos y Convenios
-  CCL01: ["contrato", "tipo", "monto", "proveedor", "fecha_inicio", "fecha_fin"],
-  CCL02: ["licitacion", "estado", "monto", "fecha_apertura"],
-
-  // Estructura Interna
-  ENI01: ["url", "blob"], // organigrama pdf libre
-  ENI02: ["Tipo",
-    "Nombre",
-    "Fecha de publicación",
-    "Versión",
-    "Observaciones"
-  ], // reglamento interno y manuales generales
-  ENI03: ["Número de sesión",
-    "Fecha de la sesión",
-    "Ordinaria o Extraordinaria",
-    "Datos del acuerdo: Numero",
-    "Datos del acuerdo: Descripcion breve",
-    "Datos del acuerdo: Responsable",
-    "Datos del acuerdo: Áreas Involucradas",
-    "Estatus del acuerdo: Porcentaje del avance",
-    "Estatus del acuerdo: Observaciones"
-  ], // Acuerdo de organos de gobierno y Actas de consejo
-  ENI04: ["cargo",
-    "Con derecho a",
-    "Fecha inicio del cargo",
-    "Periodicidad de reuniones",
-    "Observaciones"
-  ], // representaciones y cargos honoríficos
-  ENI05: ["Nombre y puesto del servidor que otorga el poder",
-    "Tipo de poder otorgado",
-    "Fecha de otorgamiento",
-    "Notario No.",
-    "Inscrito al registro público de la propiedad y el comercio",
-    "Observaciones"], // poderes otorgados
-
-  // Recursos Humanos
-  RRH01: ["Numero de empleado",
-    "nombre",
-    "RFC",
-    "Plaza (categoria)",
-    "Tipo de encargo",
-    "Fecha de ingreso",
-    "Sueldo",
-    "Otras percepciones",
-    "Total",
-    "Unidad de Adscripcion",
-    "Área laboral",
-    "Estatus: Base, Apoyo, Comisionado",
-  ], // plantilla de personal
-  RRH02: ["nombre",
-    "RFC",
-    "Fecha de inicio de contrato",
-    "Fecha de fin de contrato",
-    "Fuente de recurso",
-    "Actividades a desarrollar",
-    "Salario",
-    "Otras Percepciones",
-    "Total",
-    "Unidad de Adscripcion",
-    "Area laboral"
-  ], // personal de honorarios
-
-  // Inventario de Bienes
-  IBM01: [
-    "Articulo",
-    "Marca",
-    "Modelo",
-    "Numero de serie",
-    "Numero de patrimonio",
-    "Cantidad",
-    "Valor",
-    "Ubicacion",
-    "Responsable",
-
-  ], // MObiliario de oficina, vehiculos, maquinaria y equipo
-  IBM02: ["Clave patrimonial",
-    "Descripcion",
-    "Marca",
-    "Modelo",
-    "No. de serie",
-    "Cantidad",
-    "Valor",
-    "Ubicacion",
-    "Responsable"], // Almacenes de papeleria y plantas de vivero
-  IBM03: ["Tipo de bien",
-    "Descripcion",
-    "Marca",
-    "Modelo",
-    "No. de serie",
-    "Estado físico",
-    "Ubicacion",
-    "Responsable",
-    "Nombre de otorgante",
-    "Fecha de firma de comodato"
-  ], // Inventario de bienes en comodato
-  IBM04: [
-    "Descripcion",
-    "Tipo de predio",
-    "Calle y número",
-    "Localidad",
-    "Observaciones",
-  ], // Bienes inmuebes de la dependencia
-  IBM05: [
-    "No. de registro o inventario",
-    "Titulo de la obra",
-    "Descripcion",
-    "Ubicacion",
-    "Certificado de autenticidad",
-    "Estado fisico",
-    "Observaciones"
-  ], // Inventario de arte
-  IBM06: [
-    "Nombre comun",
-    "nombre cientifico",
-    "Clave",
-    "Origen",
-    "Sexo",
-    "Marcaje",
-    "Fecha de Alta",
-    "Observaciones"
-  ], //Inventario Faunistico (especimen y taxidemnizados)
-  // Inventario de Armamento, accesorios de seguridad y municiones
-  IBM07: [
-    "Tipo de armamento",
-    "Descripción",
-    "Marca",
-    "Modelo",
-    "Número de serie",
-    "Cantidad",
-    "Ubicación",
-    "Responsable",
-    "Observaciones"
-  ],
-  // Inventario de Software (sistemas desarrolados y paquetes computacionales)
-  IBM08: [
-    "Nombre del software",
-    "Versión",
-    "Proveedor",
-    "No. de serie",
-    "Manual",
-    "Licencia",
-    "Equipo en el que opera",
-    "Documentación"
-  ],
-  // Inventario de tecnologia (equipos de computo y telecomunicaciones)
-  IBM09: [
-    "Nombre del equipo",
-    "Marca",
-    "Modelo",
-    "Número de serie",
-    "Cantidad",
-    "Ubicación",
-    "Responsable",
-    "Observaciones"
-  ],
-
-  // Documentación y Archivo
-  DA01: ["sistema", "frecuencia", "ultimo_respaldo", "responsable"],
-  DA02: ["titulo", "autor", "tipo", "ubicacion"],
-  DA03: ["tipo", "descripcion", "fecha_inicio", "fecha_fin", "responsable"],
-  DA04: ["tipo", "descripcion", "fecha_inicio", "fecha_fin", "responsable"],
-  DA05: ["tipo", "descripcion", "fecha_inicio", "fecha_fin", "responsable"],
-  DA07: ["expediente", "proyecto", "ubicacion", "responsable"],
-
-  // Asuntos Legales
-  ALA01: ["asunto", "tipo", "estado", "abogado", "fecha_inicio"],
-  ALA02: ["Tipo de auditoria",
-    "Periodo de la Auditoria",
-    "Datos de la Auditoria: Realizada por",
-    "Datos de la Auditoria: Observaciones", // Observaciones de Auditorias pendientes
-    "Datos de la Auditoria: Observaciones atendidas",
-    "Datos de la Auditoria: Observaciones pendientes",
-    "Estatus de la Auditoria: Situación actual"
-  ],
-
-  // Programas y Proyectos FORMATO LIBRE PDF 
-  PP01: ["url", "blob"],
-  PP02: ["Tipo de Documento", "Nombre", "Fecha", "Observaciones"],
-
-  // Transparencia
-  TA01: ["solicitud", "solicitante", "fecha", "estatus", "respuesta"],
-
-  // Por defecto
-  default: ["campo1", "campo2", "campo3"]
-};
-
-export const CALVES_CON_PDF: Record<string, string[]> = {
-  PP01: ["url", "blob"],
-  ENI01: ["url", "blob"]
-}
-
 enum CategoriaEnum {
   RECURSOS_PRESUPUESTALES = "1",
   CONTRATOS_CONVENIOS = "2",
@@ -1305,6 +1101,9 @@ export default function AnexosPage() {
       obtenerUnidad();
     }
 
+    // 3.1 validacion tipos de excel 
+
+
     // 4. Obtener anexos
     // Obtener y filtrar anexos
     getAnexos()
@@ -1316,17 +1115,6 @@ export default function AnexosPage() {
         console.error("Error al obtener anexos:", error);
         toast.error("No se pudieron cargar los anexos");
       });
-
-    // 5. (Opcional) Elimina esta llamada de prueba en producción
-    // async function mostrarUnidad() {
-    //   try {
-    //     const unidad = await UnidadesPorUsuario(1);
-    //     console.log("Unidad responsable (prueba):", unidad.id_unidad);
-    //   } catch (error) {
-    //     console.error("Error al obtener la unidad responsable (prueba):", error);
-    //   }
-    // }
-    // mostrarUnidad();
 
   }, []); // Dependencia vacía: se ejecuta una vez
   // Manejador de items
@@ -1363,6 +1151,22 @@ export default function AnexosPage() {
 
     console.log("✅ Payload final a enviar:", payload);
 
+    // validacion si el campo datos no existe
+    const datosValidos = Array.isArray(data.datos)
+      ? data.datos.length > 0
+      : Object.keys(data.datos || {}).length > 0;
+
+    if (!datosValidos) {
+      toast.error("El campo 'datos' no puede estar vacío.");
+      return;
+    }
+
+    // Validación: ¿Ya existe un anexco con esa clave?
+    if (yaTieneAnexoConClave(data.clave, anexos, userid)) {
+      toast.error(`Ya existe un anexo con la clave ${data.clave}`);
+      return;
+    }
+
     // Aquí haces el fetch
     fetch(`${API_URL}/anexos`, {
       method: "POST",
@@ -1385,6 +1189,7 @@ export default function AnexosPage() {
       });
   };
 
+  // manejar el cambio de archivo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null
     setFile(selected)
@@ -2108,7 +1913,12 @@ export default function AnexosPage() {
                                       setDatos(nuevas);
                                       setValue("datos", nuevas);
                                     }}
-                                    disabled={watch("clave") === ""} // Deshabilitar si no hay clave seleccionada
+                                    disabled={
+                                      watch("clave") === ""
+                                      || yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                                      || !datos.length
+                                      || !watch("clave")
+                                    } // Deshabilitar si no hay clave seleccionada
                                     className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
                                   >
                                     + Agregar fila
@@ -2181,25 +1991,25 @@ export default function AnexosPage() {
                                 <ExcelUploader
                                   onUploadSuccess={async (excelData) => {
                                     const clave = watch("clave");
+                                    // validacion de que haya seleccionado una clave
                                     if (!clave) {
                                       toast.error("Por favor, proporciona una clave válida.");
                                       return;
                                     }
-
+                                    // 1. Validar que no tenga ya un anexo con esa clave
                                     if (yaTieneAnexoConClave(clave, anexos, userid)) {
                                       toast.warning(`Ya tienes un anexo con la clave ${clave}. No es necesario subir uno más.
                                         `);
                                       return;
                                     }
-
                                     // 2. Validar estructura del Excel
                                     const estructura = EstructuraDatosPorClave[clave];
                                     if (!estructura) {
                                       toast.error("Estructura no definida para esta clave");
                                       return;
                                     }
-
-                                    const { valido, errores } = validarEstructuraExcel(excelData, estructura);
+                                    //3.  Validar estructura
+                                    const { valido, errores } = validarEstructuraExcel(excelData, clave);
                                     if (!valido) {
                                       toast.error(
                                         <div>
@@ -2214,8 +2024,32 @@ export default function AnexosPage() {
                                       );
                                       return;
                                     }
+                                    // 4. validar duplicado
+                                    if (yaTieneAnexoConClave(clave, anexos, userid)) {
+                                      toast.error(`Ya tienes un anexo con la clave ${clave}`);
+                                      return;
+                                    }
 
-                                    // 3. Todo valido -> procesar datos
+                                    // 5. Validar tipos de datos
+                                    const { advertencias } = validarTiposExcel(excelData, clave);
+                                    if (advertencias.length > 0) {
+                                      toast.warning(
+                                        <div>
+                                          <p>Advertencias de tipos de datos:</p>
+                                          <ul className="list-disc list-inside text-sm">
+                                            {advertencias.slice(0, 5).map((adv, i) => (
+                                              <li key={i}>{adv}</li>
+                                            ))}
+                                          </ul>
+                                          {advertencias.length > 5 && (
+                                            <p>... y {advertencias.length - 5} más</p>
+                                          )}
+                                        </div>,
+                                        { duration: 10000 }
+                                      );
+                                    }
+
+                                    // 4. Todo valido -> procesar datos
                                     setDatos(excelData);
                                     setValue("datos", excelData);
                                     toast.success(`✅ Excel cargado: ${excelData.length} filas`);
@@ -2253,8 +2087,18 @@ export default function AnexosPage() {
                       <Button
                         type="submit"
                         style={{ backgroundColor: "#24356B", color: "white" }}
+                        disabled={
+                          !watch("clave")
+                          || !watch("fecha_creacion")
+                          || !watch("estado")
+                          || !datos.length
+                          || yaTieneAnexoConClave(watch("clave"), anexos, userid)}
                       >
-                        {editingAnexo ? "Actualizar" : "Guardar Anexo"}
+                        {yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                          ? "Ya tienes este anexo"
+                          : !datos.length
+                            ? "Agrega datos primero"
+                            : "Guardar Anexo"}
                       </Button>
                       <Button
                         type="button"
