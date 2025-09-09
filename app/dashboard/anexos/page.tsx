@@ -1916,7 +1916,6 @@ export default function AnexosPage() {
                                     disabled={
                                       watch("clave") === ""
                                       || yaTieneAnexoConClave(watch("clave"), anexos, userid)
-                                      || !datos.length
                                       || !watch("clave")
                                     } // Deshabilitar si no hay clave seleccionada
                                     className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
