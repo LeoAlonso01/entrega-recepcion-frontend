@@ -41,7 +41,7 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
     "ORDINARIA O EXTRAORDINARIA",
     "DATOS DEL ACUERDO: TIPO DE ACUERDO",
     "DATOS DEL ACUERRDO: DESCRIPCION BREVE",
-    "DATOS DEL ACUERDO: ESPONSABLE",
+    "DATOS DEL ACUERDO: RESPONSABLE",
     "DATOS DEL ACUERDO: AREAS INVOLUCRADAS",
     "ESTATUS DEL ACUERDO: PORCENTAJE DEL AVANCE",
     "ESTATUS DEL ACUERDO: OBSERVACIONES"
@@ -59,7 +59,8 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
     "INSCRITO AL REGISTRO PÚBLICO DE LA PROPIEDAD Y EL COMERCIO",
     "OBSERVACIONES"], // poderes otorgados
 
-  // Recursos Humanos
+
+    // Recursos Humanos
   RRH01: ["NUMERO DE EMPLEADO",
     "NOMBRE",
     "RFC",
@@ -108,7 +109,8 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
     "CANTIDAD",
     "VALOR",
     "UBICACION",
-    "RESPONSABLE"], // Almacenes de papeleria y plantas de vivero
+    "RESPONSABLE"], 
+    // Almacenes de papeleria y plantas de vivero
   IBM03: ["TIPO DE BIEN",
     "DESCRIPCION",
     "MARCA",
