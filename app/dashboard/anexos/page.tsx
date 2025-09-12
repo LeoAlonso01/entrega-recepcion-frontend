@@ -26,8 +26,7 @@ import { inferirTipo } from "@/lib/inferirTipo"
 import FMJList from "@/components/forms/MarcoJuridico/FMJList"
 import { EstructuraDatosPorClave, CALVES_CON_PDF } from "@/lib/estructuraPorClave"
 import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
-// import '@react-pdf-viewer/core/lib/styles/index.css';
-// import { Viewer } from '@react-pdf-viewer/core';
+import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
 
 // Simple ExcelPreview component definition
 interface ExcelPreviewProps {
@@ -1349,7 +1348,7 @@ export default function AnexosPage() {
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
-              <TabsTrigger value="documentos">Crear Anexos</TabsTrigger>
+              <TabsTrigger value="nuevoAnexo">Nuevo Anexo</TabsTrigger>
               <TabsTrigger value="formulario">Anexos por usuario</TabsTrigger>
             </TabsList>
 
@@ -1409,7 +1408,7 @@ export default function AnexosPage() {
                     {/** Botón para crear un nuevo anexo */}
                     <Button
                       style={{ backgroundColor: "#24356B", color: "white" }}
-                      onClick={() => setActiveTab("documentos")}
+                      onClick={() => setActiveTab("nuevoAnexo")}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Anexo
@@ -1751,7 +1750,7 @@ export default function AnexosPage() {
 
             </TabsContent>
 
-            <TabsContent value="documentos" className="mt-4 sm:mt-6 md:mt-8">
+            <TabsContent value="nuevoAnexo" className="mt-4 sm:mt-6 md:mt-8">
               <Card>
                 <CardHeader>
                   <CardTitle>{editingAnexo ? "Editar Anexo" : "Nuevo Anexo"}</CardTitle>
@@ -1765,6 +1764,7 @@ export default function AnexosPage() {
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     {/* Clave del Anexo */}
                     <div className="space-y-2 col-span-6 grid-cols-3">
+                      {/* Clave de los Anexos */}
                       <Label>Clave del Anexo</Label>
                       <div className="text-sm text-gray-500 border border-gray-300 mb-1 ">
                         <select
@@ -1790,6 +1790,24 @@ export default function AnexosPage() {
                           ))}
                         </select>
                       </div>
+
+                      {watch("clave") && (
+                        <Button 
+                        type="button" 
+                        variant="outline"
+                        className="mt-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white" 
+                        size="sm" 
+                        onClick={() => {
+                          try {
+                            generarPlantillaPorClave(watch("clave"));
+                            toast.success("✅ Plantilla generada correctamente");
+                          } catch (error) {
+                            toast.error("❌ Error al generar la plantilla");
+                          }
+                        }}>
+                          Descargar Plantilla
+                        </Button>
+                      )}
 
                       {errors.clave && (
                         <p className="text-sm text-red-600">{errors.clave.message}</p>
@@ -2127,8 +2145,6 @@ export default function AnexosPage() {
               </Card>
 
             </TabsContent>
-
-
 
             <TabsContent value="formulario" className="mt-4 sm:mt-6 md:mt-8">
 
