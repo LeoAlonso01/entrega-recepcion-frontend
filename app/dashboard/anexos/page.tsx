@@ -1324,6 +1324,8 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
   const canEdit = (anexo: Anexo): boolean => {
     // Si el estado es "Cerrado", nadie puede editar
     if (anexo.estado === "Cerrado") return false;
+    // convertir el boton en desabilidato
+    
 
     // Si el usuario es ADMIN, puede editar (excepto si está cerrado)
     if (userrole === "ADMIN") return true;
