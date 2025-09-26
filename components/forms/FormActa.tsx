@@ -41,7 +41,15 @@ interface FormActaSimpleProps {
   onSave: (data: any) => void;
 }
 
-export default function FormActaSimple({
+const folioNuevo = () => {
+  // genera numero de folio consecuitivo comenzando del 0001
+  const consecutiveNumber = String(Math.floor(Math.random() * 10000)).padStart(5, "0");
+  // obtiene los ultimos dos digitos del año actual
+  const year = new Date().getFullYear().toString().slice(-2);
+  return `ACTA-${consecutiveNumber}-${year}`;
+}
+
+export default function FormActa({
   acta = {},
   unidades,
   onCancel,
@@ -50,7 +58,7 @@ export default function FormActaSimple({
   const [formData, setFormData] = useState({
     // Datos generales
     unidad_responsable: acta.unidad_responsable || unidades[0]?.id_unidad || "",
-    folio: acta.folio || "",
+    folio: acta.folio || folioNuevo(),
     fecha: acta.fecha || new Date().toISOString().split("T")[0],
     hora: acta.hora || "",
     
