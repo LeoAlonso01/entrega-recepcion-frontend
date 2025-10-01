@@ -197,10 +197,7 @@ export default function ActasPage() {
   }
 
   const handleView = (acta: ActaForm) => {
-    // Aquí podrías implementar la navegación a una página de detalle
-    // o abrir un modal de solo lectura
-    setEditingActa(acta)
-    setShowForm(true)
+    router.push(`/dashboard/actas/${acta.id}`)
   }
 
   const confirmDelete = (id: number) => {
@@ -240,19 +237,16 @@ export default function ActasPage() {
 
   const updateActa = async (id: number, actaData: Partial<ActaForm>) => {
     try {
-      const token = localStorage.getItem("token")
-      if (!token) {
-        toast.error("No se encontró el token de autenticación")
-        return
-      }
 
-      const response = await fetch(`${API_URL}/actas${id}`, {
+      const response = await fetch(`${API_URL}/actas/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(actaData)
+        body: JSON.stringify({
+          ...actaData,
+          id: undefined, // Evita enviar el id en el cuerpo
+        })
       })
 
       if (!response.ok) {
@@ -274,7 +268,7 @@ export default function ActasPage() {
       const cleanedData = {
         ...actaData,
         unidad_responsable: Number(actaData.unidad_responsable),
-        
+
       };
 
       console.log("Tipo de unidad_responsable:", typeof cleanedData.unidad_responsable); // Debe ser "number"
