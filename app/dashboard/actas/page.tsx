@@ -176,6 +176,7 @@ export default function ActasPage() {
       }
 
       const data = await response.json()
+      console.table(data);
       setActas(data)
     } catch (error) {
       console.error("Error:", error)
