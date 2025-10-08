@@ -3,7 +3,7 @@
 import type React from "react"
 import RectDOM from "react-dom"
 import { useForm, SubmitHandler } from "react-hook-form"
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,8 +26,7 @@ import { inferirTipo } from "@/lib/inferirTipo"
 import FMJList from "@/components/forms/MarcoJuridico/FMJList"
 import { EstructuraDatosPorClave, CALVES_CON_PDF } from "@/lib/estructuraPorClave"
 import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
-// import '@react-pdf-viewer/core/lib/styles/index.css';
-// import { Viewer } from '@react-pdf-viewer/core';
+import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
 
 // Simple ExcelPreview component definition
 interface ExcelPreviewProps {
@@ -1012,8 +1011,23 @@ export default function AnexosPage() {
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [pendingFile, setPendingFile] = useState<{ file: File; data: any[] } | null>(null);
   const [anexosFiltrados, setAnexosFiltrados] = useState<Anexo[]>(anexos);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 5;
+
+ // Calcular filas actuales
+const indexOfLastRow = currentPage * rowsPerPage;
+const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+const currentRows = datos.slice(indexOfFirstRow, indexOfLastRow);
+const totalPages = Math.ceil(datos.length / rowsPerPage);
+
+// Cambiar página
+const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
 
   // Primer UseEffect
+  useEffect(() => {
+    setCurrentPage(1); // Reiniciar a la primera página al cambiar los datos
+  }, [datos]);
 
 
   const guardarBorrador = () => {
@@ -1310,6 +1324,8 @@ export default function AnexosPage() {
   const canEdit = (anexo: Anexo): boolean => {
     // Si el estado es "Cerrado", nadie puede editar
     if (anexo.estado === "Cerrado") return false;
+    // convertir el boton en desabilidato
+    
 
     // Si el usuario es ADMIN, puede editar (excepto si está cerrado)
     if (userrole === "ADMIN") return true;
@@ -1349,7 +1365,7 @@ export default function AnexosPage() {
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
-              <TabsTrigger value="documentos">Crear Anexos</TabsTrigger>
+              <TabsTrigger value="nuevoAnexo">Nuevo Anexo</TabsTrigger>
               <TabsTrigger value="formulario">Anexos por usuario</TabsTrigger>
             </TabsList>
 
@@ -1409,7 +1425,7 @@ export default function AnexosPage() {
                     {/** Botón para crear un nuevo anexo */}
                     <Button
                       style={{ backgroundColor: "#24356B", color: "white" }}
-                      onClick={() => setActiveTab("documentos")}
+                      onClick={() => setActiveTab("nuevoAnexo")}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Nuevo Anexo
@@ -1751,7 +1767,7 @@ export default function AnexosPage() {
 
             </TabsContent>
 
-            <TabsContent value="documentos" className="mt-4 sm:mt-6 md:mt-8">
+            <TabsContent value="nuevoAnexo" className="mt-4 sm:mt-6 md:mt-8">
               <Card>
                 <CardHeader>
                   <CardTitle>{editingAnexo ? "Editar Anexo" : "Nuevo Anexo"}</CardTitle>
@@ -1765,6 +1781,7 @@ export default function AnexosPage() {
                   <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     {/* Clave del Anexo */}
                     <div className="space-y-2 col-span-6 grid-cols-3">
+                      {/* Clave de los Anexos */}
                       <Label>Clave del Anexo</Label>
                       <div className="text-sm text-gray-500 border border-gray-300 mb-1 ">
                         <select
@@ -1790,6 +1807,24 @@ export default function AnexosPage() {
                           ))}
                         </select>
                       </div>
+
+                      {watch("clave") && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                          size="sm"
+                          onClick={() => {
+                            try {
+                              generarPlantillaPorClave(watch("clave"));
+                              toast.success("✅ Plantilla generada correctamente");
+                            } catch (error) {
+                              toast.error("❌ Error al generar la plantilla");
+                            }
+                          }}>
+                          Descargar Plantilla
+                        </Button>
+                      )}
 
                       {errors.clave && (
                         <p className="text-sm text-red-600">{errors.clave.message}</p>
@@ -1872,18 +1907,19 @@ export default function AnexosPage() {
                               </p>
                               <PdfUploader
                                 onUploadSuccess={(fileUrl) => {
-                                  const datosPDF = { pdf_url: fileUrl };
-                                  setDatos([datosPDF]);
+                                  const datosPDF = [{ url: fileUrl }];
+                                  setDatos(datosPDF);
                                   setValue("datos", datosPDF);
                                   toast.success("✅ PDF subido correctamente");
                                 }}
                               />
-                              {datos.length > 0 && datos[0]?.pdf_url && (
+                              {datos.length > 0 && datos[0]?.url && (
+                                
                                 <div className="mt-4">
 
                                   <p className="text-sm text-gray-600">PDF cargado:</p>
                                   <a
-                                    href={datos[0].pdf_url}
+                                    href={datos[0].url}
                                     target="_blank"
                                     className="text-blue-600 hover:underline"
                                   >
@@ -1898,9 +1934,9 @@ export default function AnexosPage() {
                                 Este anexo requiere un archivo excel o carga manual.
                               </p>
                               <div>
+                                {/* Botón para agregar fila */}
                                 <div className="flex justify-between items-center mb-2">
                                   <span>Tabla de datos</span>
-                                  {/** Botón para agregar fila manualmente */}
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -1908,155 +1944,173 @@ export default function AnexosPage() {
                                     onClick={() => {
                                       const estructura = EstructuraDatosPorClave[watch("clave")] || [];
                                       const nuevaFila: Record<string, any> = {};
-                                      estructura.forEach(campo => nuevaFila[campo] = "");
+                                      estructura.forEach((campo) => (nuevaFila[campo] = ""));
                                       const nuevas = [...datos, nuevaFila];
                                       setDatos(nuevas);
                                       setValue("datos", nuevas);
                                     }}
                                     disabled={
-                                      watch("clave") === ""
-                                      || yaTieneAnexoConClave(watch("clave"), anexos, userid)
-                                      || !watch("clave")
-                                    } // Deshabilitar si no hay clave seleccionada
+                                      !watch("clave") ||
+                                      yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                                    }
                                     className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
                                   >
                                     + Agregar fila
                                   </Button>
                                 </div>
 
+                                {/* Mensaje si no hay datos */}
                                 {datos.length === 0 ? (
-                                  <p className="text-sm text-gray-500">
-                                    No hay datos. Usa Excel o agrega manualmente.
-                                  </p>
+                                  <p className="text-sm text-gray-500">No hay datos. Usa Excel o agrega manualmente.</p>
                                 ) : (
-                                  <table className="min-w-full border border-gray-300 rounded-md text-sm">
-                                    <thead>
-                                      <tr className="bg-gray-50">
-                                        {Object.keys(datos[0]).map((key) => (
-                                          <th
-                                            key={key}
-                                            className="border px-2 py-1 font-semibold"
+                                  <>
+                                    {/* Contenedor con scroll horizontal/vertical */}
+                                    <div className="border border-gray-300 rounded-md overflow-hidden">
+                                      <div className="max-h-60 overflow-y-auto">
+                                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                          <thead className="bg-gray-50 sticky top-0">
+                                            <tr>
+                                              {Object.keys(datos[0]).map((key) => (
+                                                <th
+                                                  key={key}
+                                                  className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                                                >
+                                                  {key.replace(/_/g, " ").toUpperCase()}
+                                                </th>
+                                              ))}
+                                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                Acciones
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="bg-white divide-y divide-gray-200">
+                                            {currentRows.map((fila, i) => {
+                                              const rowIndex = indexOfFirstRow + i;
+                                              return (
+                                                <tr key={rowIndex} className="hover:bg-gray-50">
+                                                  {Object.keys(fila).map((campo) => (
+                                                    <td key={campo} className="px-3 py-2 whitespace-nowrap">
+                                                      <input
+                                                        type="text"
+                                                        value={fila[campo]}
+                                                        onChange={(e) => {
+                                                          const nuevas = [...datos];
+                                                          nuevas[rowIndex][campo] = e.target.value;
+                                                          setDatos(nuevas);
+                                                          setValue("datos", nuevas);
+                                                        }}
+                                                        className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                        disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                      />
+                                                    </td>
+                                                  ))}
+                                                  <td className="px-3 py-2 whitespace-nowrap">
+                                                    <Button
+                                                      type="button"
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="text-red-500 hover:bg-red-50"
+                                                      onClick={() => {
+                                                        const nuevas = datos.filter((_, index) => index !== rowIndex);
+                                                        setDatos(nuevas);
+                                                        setValue("datos", nuevas);
+                                                      }}
+                                                      disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                    >
+                                                      Eliminar
+                                                    </Button>
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+
+                                    {/* Paginación */}
+                                    {totalPages > 1 && (
+                                      <div className="flex justify-center mt-3 space-x-1">
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                          <Button
+                                            key={page}
+                                            variant={currentPage === page ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => paginate(page)}
+                                            className={currentPage === page ? "!bg-blue-600" : ""}
                                           >
-                                            {key}
-                                          </th>
+                                            {page}
+                                          </Button>
                                         ))}
-                                        <th className="border px-2 py-1 font-semibold">
-                                          Acciones
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {datos.map((fila, i) => (
-                                        <tr key={i}>
-                                          {Object.keys(fila).map((campo) => (
-                                            <td key={campo} className="border px-2 py-1">
-                                              <input
-                                                type="text"
-                                                value={fila[campo]}
-                                                onChange={(e) => {
-                                                  const nuevas = [...datos];
-                                                  nuevas[i][campo] = e.target.value;
-                                                  setDatos(nuevas);
-                                                  setValue("datos", nuevas);
-                                                }}
-                                                className="w-full p-1 border rounded"
-                                              />
-                                            </td>
-                                          ))}
-                                          <td className="border px-2 py-1">
-                                            <Button
-                                              type="button"
-                                              variant="outline"
-                                              size="sm"
-                                              className="text-red-500"
-                                              onClick={() => {
-                                                const nuevas = datos.filter(
-                                                  (_, index) => index !== i
-                                                );
-                                                setDatos(nuevas);
-                                                setValue("datos", nuevas);
-                                              }}
-                                            >
-                                              Eliminar
-                                            </Button>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
-                              </div>
-                              <div>
-                                <ExcelUploader
-                                  onUploadSuccess={async (excelData) => {
-                                    const clave = watch("clave");
-                                    // validacion de que haya seleccionado una clave
-                                    if (!clave) {
-                                      toast.error("Por favor, proporciona una clave válida.");
-                                      return;
-                                    }
-                                    // 1. Validar que no tenga ya un anexo con esa clave
-                                    if (yaTieneAnexoConClave(clave, anexos, userid)) {
-                                      toast.warning(`Ya tienes un anexo con la clave ${clave}. No es necesario subir uno más.
-                                        `);
-                                      return;
-                                    }
-                                    // 2. Validar estructura del Excel
-                                    const estructura = EstructuraDatosPorClave[clave];
-                                    if (!estructura) {
-                                      toast.error("Estructura no definida para esta clave");
-                                      return;
-                                    }
-                                    //3.  Validar estructura
-                                    const { valido, errores } = validarEstructuraExcel(excelData, clave);
-                                    if (!valido) {
-                                      toast.error(
-                                        <div>
-                                          <p>Errores en el archivo:</p>
-                                          <ul className="list-disc list-inside text-sm">
-                                            {errores.map((err, i) => (
-                                              <li key={i}>{err}</li>
-                                            ))}
-                                          </ul>
-                                        </div>,
-                                        { duration: 8000 }
-                                      );
-                                      return;
-                                    }
-                                    // 4. validar duplicado
-                                    if (yaTieneAnexoConClave(clave, anexos, userid)) {
-                                      toast.error(`Ya tienes un anexo con la clave ${clave}`);
-                                      return;
-                                    }
 
-                                    // 5. Validar tipos de datos
-                                    const { advertencias } = validarTiposExcel(excelData, clave);
-                                    if (advertencias.length > 0) {
-                                      toast.warning(
-                                        <div>
-                                          <p>Advertencias de tipos de datos:</p>
-                                          <ul className="list-disc list-inside text-sm">
-                                            {advertencias.slice(0, 5).map((adv, i) => (
-                                              <li key={i}>{adv}</li>
-                                            ))}
-                                          </ul>
-                                          {advertencias.length > 5 && (
-                                            <p>... y {advertencias.length - 5} más</p>
-                                          )}
-                                        </div>,
-                                        { duration: 10000 }
-                                      );
-                                    }
+                                {/* Subida de Excel */}
+                                <div className="mt-4">
+                                  <ExcelUploader
+                                    onUploadSuccess={async (excelData) => {
+                                      const clave = watch("clave");
+                                      if (!clave) {
+                                        toast.error("Por favor, proporciona una clave válida.");
+                                        return;
+                                      }
 
-                                    // 4. Todo valido -> procesar datos
-                                    setDatos(excelData);
-                                    setValue("datos", excelData);
-                                    toast.success(`✅ Excel cargado: ${excelData.length} filas`);
-                                  }}
-                                  onUploadError={(error: string) => {
-                                    toast.error(`Error al subir el archivo: ${error}`);
-                                  }}
-                                />
+                                      if (yaTieneAnexoConClave(clave, anexos, userid)) {
+                                        toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
+                                        return;
+                                      }
+
+                                      const estructura = EstructuraDatosPorClave[clave];
+                                      if (!estructura) {
+                                        toast.error("Estructura no definida para esta clave");
+                                        return;
+                                      }
+
+                                      const { valido, errores } = validarEstructuraExcel(excelData, clave);
+                                      if (!valido) {
+                                        toast.error(
+                                          <div>
+                                            <p>Errores en el archivo:</p>
+                                            <ul className="list-disc list-inside text-sm">
+                                              {errores.map((err, i) => (
+                                                <li key={i}>{err}</li>
+                                              ))}
+                                            </ul>
+                                          </div>,
+                                          { duration: 8000 }
+                                        );
+                                        return;
+                                      }
+
+                                      const { advertencias } = validarTiposExcel(excelData, clave);
+                                      if (advertencias.length > 0) {
+                                        toast.warning(
+                                          <div>
+                                            <p>Advertencias de tipos de datos:</p>
+                                            <ul className="list-disc list-inside text-sm">
+                                              {advertencias.slice(0, 5).map((adv, i) => (
+                                                <li key={i}>{adv}</li>
+                                              ))}
+                                            </ul>
+                                            {advertencias.length > 5 && (
+                                              <p>... y {advertencias.length - 5} más</p>
+                                            )}
+                                          </div>,
+                                          { duration: 10000 }
+                                        );
+                                      }
+
+                                      setDatos(excelData);
+                                      setValue("datos", excelData);
+                                      toast.success(`✅ Excel cargado: ${excelData.length} filas`);
+                                    }}
+                                    onUploadError={(error: string) => {
+                                      toast.error(`Error al subir el archivo: ${error}`);
+                                    }}
+                                  />
+                                </div>
                               </div>
                             </>
                           )}
@@ -2127,8 +2181,6 @@ export default function AnexosPage() {
               </Card>
 
             </TabsContent>
-
-
 
             <TabsContent value="formulario" className="mt-4 sm:mt-6 md:mt-8">
 
