@@ -145,7 +145,7 @@ function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number): b
 
 const getAnexos = async () => {
   try {
-    const response = await fetch(`${API_URL}/anexos/`, {
+    const response = await fetch(`${API_URL}/anexos`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
@@ -1587,7 +1587,7 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
                                 onUploadSuccess={(url) =>
                                   setFormData((prev) => ({
                                     ...prev,
-                                    datos: { pdf_url: url }, // o como quieras estructurarlo
+                                    datos: { pdf_url: url }, 
                                   }))
                                 }
                               />
