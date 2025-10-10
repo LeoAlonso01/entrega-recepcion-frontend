@@ -1014,14 +1014,14 @@ export default function AnexosPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 5;
 
- // Calcular filas actuales
-const indexOfLastRow = currentPage * rowsPerPage;
-const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-const currentRows = datos.slice(indexOfFirstRow, indexOfLastRow);
-const totalPages = Math.ceil(datos.length / rowsPerPage);
+  // Calcular filas actuales
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = datos.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(datos.length / rowsPerPage);
 
-// Cambiar página
-const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  // Cambiar página
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
 
   // Primer UseEffect
@@ -1325,7 +1325,7 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
     // Si el estado es "Cerrado", nadie puede editar
     if (anexo.estado === "Cerrado") return false;
     // convertir el boton en desabilidato
-    
+
 
     // Si el usuario es ADMIN, puede editar (excepto si está cerrado)
     if (userrole === "ADMIN") return true;
@@ -1420,38 +1420,40 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
                     <h2 className="text-2xl font-bold text-gray-900">Gestión de Anexos</h2>
                     <p className="text-gray-600">Administra los anexos y documentos del sistema</p>
                   </div>
-
-                  <div className="flex space-x-2">
-                    {/** Botón para crear un nuevo anexo */}
-                    <Button
-                      style={{ backgroundColor: "#24356B", color: "white" }}
-                      onClick={() => setActiveTab("nuevoAnexo")}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nuevo Anexo
-                    </Button>
-
-
-                    {/* Botones de exportación */}
-                    <Button
-                      variant="outline"
-                      onClick={() => exportAnexosToPDF(anexos)}
-                      className="border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Exportar PDF
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => exportAnexosToExcel(anexos)}
-                      className="border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white"
-                    >
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
-                      Exportar Excel
-                    </Button>
-                  </div>
                 </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {/* Botón Nuevo Anexo */}
+                  <Button
+                    style={{ backgroundColor: "#24356B", color: "white" }}
+                    className="min-w-[48px] flex items-center justify-center text-xs sm:text-sm"
+                    onClick={() => setActiveTab("nuevoAnexo")}
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-2">Nuevo Anexo</span>
+                  </Button>
+
+                  {/* Botón Exportar PDF */}
+                  <Button
+                    variant="outline"
+                    onClick={() => exportAnexosToPDF(anexos)}
+                    className="min-w-[48px] flex items-center justify-center text-xs sm:text-sm border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-2">Exportar PDF</span>
+                  </Button>
+
+                  {/* Botón Exportar Excel */}
+                  <Button
+                    variant="outline"
+                    onClick={() => exportAnexosToExcel(anexos)}
+                    className="min-w-[48px] flex items-center justify-center text-xs sm:text-sm border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-2">Exportar Excel</span>
+                  </Button>
+                </div>
+                <br />
 
                 {showForm ? (
                   <Card>
@@ -1587,7 +1589,7 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
                                 onUploadSuccess={(url) =>
                                   setFormData((prev) => ({
                                     ...prev,
-                                    datos: { pdf_url: url }, 
+                                    datos: { pdf_url: url },
                                   }))
                                 }
                               />
@@ -1712,38 +1714,84 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card>
-                    <CardHeader>
+                  <Card className="w-full">
+                    <CardHeader className="p-3 sm:p-6 flex justify-between items-center">
                       <CardTitle>Lista de Anexos</CardTitle>
-                      <CardDescription>Gestiona los anexos registrados en el sistema</CardDescription>
+                     
                     </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Clave</TableHead>
-                            <TableHead>Estado</TableHead>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead>Acciones</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {anexos.map((anexo) => (
-                            <TableRow key={anexo.id}>
-                              <TableCell className="font-medium">{anexo.clave}</TableCell>
-                              <TableCell>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(anexo.estado)}`}>
-                                  {anexo.estado}
-                                </span>
-                              </TableCell>
-                              <TableCell>{anexo.fecha_creacion}</TableCell>
-                              <TableCell>
-                                <div className="flex space-x-2">
-                                  <Button variant="outline" size="sm" onClick={() => handleDownload(anexo.id)}>
+
+                    <CardContent className="p-0 sm:p-4">
+                      <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <Table className="min-w-full text-sm divide-y divide-gray-200">
+                          {/* Encabezado: visible solo en pantallas md+ */}
+                          <TableHeader className="bg-gray-50 hidden md:table-header-group">
+                            <TableRow>
+                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                                Clave
+                              </TableHead>
+                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                                Estado
+                              </TableHead>
+                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                                Fecha
+                              </TableHead>
+                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                                Acciones
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+
+                          {/* Cuerpo de tabla / tarjetas responsivas */}
+                          <TableBody className="divide-y divide-gray-200">
+                            {anexos.map((anexo) => (
+                              <TableRow
+                                key={anexo.id}
+                                className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
+                              >
+                                {/* Clave */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Clave</div>
+                                  <div className="font-medium text-gray-900">{anexo.clave}</div>
+                                </TableCell>
+
+                                {/* Estado */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Estado</div>
+                                  <span
+                                    className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(
+                                      anexo.estado
+                                    )}`}
+                                  >
+                                    {anexo.estado}
+                                  </span>
+                                </TableCell>
+
+                                {/* Fecha */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Fecha</div>
+                                  <div className="text-gray-800">{anexo.fecha_creacion}</div>
+                                </TableCell>
+
+                                {/* Acciones */}
+                                <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500 mb-1">
+                                    Acciones
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDownload(anexo.id)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
                                     <Download className="h-4 w-4" />
                                   </Button>
                                   {canEdit(anexo) && (
-                                    <Button variant="outline" size="sm" onClick={() => handleEdit(anexo)}>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleEdit(anexo)}
+                                      className="text-blue-600 hover:text-blue-800"
+                                    >
                                       <Edit className="h-4 w-4" />
                                     </Button>
                                   )}
@@ -1751,17 +1799,20 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
                                     variant="outline"
                                     size="sm"
                                     onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
+                                    className="text-blue-600 hover:text-blue-800"
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </CardContent>
                   </Card>
+
+
                 )}
               </main>
 
@@ -1914,7 +1965,7 @@ const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
                                 }}
                               />
                               {datos.length > 0 && datos[0]?.url && (
-                                
+
                                 <div className="mt-4">
 
                                   <p className="text-sm text-gray-600">PDF cargado:</p>

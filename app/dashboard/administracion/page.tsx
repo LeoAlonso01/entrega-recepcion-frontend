@@ -350,223 +350,218 @@ export default function AdministracionPage(user: { role: string } | null) {
   }
 
 
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
 
       {/* Breadcrumbs */}
       <NavbarWithBreadcrumb
-        user={currentUser?.username || null}
-        role={user?.role || ""}
+        role="ADMIN"
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 lg:py-8">
 
         {/* estadisticas Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
+          <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-xs sm:text-sm font-medium">Total Usuarios</CardTitle>
+              <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{usuarios.length}</div>
-              <p className="text-xs text-muted-foreground">Usuarios registrados en el sistema</p>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{usuarios.length}</div>
+              <p className="text-xs text-muted-foreground">Usuarios registrados</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Administradores</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-xs sm:text-sm font-medium">Administradores</CardTitle>
+              <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{usuarios.filter((u) => u.role === "ADMIN").length}</div>
-              <p className="text-xs text-muted-foreground">Usuarios con permisos de administrador</p>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{usuarios.filter((u) => u.role === "ADMIN").length}</div>
+              <p className="text-xs text-muted-foreground">Usuarios administradores</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Usuarios Titulares</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-xs sm:text-sm font-medium">Usuarios Titulares</CardTitle>
+              <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{usuarios.filter((u) => u.role === "USER").length}</div>
-              <p className="text-xs text-muted-foreground">Usuarios con acceso básico al sistema</p>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{usuarios.filter((u) => u.role === "USER").length}</div>
+              <p className="text-xs text-muted-foreground">Usuarios con acceso básico</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="w-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Usuarios Auditores</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-xs sm:text-sm font-medium">Usuarios Auditores</CardTitle>
+              <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{usuarios.filter((u) => u.role === "AUDITOR").length}</div>
-              <p className="text-xs text-muted-foreground">Usuarios con permisos de auditoría</p>
+              <div className="text-lg sm:text-xl lg:text-2xl font-bold">{usuarios.filter((u) => u.role === "AUDITOR").length}</div>
+              <p className="text-xs text-muted-foreground">Usuarios con auditoría</p>
             </CardContent>
           </Card>
-
         </div>
 
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Gestión de Usuarios</h2>
-            <p className="text-gray-600">Administra los usuarios del sistema</p>
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <div className="flex-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gestión de Usuarios</h2>
+            <p className="text-sm sm:text-base text-gray-600">Administra los usuarios del sistema</p>
           </div>
 
-          {/** Botón para agregar un nuevo usuario */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button style={{ backgroundColor: "#751518", color: "white" }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Usuario
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>{editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
-                <DialogDescription>
-                  {editingUsuario
-                    ? "Modifica los datos del usuario"
-                    : "Completa la información para crear un nuevo usuario"}
-                </DialogDescription>
-              </DialogHeader>
+          {/* Action Buttons */}
+          <div className="flex flex-col xs:flex-row gap-3 w-full sm:w-auto">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  style={{ backgroundColor: "#751518", color: "white" }}
+                  className="w-full sm:w-auto flex items-center justify-center"
+                >
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="text-sm sm:text-base">Nuevo Usuario</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-md sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-lg sm:text-xl">
+                    {editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm sm:text-base">
+                    {editingUsuario
+                      ? "Modifica los datos del usuario"
+                      : "Completa la información para crear un nuevo usuario"}
+                  </DialogDescription>
+                </DialogHeader>
 
-              <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4">
-                <div className="grid gap-4 py-4">
-                  {/* Nombre de usuario */}
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Nombre de Usuario</Label>
-                    <Input
-                      id="username"
-                      {...register("username")}
-                      placeholder="usuario123"
-                    />
-                    {errors.username && (
-                      <p className="text-sm text-red-600">{errors.username.message}</p>
-                    )}
-                  </div>
-
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...register("email")}
-                      placeholder="usuario@ejemplo.com"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-red-600">{errors.email.message}</p>
-                    )}
-                  </div>
-
-                  {/* Contraseña (solo en creación) */}
-                  {!editingUsuario && (
+                <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4">
+                  <div className="grid gap-4 py-2 sm:py-4">
+                    {/* Nombre de usuario */}
                     <div className="space-y-2">
-                      <Label htmlFor="password">Contraseña</Label>
+                      <Label htmlFor="username" className="text-sm sm:text-base">Nombre de Usuario</Label>
                       <Input
-                        id="password"
-                        type="password"
-                        {...register("password")}
-                        placeholder="••••••••"
+                        id="username"
+                        {...register("username")}
+                        placeholder="usuario123"
+                        className="text-sm sm:text-base"
                       />
-                      {errors.password && (
-                        <p className="text-sm text-red-600">{errors.password.message}</p>
+                      {errors.username && (
+                        <p className="text-xs sm:text-sm text-red-600">{errors.username.message}</p>
                       )}
                     </div>
-                  )}
 
-                  {/* Rol */}
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Rol</Label>
-                    <Controller
-                      name="role"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          defaultValue={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona el rol" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="USER">Usuario</SelectItem>
-                            <SelectItem value="ADMIN">Administrador</SelectItem>
-                            <SelectItem value="AUDITOR">Auditor</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    {/* Email */}
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm sm:text-base">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        {...register("email")}
+                        placeholder="usuario@ejemplo.com"
+                        className="text-sm sm:text-base"
+                      />
+                      {errors.email && (
+                        <p className="text-xs sm:text-sm text-red-600">{errors.email.message}</p>
                       )}
-                    />
-                    {errors.role && (
-                      <p className="text-sm text-red-600">{errors.role.message}</p>
+                    </div>
+
+                    {/* Contraseña (solo en creación) */}
+                    {!editingUsuario && (
+                      <div className="space-y-2">
+                        <Label htmlFor="password" className="text-sm sm:text-base">Contraseña</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          {...register("password")}
+                          placeholder="••••••••"
+                          className="text-sm sm:text-base"
+                        />
+                        {errors.password && (
+                          <p className="text-xs sm:text-sm text-red-600">{errors.password.message}</p>
+                        )}
+                      </div>
                     )}
+
+                    {/* Rol */}
+                    <div className="space-y-2">
+                      <Label htmlFor="role" className="text-sm sm:text-base">Rol</Label>
+                      <Controller
+                        name="role"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger className="text-sm sm:text-base">
+                              <SelectValue placeholder="Selecciona el rol" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="USER" className="text-sm sm:text-base">Usuario</SelectItem>
+                              <SelectItem value="ADMIN" className="text-sm sm:text-base">Administrador</SelectItem>
+                              <SelectItem value="AUDITOR" className="text-sm sm:text-base">Auditor</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.role && (
+                        <p className="text-xs sm:text-sm text-red-600">{errors.role.message}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" style={{ backgroundColor: "#751518", color: "white" }}>
-                    {editingUsuario ? "Actualizar" : "Crear"} Usuario
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={resetForm}
+                      className="w-full sm:w-auto order-2 sm:order-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      style={{ backgroundColor: "#751518", color: "white" }}
+                      className="w-full sm:w-auto order-1 sm:order-2"
+                    >
+                      {editingUsuario ? "Actualizar" : "Crear"} Usuario
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
 
-          <div className="flex space-x-2">
-            {/** Botón para agregar un nuevo usuario */}
-            <Button
-              variant="outline"
-              onClick={() => exportUsersToPDF(usuarios)}
-              className="border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Exportar PDF
-            </Button>
-            {/** Botón para agregar un nuevo usuario */}
-            <Button
-              variant="outline"
-              onClick={() => exportUsersToExcel(usuarios)}
-              className="border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white"
-            >
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Exportar Excel
-            </Button>
-            {/** Botón para asignar usuario a unidad responsable */}
-            <Button
-              style={{ backgroundColor: "#24356B", color: "white" }}
-              onClick={async () => {
-                setIsModalLoading(true);
-                setIsModalOpen(true);
+            <div className="flex flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={() => exportUsersToPDF(usuarios)}
+                className="flex-1 xs:flex-none border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white text-sm"
+              >
+                <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Exportar PDF</span>
+                <span className="xs:hidden">PDF</span>
+              </Button>
 
-                // Simula una pequeña carga (opcional, si hay mucho contenido)
-                await new Promise((resolve) => setTimeout(resolve, 200));
-                setIsModalLoading(false);
-              }}
-            >
-              {isModalLoading ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  <span className="ml-2">Cargando...</span>
-                </>
-              ) : (
-                <>
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Asignar Responsables
-                </>
-              )}
-            </Button>
+              <Button
+                variant="outline"
+                onClick={() => exportUsersToExcel(usuarios)}
+                className="flex-1 xs:flex-none border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white text-sm"
+              >
+                <FileSpreadsheet className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Exportar Excel</span>
+                <span className="xs:hidden">Excel</span>
+              </Button>
+            </div>
           </div>
         </div>
-        {/** Aquí va el contenido adicional */}
+
+        {/* Users Table */}
         {isLoading ? (
           <Card>
             <CardHeader>
@@ -584,31 +579,52 @@ export default function AdministracionPage(user: { role: string } | null) {
               ))}
             </CardContent>
           </Card>
-        )
-          : (
-            // Card donde estan los usuarios
-            <Card>
-              <CardHeader>
-                <CardTitle>Lista de Usuarios</CardTitle>
-                <CardDescription>Gestiona los usuarios registrados en el sistema</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
+        ) : (
+          <Card className="w-full">
+
+            <CardContent className="p-0 sm:p-4">
+              <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <Table className="min-w-full text-sm divide-y divide-gray-200">
+                  {/* Encabezado: visible solo en pantallas md+ */}
+                  <TableHeader className="bg-gray-50 hidden md:table-header-group">
                     <TableRow>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Rol</TableHead>
-                      {/* <TableHead>Estado</TableHead> */}
-                      <TableHead>Acciones</TableHead>
+                      <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                        Usuario
+                      </TableHead>
+                      <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                        Email
+                      </TableHead>
+                      <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                        Rol
+                      </TableHead>
+                      <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                        Acciones
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+
+                  {/* Cuerpo de tabla / tarjetas responsivas */}
+                  <TableBody className="divide-y divide-gray-200">
                     {usuarios.map((usuario) => (
-                      <TableRow key={usuario.id}>
-                        <TableCell className="font-medium">{usuario.username}</TableCell>
-                        <TableCell>{usuario.email}</TableCell>
-                        <TableCell>
+                      <TableRow
+                        key={usuario.id}
+                        className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
+                      >
+                        {/* Usuario */}
+                        <TableCell className="px-4 py-4 md:table-cell">
+                          <div className="md:hidden font-semibold text-gray-500 text-xs">Usuario</div>
+                          <div className="font-medium text-gray-900 text-sm">{usuario.username}</div>
+                        </TableCell>
+
+                        {/* Email */}
+                        <TableCell className="px-4 py-4 md:table-cell">
+                          <div className="md:hidden font-semibold text-gray-500 text-xs">Email</div>
+                          <div className="text-gray-800 text-sm">{usuario.email}</div>
+                        </TableCell>
+
+                        {/* Rol */}
+                        <TableCell className="px-4 py-4 md:table-cell">
+                          <div className="md:hidden font-semibold text-gray-500 text-xs">Rol</div>
                           <Badge
                             variant={
                               usuario.role === "ADMIN"
@@ -617,37 +633,52 @@ export default function AdministracionPage(user: { role: string } | null) {
                                   ? "outline"
                                   : "secondary"
                             }
-                            className="capitalize">
+                            className="capitalize text-xs"
+                          >
                             {usuario.role === "ADMIN" ? "Administrador" : ""}
                             {usuario.role === "AUDITOR" ? "Auditor" : ""}
                             {usuario.role === "USER" ? "Usuario" : ""}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
-                              <Edit className="h-4 w-4" />
+
+                        {/* Acciones */}
+                        <TableCell className="px-4 py-4 md:table-cell">
+                          <div className="md:hidden font-semibold text-gray-500 text-xs mb-2">
+                            Acciones
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(usuario)}
+                              className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="sr-only">Editar</span>
                             </Button>
 
-                            {/* Botón para ver detalles de los  usuarios */}
                             <Link href={`/dashboard/administracion/usuarios/${usuario.id}`}>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex items-center gap-1 hover:bg-blue-50 hover:text-blue-600"
+                                className="h-8 w-8 sm:h-9 sm:w-9 p-0 flex items-center justify-center text-green-600 hover:text-green-800 hover:bg-green-50"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                                 <span className="sr-only">Ver detalles</span>
                               </Button>
                             </Link>
-                            {/* Botón para activar/desactivar usuarios */}
+
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setIsDeleting(true)}
-                              className="text-red-600 hover:text-red-800"
+                              onClick={() => {
+                                setEditingUsuario(usuario);
+                                setIsDeleting(true);
+                              }}
+                              className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="sr-only">Eliminar</span>
                             </Button>
                           </div>
                         </TableCell>
@@ -655,99 +686,102 @@ export default function AdministracionPage(user: { role: string } | null) {
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
-          )
-        }
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/** Asignacion de usuario cambiar a useForm */}
+        {/* Asignación de usuario */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-4xl max-h-96 overflow-hidden">
+          <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
-              <DialogTitle>Asignar Responsable a Unidad</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">Asignar Responsable a Unidad</DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
                 Asigna un usuario como responsable de una unidad responsable.
               </DialogDescription>
             </DialogHeader>
 
-            {/* Spinner o Skeleton */}
             {isModalLoading ? (
-              <div className="py-4 space-y-4">
+              <div className="py-4 space-y-4 flex-1 overflow-y-auto">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex space-x-4 items-center">
-                    <div className="w-1/3">
-                      <Skeleton className="h-4" />
+                  <div key={i} className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0 items-start sm:items-center">
+                    <div className="w-full sm:w-1/3">
+                      <Skeleton className="h-4 w-full" />
                     </div>
-                    <div className="w-1/4">
-                      <Skeleton className="h-4" />
+                    <div className="w-full sm:w-1/4">
+                      <Skeleton className="h-4 w-full" />
                     </div>
-                    <div className="w-1/4">
-                      <Skeleton className="h-10" />
+                    <div className="w-full sm:w-1/4">
+                      <Skeleton className="h-10 w-full" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-4 max-h-64 overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Unidad</TableHead>
-                      <TableHead>Responsable Actual</TableHead>
-                      <TableHead>Asignar Nuevo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {unidades.map((unidad) => (
-                      <TableRow key={unidad.id_unidad}>
-                        <TableCell className="font-medium">{unidad.nombre}</TableCell>
-                        <TableCell>
-                          {unidad.responsable ? (
-                            <Badge variant="default">
-                              {unidad.responsable.username}
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Sin asignar</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Controller
-                            name={`asignaciones.${unidad.id_unidad}`}
-                            control={control}
-                            render={({ field }) => (
-                              <Select
-                                onValueChange={(value) => {
-                                  field.onChange(value);
-                                  const usuarioId = parseInt(value);
-                                  const usuario = usuarios.find((u) => u.id === usuarioId);
-                                  setPendingAssignment({
-                                    unidadId: unidad.id_unidad,
-                                    unidadNombre: unidad.nombre,
-                                    usuarioId,
-                                    usuarioNombre: usuario?.username || "",
-                                  });
-                                  setIsConfirmOpen(true);
-                                }}
-                                value={field.value}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Seleccionar usuario" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {usuarios.map((usuario) => (
-                                    <SelectItem key={usuario.id} value={usuario.id.toString()}>
-                                      {usuario.username} ({usuario.email})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                        </TableCell>
+              <div className="py-4 flex-1 overflow-y-auto">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs sm:text-sm">Unidad</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Responsable Actual</TableHead>
+                        <TableHead className="text-xs sm:text-sm">Asignar Nuevo</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {unidades.map((unidad) => (
+                        <TableRow key={unidad.id_unidad}>
+                          <TableCell className="font-medium text-xs sm:text-sm">
+                            {unidad.nombre}
+                          </TableCell>
+                          <TableCell>
+                            {unidad.responsable ? (
+                              <Badge variant="default" className="text-xs">
+                                {unidad.responsable.username}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">Sin asignar</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Controller
+                              name={`asignaciones.${unidad.id_unidad}`}
+                              control={control}
+                              render={({ field }) => (
+                                <Select
+                                  onValueChange={(value) => {
+                                    field.onChange(value);
+                                    const usuarioId = parseInt(value);
+                                    const usuario = usuarios.find((u) => u.id === usuarioId);
+                                    setPendingAssignment({
+                                      unidadId: unidad.id_unidad,
+                                      unidadNombre: unidad.nombre,
+                                      usuarioId,
+                                      usuarioNombre: usuario?.username || "",
+                                    });
+                                    setIsConfirmOpen(true);
+                                  }}
+                                  value={field.value}
+                                >
+                                  <SelectTrigger className="text-xs sm:text-sm">
+                                    <SelectValue placeholder="Seleccionar usuario" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {usuarios.map((usuario) => (
+                                      <SelectItem key={usuario.id} value={usuario.id.toString()} className="text-xs sm:text-sm">
+                                        {usuario.username} ({usuario.email})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             )}
 
@@ -755,11 +789,11 @@ export default function AdministracionPage(user: { role: string } | null) {
               <Button
                 variant="outline"
                 onClick={() => {
-                  // Si está cargando, no se puede cerrar hasta que termine
                   if (isModalLoading) return;
                   setIsModalOpen(false);
                 }}
                 disabled={isModalLoading}
+                className="w-full sm:w-auto"
               >
                 {isModalLoading ? (
                   <span className="flex items-center">
@@ -776,16 +810,20 @@ export default function AdministracionPage(user: { role: string } | null) {
 
         {/* Modal de Confirmación */}
         <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="w-[95vw] max-w-md">
             <DialogHeader>
-              <DialogTitle>Confirmar Asignación</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">Confirmar Asignación</DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
                 ¿Estás seguro de que deseas asignar a <strong>{pendingAssignment?.usuarioNombre}</strong> como responsable de{" "}
                 <strong>{pendingAssignment?.unidadNombre}</strong>?
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="sm:justify-end">
-              <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsConfirmOpen(false)}
+                className="w-full sm:w-auto order-2 sm:order-1"
+              >
                 Cancelar
               </Button>
               <Button
@@ -812,7 +850,6 @@ export default function AdministracionPage(user: { role: string } | null) {
                       `✅ ${data.unidad.responsable_nombre} asignado a ${data.unidad.nombre}`
                     );
 
-                    // Actualizar estado local
                     setUnidades((prev) =>
                       prev.map((u) =>
                         u.id_unidad === unidadId
@@ -827,15 +864,13 @@ export default function AdministracionPage(user: { role: string } | null) {
                       )
                     );
 
-                    // Cerrar modales
                     setIsConfirmOpen(false);
-                    // Opcional: cerrar el modal principal después de asignar
-                    // setIsModalOpen(false);
                   } catch (error) {
                     toast.error("No se pudo asignar el responsable");
                     setIsConfirmOpen(false);
                   }
                 }}
+                className="w-full sm:w-auto order-1 sm:order-2"
               >
                 Confirmar
               </Button>
@@ -843,34 +878,34 @@ export default function AdministracionPage(user: { role: string } | null) {
           </DialogContent>
         </Dialog>
 
-
-        {/* componente para eliminar usuarios (soft delete) */}
-        {/* Aquí podrías agregar un componente para manejar la eliminación suave de usuarios si es necesario */}
+        {/* Modal de Eliminación */}
         <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="w-[95vw] max-w-md">
             <DialogHeader>
-              <DialogTitle>Eliminar Usuario</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">Eliminar Usuario</DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
                 ¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleting(false)}>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleting(false)}
+                className="w-full sm:w-auto order-2 sm:order-1"
+              >
                 Cancelar
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => {
-                  // Aquí podrías implementar la lógica para eliminar el usuario
                   handleDelete(editingUsuario?.id || 0)
                   setIsDeleting(false)
                   toast.success("Usuario eliminado correctamente")
                 }}
-                className="bg-red-600 hover:bg-red-700"
+                className="w-full sm:w-auto order-1 sm:order-2 bg-red-600 hover:bg-red-700"
               >
                 Eliminar Usuario
               </Button>
-
             </DialogFooter>
           </DialogContent>
         </Dialog>

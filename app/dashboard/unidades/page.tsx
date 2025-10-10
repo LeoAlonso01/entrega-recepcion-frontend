@@ -227,18 +227,18 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         }
     }
 
-    const renderResponsable = (responsable:any) => {
-    if (!responsable) return 'Sin asignar';
-    
-    // Si es un objeto con username
-    if (responsable.username) return responsable.username;
-    
-    // Si por algún accidente es string/número
-    if (typeof responsable === 'string') return responsable;
-    if (typeof responsable === 'number') return `ID: ${responsable}`;
-    
-    return 'Sin asignar';
-};
+    const renderResponsable = (responsable: any) => {
+        if (!responsable) return 'Sin asignar';
+
+        // Si es un objeto con username
+        if (responsable.username) return responsable.username;
+
+        // Si por algún accidente es string/número
+        if (typeof responsable === 'string') return responsable;
+        if (typeof responsable === 'number') return `ID: ${responsable}`;
+
+        return 'Sin asignar';
+    };
 
     // Obtener unidades jerárquicas (solo cuando se selecciona la pestaña)
     const handleGetUnidadesJerarquicas = async () => {
@@ -383,27 +383,29 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
 
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                     {/* Pestañas */}
-                    <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm">
-                        {/* Pestañas para Listado, Jerarquía y Dependencias */}
+                    <TabsList className="flex w-full overflow-x-auto scrollbar-hide sm:grid sm:grid-cols-3 gap-2 sm:gap-0 text-sm sm:text-base pb-2 sm:pb-0">
                         <TabsTrigger
                             value="listado"
-                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-md sm:rounded-t-lg px-4 py-2 text-center"
+                            className="flex-shrink-0 data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-lg sm:rounded-t-lg px-4 py-2 text-center text-sm min-w-[120px] sm:min-w-0"
                         >
-                            Listado de Unidades
+                            <span className="sm:hidden">Listado</span>
+                            <span className="hidden sm:inline">Listado de Unidades</span>
                         </TabsTrigger>
-                        {/* Pestaña para Árbol de Jerarquía */}
+
                         <TabsTrigger
                             value="jerarquia"
-                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-md sm:rounded-t-lg px-4 py-2 text-center"
+                            className="flex-shrink-0 data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-lg sm:rounded-t-lg px-4 py-2 text-center text-sm min-w-[120px] sm:min-w-0"
                         >
-                            Árbol de Jerarquía
+                            <span className="sm:hidden">Jerarquía</span>
+                            <span className="hidden sm:inline">Árbol de Jerarquía</span>
                         </TabsTrigger>
-                        {/* Pestaña para Dependencias de Unidad */}
+
                         <TabsTrigger
                             value="dependencias"
-                            className="data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-md sm:rounded-t-lg px-4 py-2 text-center"
+                            className="flex-shrink-0 data-[state=active]:bg-[#24356B] data-[state=active]:text-white rounded-lg sm:rounded-t-lg px-4 py-2 text-center text-sm min-w-[120px] sm:min-w-0"
                         >
-                            Dependencias de Unidad
+                            <span className="sm:hidden">Dependencias</span>
+                            <span className="hidden sm:inline">Dependencias</span>
                         </TabsTrigger>
                     </TabsList>
 
@@ -577,7 +579,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                             <div className="text-sm font-medium text-gray-900">
                                                                                 {unidad.responsable?.username || 'Sin asignar'}
                                                                             </div>
-                                                                            
+
                                                                         </div>
                                                                     </div>
                                                                 </TableCell>
@@ -748,7 +750,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                     </TabsContent>
                 </Tabs>
 
-                
+
                 {/* Dialog para editar la unidad responsable */}
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
                     <DialogContent className="max-w-2xl">
