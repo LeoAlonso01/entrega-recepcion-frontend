@@ -393,54 +393,66 @@ export default function ActasPage() {
     <div className="min-h-screen bg-gray-50">
       <NavbarWithBreadcrumb role="ADMIN" />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Gestión de Actas</h2>
-            <p className="text-gray-600">Administra las actas de entrega y recepción</p>
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 lg:py-8">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div className="flex-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gestión de Actas</h2>
+            <p className="text-sm sm:text-base text-gray-600">Administra las actas de entrega y recepción</p>
           </div>
 
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {!showForm && (
               <>
+                {/* Botones de exportación opcionales */}
+                {/* 
                 <Button
                   variant="outline"
                   onClick={exportToPDF}
-                  className="border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white"
+                  className="border-[#751518] text-[#751518] hover:bg-[#751518] hover:text-white text-xs sm:text-sm"
                 >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Exportar PDF
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Exportar PDF</span>
+                  <span className="xs:hidden">PDF</span>
                 </Button>
+
                 <Button
                   variant="outline"
                   onClick={exportToExcel}
-                  className="border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white"
+                  className="border-[#B59E60] text-[#B59E60] hover:bg-[#B59E60] hover:text-white text-xs sm:text-sm"
                 >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Exportar Excel
+                  <FileSpreadsheet className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Exportar Excel</span>
+                  <span className="xs:hidden">Excel</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  <RotateCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  Actualizar
-                </Button>
+                */}
               </>
             )}
-            <Button
-              onClick={() => {
-                setEditingActa(null)
-                setShowForm(!showForm)
-              }}
-              className="bg-[#751518] hover:bg-[#8a1a1d]"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {showForm ? 'Ver lista' : 'Nueva acta'}
-            </Button>
           </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col xs:flex-row gap-3 mb-6">
+          <Button
+            onClick={() => {
+              setEditingActa(null)
+              setShowForm(!showForm)
+            }}
+            className="bg-[#751518] hover:bg-[#8a1a1d] text-white text-sm sm:text-base flex items-center justify-center"
+          >
+            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            {showForm ? 'Ver lista' : 'Nueva acta'}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-gray-600 hover:text-gray-800 text-sm sm:text-base flex items-center justify-center"
+          >
+            <RotateCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
         </div>
 
         {showForm ? (
@@ -455,26 +467,27 @@ export default function ActasPage() {
           />
         ) : (
           <>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            {/* Filters Section */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-2.5 top-2.5 h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
                 <Input
                   type="search"
                   placeholder="Buscar actas..."
-                  className="pl-8"
+                  className="pl-8 text-sm sm:text-base"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    Filtros
+                  <Button variant="outline" className="flex items-center gap-2 text-sm sm:text-base">
+                    <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Filtros</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Filtrar por estado</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-sm">Filtrar por estado</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {["Pendiente", "Completada", "Revisión"].map((status) => (
                     <DropdownMenuCheckboxItem
@@ -487,6 +500,7 @@ export default function ActasPage() {
                           setStatusFilter(statusFilter.filter(s => s !== status))
                         }
                       }}
+                      className="text-sm"
                     >
                       {status}
                     </DropdownMenuCheckboxItem>
@@ -494,7 +508,10 @@ export default function ActasPage() {
                   {statusFilter.length > 0 && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setStatusFilter([])}>
+                      <DropdownMenuItem
+                        onClick={() => setStatusFilter([])}
+                        className="text-sm"
+                      >
                         Limpiar filtros
                       </DropdownMenuItem>
                     </>
@@ -506,19 +523,21 @@ export default function ActasPage() {
             {isLoading ? (
               <TableSkeleton />
             ) : (
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <CardTitle>Lista de Actas</CardTitle>
-                      <CardDescription>
-                        Mostrando {filteredActas.length} de {actas.length} actas
-                        {statusFilter.length > 0 && ` (filtradas por estado)`}
-                        {searchTerm && ` (filtradas por búsqueda)`}
-                      </CardDescription>
-                    </div>
-                    {filteredActas.length > 0 && (
-                      <Button variant="outline" size="sm" onClick={() => {
+              <Card className="w-full">
+                <CardHeader className="p-3 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div>
+                    <CardTitle className="text-base sm:text-lg">Lista de Actas</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Mostrando {filteredActas.length} de {actas.length} actas
+                      {statusFilter.length > 0 && ` (filtradas por estado)`}
+                      {searchTerm && ` (filtradas por búsqueda)`}
+                    </CardDescription>
+                  </div>
+                  {filteredActas.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
                         const element = document.createElement("a")
                         const file = new Blob([JSON.stringify(filteredActas, null, 2)], { type: 'text/plain' })
                         element.href = URL.createObjectURL(file)
@@ -526,78 +545,144 @@ export default function ActasPage() {
                         document.body.appendChild(element)
                         element.click()
                         document.body.removeChild(element)
-                      }}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Descargar datos
-                      </Button>
-                    )}
-                  </div>
+                      }}
+                      className="text-xs sm:text-sm"
+                    >
+                      <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      Descargar datos
+                    </Button>
+                  )}
                 </CardHeader>
-                <CardContent>
+
+                <CardContent className="p-0 sm:p-4">
                   {filteredActas.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-gray-500">
+                    <div className="text-center py-12 px-4">
+                      <p className="text-gray-500 text-sm sm:text-base">
                         {actas.length === 0
                           ? "No hay actas registradas. Crea tu primera acta."
                           : "No se encontraron actas que coincidan con los criterios de búsqueda."}
                       </p>
                     </div>
                   ) : (
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                      <Table className="min-w-full text-sm divide-y divide-gray-200">
+                        {/* Encabezado: visible solo en pantallas md+ */}
+                        <TableHeader className="bg-gray-50 hidden md:table-header-group">
                           <TableRow>
-                            <TableHead>Fólio</TableHead>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead>Unidad</TableHead>
-                            <TableHead>Entrega</TableHead>
-                            <TableHead>Recibe</TableHead>
-                            <TableHead>Estado</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
+                            <TableHead className="px-3 sm:px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                              Fólio
+                            </TableHead>
+                            <TableHead className="px-3 sm:px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                              Fecha
+                            </TableHead>
+                            <TableHead className="px-3 sm:px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                              Unidad
+                            </TableHead>
+                            <TableHead className="px-3 sm:px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                              Entrega
+                            </TableHead>
+                            <TableHead className="px-3 sm:px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                              Recibe
+                            </TableHead>
+                            <TableHead className="px-3 sm:px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                              Estado
+                            </TableHead>
+                            <TableHead className="px-3 sm:px-4 py-3 text-right uppercase tracking-wider text-xs font-medium">
+                              Acciones
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
-                        <TableBody>
+
+                        {/* Cuerpo de tabla / tarjetas responsivas */}
+                        <TableBody className="divide-y divide-gray-200">
                           {filteredActas.map((acta) => (
-                            <TableRow key={acta.id}>
-                              <TableCell className="font-medium">{acta.folio || "Sin folio"}</TableCell>
-                              <TableCell>{new Date(acta.fecha).toLocaleDateString()}</TableCell>
-                              <TableCell>
-                                {unidades.find(u => u.id_unidad === acta.unidad_responsable)?.nombre ||
-                                  `Unidad ${acta.unidad_responsable}`}
+                            <TableRow
+                              key={acta.id}
+                              className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
+                            >
+                              {/* Fólio */}
+                              <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 text-xs">Fólio</div>
+                                <div className="font-medium text-gray-900 text-sm">
+                                  {acta.folio || "Sin folio"}
+                                </div>
                               </TableCell>
-                              <TableCell>{acta.entrante}</TableCell>
-                              <TableCell>{acta.saliente}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className={getEstadoColor(acta.estado)}>
+
+                              {/* Fecha */}
+                              <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 text-xs">Fecha</div>
+                                <div className="text-gray-800 text-sm">
+                                  {new Date(acta.fecha).toLocaleDateString()}
+                                </div>
+                              </TableCell>
+
+                              {/* Unidad */}
+                              <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 text-xs">Unidad</div>
+                                <div className="text-gray-800 text-sm">
+                                  {unidades.find(u => u.id_unidad === acta.unidad_responsable)?.nombre ||
+                                    `Unidad ${acta.unidad_responsable}`}
+                                </div>
+                              </TableCell>
+
+                              {/* Entrega */}
+                              <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 text-xs">Entrega</div>
+                                <div className="text-gray-800 text-sm">{acta.entrante}</div>
+                              </TableCell>
+
+                              {/* Recibe */}
+                              <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 text-xs">Recibe</div>
+                                <div className="text-gray-800 text-sm">{acta.saliente}</div>
+                              </TableCell>
+
+                              {/* Estado */}
+                              <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 text-xs">Estado</div>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${getEstadoColor(acta.estado)}`}
+                                >
                                   {acta.estado}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
-                                <div className="flex justify-end space-x-2">
+
+                              {/* Acciones */}
+                              <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 text-xs mb-2">
+                                  Acciones
+                                </div>
+                                <div className="flex gap-2 justify-end md:justify-end">
                                   <Button
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={() => handleView(acta)}
+                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                     title="Ver detalles"
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="sr-only">Ver detalles</span>
                                   </Button>
                                   <Button
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={() => handleEdit(acta)}
+                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-green-600 hover:text-green-800 hover:bg-green-50"
                                     title="Editar acta"
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="sr-only">Editar</span>
                                   </Button>
                                   <Button
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={() => confirmDelete(acta.id)}
-                                    className="text-red-600 hover:text-red-800"
+                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
                                     title="Eliminar acta"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="sr-only">Eliminar</span>
                                   </Button>
                                 </div>
                               </TableCell>
@@ -615,16 +700,21 @@ export default function ActasPage() {
 
         {/* Diálogo de confirmación para eliminar */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="w-[95vw] max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogTitle className="text-lg sm:text-xl">¿Estás seguro?</AlertDialogTitle>
+              <AlertDialogDescription className="text-sm sm:text-base">
                 Esta acción no se puede deshacer. Se eliminará permanentemente el acta.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+              <AlertDialogCancel className="w-full sm:w-auto order-2 sm:order-1 mt-0">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 w-full sm:w-auto order-1 sm:order-2"
+              >
                 Eliminar
               </AlertDialogAction>
             </AlertDialogFooter>
