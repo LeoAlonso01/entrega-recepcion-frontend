@@ -12,7 +12,7 @@ import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Download, ArrowLeft, Eye } from "lucide-react"
+import { Plus, Edit, Trash2, Download, ArrowLeft, Eye, Trash, Check } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
@@ -1235,6 +1235,13 @@ export default function AnexosPage() {
     })
   }
 
+  const checkedOutAnexo = () => {
+    toast("Función de check-out aún no implementada", {
+      description: "Próximamente podrás hacer check-out de anexos.",
+      duration: 1000,
+    })
+  }
+
   const handleDelete = (id: number) => {
     toast(
       "Función de eliminación aún no implementada",
@@ -1327,7 +1334,7 @@ export default function AnexosPage() {
   // manejo de edicion de anexos por usuario y por unidad responsable
   const canEdit = (anexo: Anexo): boolean => {
     // Si el estado es "Cerrado", nadie puede editar
-    if (anexo.estado === "Cerrado") return false;
+    if (anexo.estado === "Completado") return false;
     // convertir el boton en desabilidato
 
 
@@ -1816,6 +1823,14 @@ export default function AnexosPage() {
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => checkedOutAnexo()}
+                                    className="text-blue-600 hover:text-red-800"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button> 
                                 </TableCell>
                               </TableRow>
                             ))}
