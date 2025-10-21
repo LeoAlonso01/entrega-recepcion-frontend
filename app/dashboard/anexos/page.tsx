@@ -12,7 +12,7 @@ import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Download, ArrowLeft, Eye } from "lucide-react"
+import { Plus, Edit, Trash2, Download, ArrowLeft, Eye, Trash, Check } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
@@ -987,7 +987,7 @@ export default function AnexosPage() {
   //////////// datos para el form con react hook form ///////////////////////////////////////////
   const [userid, setUserid] = useState<number>(0);
   const [userrole, setUserrole] = useState<string>("USER"); // valor por defecto
-  const [unidadResponsable, setUnidadResponsable] = useState<number>(0)
+  const [unidadResponsable, setUnidadResponsable] = useState<number>()
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<IFormInput>({
     defaultValues: {
       creador_id: userid,
@@ -1012,6 +1012,8 @@ export default function AnexosPage() {
   const [pendingFile, setPendingFile] = useState<{ file: File; data: any[] } | null>(null);
   const [anexosFiltrados, setAnexosFiltrados] = useState<Anexo[]>(anexos);
   const [currentPage, setCurrentPage] = useState(1);
+  const [unidadToShow, setUnidadToShow] = useState<string>("");
+  const [creatorToShow, setCreatorToShow] = useState<string>("");
   const rowsPerPage = 5;
 
   // Calcular filas actuales
@@ -1102,8 +1104,10 @@ export default function AnexosPage() {
     const obtenerUnidad = async () => {
       try {
         const unidad = await UnidadesPorUsuario(currentUserId!);
-        console.log("Unidad responsable:", unidad.id_unidad);
+        console.log("Unidad responsable:", unidad.id_unidad, "Nombre:", unidad.nombre);
         setUnidadResponsable(unidad.id_unidad);
+        setUnidadToShow(unidad.nombre);
+        setCreatorToShow(unidad.responsable.nombre);
         setValue("unidad_responsable_id", unidad.id_unidad);
         setValue("creador_id", currentUserId!);
       } catch (error) {
@@ -1231,6 +1235,13 @@ export default function AnexosPage() {
     })
   }
 
+  const checkedOutAnexo = () => {
+    toast("Función de check-out aún no implementada", {
+      description: "Próximamente podrás hacer check-out de anexos.",
+      duration: 1000,
+    })
+  }
+
   const handleDelete = (id: number) => {
     toast(
       "Función de eliminación aún no implementada",
@@ -1323,7 +1334,7 @@ export default function AnexosPage() {
   // manejo de edicion de anexos por usuario y por unidad responsable
   const canEdit = (anexo: Anexo): boolean => {
     // Si el estado es "Cerrado", nadie puede editar
-    if (anexo.estado === "Cerrado") return false;
+    if (anexo.estado === "Completado") return false;
     // convertir el boton en desabilidato
 
 
@@ -1717,7 +1728,7 @@ export default function AnexosPage() {
                   <Card className="w-full">
                     <CardHeader className="p-3 sm:p-6 flex justify-between items-center">
                       <CardTitle>Lista de Anexos</CardTitle>
-                     
+
                     </CardHeader>
 
                     <CardContent className="p-0 sm:p-4">
@@ -1769,7 +1780,16 @@ export default function AnexosPage() {
                                 {/* Fecha */}
                                 <TableCell className="px-4 py-4 md:table-cell">
                                   <div className="md:hidden font-semibold text-gray-500">Fecha</div>
-                                  <div className="text-gray-800">{anexo.fecha_creacion}</div>
+                                  <div className="text-gray-800">
+                                    {new Date(anexo.fecha_creacion).toLocaleDateString('es-MX', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </div>
                                 </TableCell>
 
                                 {/* Acciones */}
@@ -1803,6 +1823,14 @@ export default function AnexosPage() {
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => checkedOutAnexo()}
+                                    className="text-blue-600 hover:text-red-800"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button> 
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1920,9 +1948,8 @@ export default function AnexosPage() {
                         className="w-full p-2 border border-gray-300 rounded-md"
                       >
                         <option value="Borrador">Borrador</option>
-                        <option value="Completado">Completado</option>
+                        <option value="Completado">Cerrado</option>
                         <option value="Revisión">Revisión</option>
-                        <option value="Pendiente">Pendiente</option>
                       </select>
                       {errors.estado && (
                         <p className="text-sm text-red-600">{errors.estado.message}</p>
@@ -1930,302 +1957,326 @@ export default function AnexosPage() {
                     </div>
                     <div className="space-y-2 col-span-6 grid-cols-3">
 
-                      <Label>ID del Creador</Label>
+
+                      {/* Campos ocultos */}
+                      <Label>Creador</Label>
                       <div className="space-y-2 text-sm text-gray-500 mb-1">
-                        <input className="w-full p-2 border border-gray-300 rounded-md" type="readOnly" {...register("creador_id")} value={userid} />
+                        <label htmlFor="Id Creador"> {creatorToShow} </label>
+                        <input className="w-full p-2 border border-gray-300 rounded-md" type="hidden" {...register("creador_id")} value={userid} />
                       </div>
-                      <Label>ID de la Unidad Responsable</Label>
+                      <br />
+                      <Label>Unidad Responsable</Label>
                       <div className="space-y-2 text-sm text-gray-500 mb-1">
-                        <input className="w-full p-2 border border-gray-300 rounded-md" type="readOnly" {...register("unidad_responsable_id")} value={unidadResponsable} />
+                        <label htmlFor="Id Unidad responsable"> {unidadToShow} </label>
+                        <input className="w-full p-2 border border-gray-300 rounded-md" type="hidden" {...register("unidad_responsable_id")} value={unidadResponsable} />
                       </div>
                     </div>
                     {/* Campos ocultos */}
 
-                    {/* Tabla dinámica o Excel */}
+                    {unidadToShow && unidadToShow != "0" && unidadToShow.trim() !== "" ? (
+                      <>
+                        {/* Tabla dinámica o Excel */}
 
-                    <div className="text-sm text-gray-500 mb-1">
-                      {watch("clave") && (
-                        <div className="space-y-4">
-                          <Label>
-                            Datos del anexo: <strong>{watch("clave")}</strong>
-                          </Label>
-
-                          {/** Condición para mostrar mensaje de archivo PDF requerido */}
-                          {requierePDF(watch("clave")) ? (
+                        <div className="text-sm text-gray-500 mb-1">
+                          {watch("clave") && (
                             <div className="space-y-4">
-                              <p className="text-sm text-gray-600">
-                                Este anexo requiere un archivo PDF.
-                              </p>
-                              <PdfUploader
-                                onUploadSuccess={(fileUrl) => {
-                                  const datosPDF = [{ url: fileUrl }];
-                                  setDatos(datosPDF);
-                                  setValue("datos", datosPDF);
-                                  toast.success("✅ PDF subido correctamente");
-                                }}
-                              />
-                              {datos.length > 0 && datos[0]?.url && (
+                              <Label>
+                                Datos del anexo: <strong>{watch("clave")}</strong>
+                              </Label>
 
-                                <div className="mt-4">
-
-                                  <p className="text-sm text-gray-600">PDF cargado:</p>
-                                  <a
-                                    href={datos[0].url}
-                                    target="_blank"
-                                    className="text-blue-600 hover:underline"
-                                  >
-                                    Ver documento
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <>
-                              <p className="text-sm text-gray-500">
-                                Este anexo requiere un archivo excel o carga manual.
-                              </p>
-                              <div>
-                                {/* Botón para agregar fila */}
-                                <div className="flex justify-between items-center mb-2">
-                                  <span>Tabla de datos</span>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      const estructura = EstructuraDatosPorClave[watch("clave")] || [];
-                                      const nuevaFila: Record<string, any> = {};
-                                      estructura.forEach((campo) => (nuevaFila[campo] = ""));
-                                      const nuevas = [...datos, nuevaFila];
-                                      setDatos(nuevas);
-                                      setValue("datos", nuevas);
-                                    }}
-                                    disabled={
-                                      !watch("clave") ||
-                                      yaTieneAnexoConClave(watch("clave"), anexos, userid)
-                                    }
-                                    className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
-                                  >
-                                    + Agregar fila
-                                  </Button>
-                                </div>
-
-                                {/* Mensaje si no hay datos */}
-                                {datos.length === 0 ? (
-                                  <p className="text-sm text-gray-500">No hay datos. Usa Excel o agrega manualmente.</p>
-                                ) : (
-                                  <>
-                                    {/* Contenedor con scroll horizontal/vertical */}
-                                    <div className="border border-gray-300 rounded-md overflow-hidden">
-                                      <div className="max-h-60 overflow-y-auto">
-                                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                          <thead className="bg-gray-50 sticky top-0">
-                                            <tr>
-                                              {Object.keys(datos[0]).map((key) => (
-                                                <th
-                                                  key={key}
-                                                  className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider"
-                                                >
-                                                  {key.replace(/_/g, " ").toUpperCase()}
-                                                </th>
-                                              ))}
-                                              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                                Acciones
-                                              </th>
-                                            </tr>
-                                          </thead>
-                                          <tbody className="bg-white divide-y divide-gray-200">
-                                            {currentRows.map((fila, i) => {
-                                              const rowIndex = indexOfFirstRow + i;
-                                              return (
-                                                <tr key={rowIndex} className="hover:bg-gray-50">
-                                                  {Object.keys(fila).map((campo) => (
-                                                    <td key={campo} className="px-3 py-2 whitespace-nowrap">
-                                                      <input
-                                                        type="text"
-                                                        value={fila[campo]}
-                                                        onChange={(e) => {
-                                                          const nuevas = [...datos];
-                                                          nuevas[rowIndex][campo] = e.target.value;
-                                                          setDatos(nuevas);
-                                                          setValue("datos", nuevas);
-                                                        }}
-                                                        className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                        disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
-                                                      />
-                                                    </td>
-                                                  ))}
-                                                  <td className="px-3 py-2 whitespace-nowrap">
-                                                    <Button
-                                                      type="button"
-                                                      variant="ghost"
-                                                      size="sm"
-                                                      className="text-red-500 hover:bg-red-50"
-                                                      onClick={() => {
-                                                        const nuevas = datos.filter((_, index) => index !== rowIndex);
-                                                        setDatos(nuevas);
-                                                        setValue("datos", nuevas);
-                                                      }}
-                                                      disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
-                                                    >
-                                                      Eliminar
-                                                    </Button>
-                                                  </td>
-                                                </tr>
-                                              );
-                                            })}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-
-                                    {/* Paginación */}
-                                    {totalPages > 1 && (
-                                      <div className="flex justify-center mt-3 space-x-1">
-                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                          <Button
-                                            key={page}
-                                            variant={currentPage === page ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => paginate(page)}
-                                            className={currentPage === page ? "!bg-blue-600" : ""}
-                                          >
-                                            {page}
-                                          </Button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-
-                                {/* Subida de Excel */}
-                                <div className="mt-4">
-                                  <ExcelUploader
-                                    onUploadSuccess={async (excelData) => {
-                                      const clave = watch("clave");
-                                      if (!clave) {
-                                        toast.error("Por favor, proporciona una clave válida.");
-                                        return;
-                                      }
-
-                                      if (yaTieneAnexoConClave(clave, anexos, userid)) {
-                                        toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
-                                        return;
-                                      }
-
-                                      const estructura = EstructuraDatosPorClave[clave];
-                                      if (!estructura) {
-                                        toast.error("Estructura no definida para esta clave");
-                                        return;
-                                      }
-
-                                      const { valido, errores } = validarEstructuraExcel(excelData, clave);
-                                      if (!valido) {
-                                        toast.error(
-                                          <div>
-                                            <p>Errores en el archivo:</p>
-                                            <ul className="list-disc list-inside text-sm">
-                                              {errores.map((err, i) => (
-                                                <li key={i}>{err}</li>
-                                              ))}
-                                            </ul>
-                                          </div>,
-                                          { duration: 8000 }
-                                        );
-                                        return;
-                                      }
-
-                                      const { advertencias } = validarTiposExcel(excelData, clave);
-                                      if (advertencias.length > 0) {
-                                        toast.warning(
-                                          <div>
-                                            <p>Advertencias de tipos de datos:</p>
-                                            <ul className="list-disc list-inside text-sm">
-                                              {advertencias.slice(0, 5).map((adv, i) => (
-                                                <li key={i}>{adv}</li>
-                                              ))}
-                                            </ul>
-                                            {advertencias.length > 5 && (
-                                              <p>... y {advertencias.length - 5} más</p>
-                                            )}
-                                          </div>,
-                                          { duration: 10000 }
-                                        );
-                                      }
-
-                                      setDatos(excelData);
-                                      setValue("datos", excelData);
-                                      toast.success(`✅ Excel cargado: ${excelData.length} filas`);
-                                    }}
-                                    onUploadError={(error: string) => {
-                                      toast.error(`Error al subir el archivo: ${error}`);
+                              {/** Condición para mostrar mensaje de archivo PDF requerido */}
+                              {requierePDF(watch("clave")) ? (
+                                <div className="space-y-4">
+                                  <p className="text-sm text-gray-600">
+                                    Este anexo requiere un archivo PDF.
+                                  </p>
+                                  <PdfUploader
+                                    onUploadSuccess={(fileUrl) => {
+                                      const datosPDF = [{ url: fileUrl }];
+                                      setDatos(datosPDF);
+                                      setValue("datos", datosPDF);
+                                      toast.success("✅ PDF subido correctamente");
                                     }}
                                   />
+                                  {datos.length > 0 && datos[0]?.url && (
+
+                                    <div className="mt-4">
+
+                                      <p className="text-sm text-gray-600">PDF cargado:</p>
+                                      <a
+                                        href={datos[0].url}
+                                        target="_blank"
+                                        className="text-blue-600 hover:underline"
+                                      >
+                                        Ver documento
+                                      </a>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            </>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-gray-500">
+                                    Este anexo requiere un archivo excel o carga manual.
+                                  </p>
+                                  <div>
+                                    {/* Botón para agregar fila */}
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span>Tabla de datos</span>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const estructura = EstructuraDatosPorClave[watch("clave")] || [];
+                                          const nuevaFila: Record<string, any> = {};
+                                          estructura.forEach((campo) => (nuevaFila[campo] = ""));
+                                          const nuevas = [...datos, nuevaFila];
+                                          setDatos(nuevas);
+                                          setValue("datos", nuevas);
+                                        }}
+                                        disabled={
+                                          !watch("clave") ||
+                                          yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                                        }
+                                        className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
+                                      >
+                                        + Agregar fila
+                                      </Button>
+                                    </div>
+
+                                    {/* Mensaje si no hay datos */}
+                                    {datos.length === 0 ? (
+                                      <p className="text-sm text-gray-500">No hay datos. Sube un archivo excel o agrega manualmente.</p>
+                                    ) : (
+                                      <>
+                                        {/* Contenedor con scroll horizontal/vertical */}
+                                        <div className="border border-gray-300 rounded-md overflow-hidden">
+                                          <div className="max-h-60 overflow-y-auto">
+                                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                              <thead className="bg-gray-50 sticky top-0">
+                                                <tr>
+                                                  {Object.keys(datos[0]).map((key) => (
+                                                    <th
+                                                      key={key}
+                                                      className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                                                    >
+                                                      {key.replace(/_/g, " ").toUpperCase()}
+                                                    </th>
+                                                  ))}
+                                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                    Acciones
+                                                  </th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="bg-white divide-y divide-gray-200">
+                                                {currentRows.map((fila, i) => {
+                                                  const rowIndex = indexOfFirstRow + i;
+                                                  return (
+                                                    <tr key={rowIndex} className="hover:bg-gray-50">
+                                                      {Object.keys(fila).map((campo) => (
+                                                        <td key={campo} className="px-3 py-2 whitespace-nowrap">
+                                                          <input
+                                                            type="text"
+                                                            value={fila[campo]}
+                                                            onChange={(e) => {
+                                                              const nuevas = [...datos];
+                                                              nuevas[rowIndex][campo] = e.target.value;
+                                                              setDatos(nuevas);
+                                                              setValue("datos", nuevas);
+                                                            }}
+                                                            className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                            disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                          />
+                                                        </td>
+                                                      ))}
+                                                      <td className="px-3 py-2 whitespace-nowrap">
+                                                        <Button
+                                                          type="button"
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          className="text-red-500 hover:bg-red-50"
+                                                          onClick={() => {
+                                                            const nuevas = datos.filter((_, index) => index !== rowIndex);
+                                                            setDatos(nuevas);
+                                                            setValue("datos", nuevas);
+                                                          }}
+                                                          disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                        >
+                                                          Eliminar
+                                                        </Button>
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                })}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        </div>
+
+                                        {/* Paginación */}
+                                        {totalPages > 1 && (
+                                          <div className="flex justify-center mt-3 space-x-1">
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                              <Button
+                                                key={page}
+                                                variant={currentPage === page ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => paginate(page)}
+                                                className={currentPage === page ? "!bg-blue-600" : ""}
+                                              >
+                                                {page}
+                                              </Button>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* Subida de Excel */}
+                                    <div className="mt-4">
+                                      <ExcelUploader
+                                        onUploadSuccess={async (excelData) => {
+                                          const clave = watch("clave");
+                                          if (!clave) {
+                                            toast.error("Por favor, proporciona una clave válida.");
+                                            return;
+                                          }
+
+                                          if (yaTieneAnexoConClave(clave, anexos, userid)) {
+                                            toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
+                                            return;
+                                          }
+
+                                          const estructura = EstructuraDatosPorClave[clave];
+                                          if (!estructura) {
+                                            toast.error("Estructura no definida para esta clave");
+                                            return;
+                                          }
+
+                                          const { valido, errores } = validarEstructuraExcel(excelData, clave);
+                                          if (!valido) {
+                                            toast.error(
+                                              <div>
+                                                <p>Errores en el archivo:</p>
+                                                <ul className="list-disc list-inside text-sm">
+                                                  {errores.map((err, i) => (
+                                                    <li key={i}>{err}</li>
+                                                  ))}
+                                                </ul>
+                                              </div>,
+                                              { duration: 8000 }
+                                            );
+                                            return;
+                                          }
+
+                                          const { advertencias } = validarTiposExcel(excelData, clave);
+                                          if (advertencias.length > 0) {
+                                            toast.warning(
+                                              <div>
+                                                <p>Advertencias de tipos de datos:</p>
+                                                <ul className="list-disc list-inside text-sm">
+                                                  {advertencias.slice(0, 5).map((adv, i) => (
+                                                    <li key={i}>{adv}</li>
+                                                  ))}
+                                                </ul>
+                                                {advertencias.length > 5 && (
+                                                  <p>... y {advertencias.length - 5} más</p>
+                                                )}
+                                              </div>,
+                                              { duration: 10000 }
+                                            );
+                                          }
+
+                                          setDatos(excelData);
+                                          setValue("datos", excelData);
+                                          toast.success(`✅ Excel cargado: ${excelData.length} filas`);
+                                        }}
+                                        onUploadError={(error: string) => {
+                                          toast.error(`Error al subir el archivo: ${error}`);
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+
+
+
+                              {/* Subida de Excel */}
+
+                            </div>
                           )}
-
-
-
-                          {/* Subida de Excel */}
-
                         </div>
-                      )}
-                    </div>
 
 
-                    {/* Botones */}
-                    <div className="flex justify-end space-x-4 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          reset();
-                          setDatos([]);
-                          setShowForm(false);
-                        }}
-                      >
-                        Limpiar
-                      </Button>
-                      <Button
-                        type="submit"
-                        style={{ backgroundColor: "#24356B", color: "white" }}
-                        disabled={
-                          !watch("clave")
-                          || !watch("fecha_creacion")
-                          || !watch("estado")
-                          || !datos.length
-                          || yaTieneAnexoConClave(watch("clave"), anexos, userid)}
-                      >
-                        {yaTieneAnexoConClave(watch("clave"), anexos, userid)
-                          ? "Ya tienes este anexo"
-                          : !datos.length
-                            ? "Agrega datos primero"
-                            : "Guardar Anexo"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          const draft = {
-                            clave: watch("clave"),
-                            categoria: watch("categoria"),
-                            fecha_creacion: watch("fecha_creacion"),
-                            estado: watch("estado"),
-                            datos,
-                            timestamp: new Date().toISOString(),
-                          };
-                          localStorage.setItem(
-                            `draft_anexo_${userid}`,
-                            JSON.stringify(draft)
-                          );
-                          toast.success("✅ Borrador guardado");
-                        }}
-                      >
-                        Guardar como Borrador
-                      </Button>
-                    </div>
+                        {/* Botones */}
+                        <div className="flex justify-end space-x-4 pt-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              reset();
+                              setDatos([]);
+                              setShowForm(false);
+                            }}
+                          >
+                            Limpiar
+                          </Button>
+                          <Button
+                            type="submit"
+                            style={{ backgroundColor: "#24356B", color: "white" }}
+                            disabled={
+                              !watch("clave")
+                              || !watch("fecha_creacion")
+                              || !watch("estado")
+                              || !datos.length
+                              || yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                          >
+                            {yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                              ? "Ya tienes este anexo"
+                              : !datos.length
+                                ? "Agrega datos primero"
+                                : "Guardar Anexo"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const draft = {
+                                clave: watch("clave"),
+                                categoria: watch("categoria"),
+                                fecha_creacion: watch("fecha_creacion"),
+                                estado: watch("estado"),
+                                datos,
+                                timestamp: new Date().toISOString(),
+                              };
+                              localStorage.setItem(
+                                `draft_anexo_${userid}`,
+                                JSON.stringify(draft)
+                              );
+                              toast.success("✅ Borrador guardado");
+                            }}
+                          >
+                            Guardar como Borrador
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-2 py-4">
+                        <div className="bg-gray-100 border border-gray-300 rounded-md p-4 text-center">
+                          <p className="text-gray-600 flex items-center justify-center gap-2">
+                            <span>⚠️</span>
+                            No cuentas con permisos para registrar anexos aún. Te notificaremos cuando tengas acceso.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+
+
+
+
+                    {/* si el usuario no tiene unidad responsable asignada */}
 
                   </form>
                 </CardContent>
