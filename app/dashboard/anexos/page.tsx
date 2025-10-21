@@ -1134,7 +1134,16 @@ export default function AnexosPage() {
         toast.error("No se pudieron cargar los anexos");
       });
 
+      // obtener anexos por ID propio
+      fetchAnexoById(anexos[0]?.id).then((anexo) => {
+        if (anexo) {
+          console.log("Anexo obtenido por ID:", anexo);
+        }
+      });
+
   }, []); // Dependencia vacía: se ejecuta una vez
+
+
   // Manejador de items
   const handleFMJChange = (jsonDataArray: Array<Record<string, any>>) => {
     setDatos(jsonDataArray); // Aquí guardas el array de marcos
@@ -1151,6 +1160,31 @@ export default function AnexosPage() {
     }
     return true;
   };
+
+  // obtener anexo por id 
+  const fetchAnexoById = async (id: number) : Promise<Anexo | null> => {
+    try {
+      
+      // llamada a la API
+      const response = await fetch(`${API_URL}/anexos/${id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      // validar respuesta
+      if (!response.ok) throw new Error("Error en la respuesta de la API") && toast.error("Error al obtener el anexo para edicion");
+
+      // recuperar los datos
+      const anexo: Anexo = await response.json();
+      return anexo;
+
+    } catch (error) {
+      toast.error("Error al obtener el anexo para edicion");
+      return null;
+    }
+  }
 
   // handleSubmit
   const onSubmit: SubmitHandler<IFormInput> = (data) => {
@@ -1228,11 +1262,37 @@ export default function AnexosPage() {
     setShowForm(false) // Ocultar el formulario al resetear
   }
 
-  const handleEdit = (anexo: Anexo) => {
-    toast("Función de edición aún no implementada", {
-      description: "Próximamente podrás editar anexos.",
-      duration: 1000,
-    })
+  // manejar la edicion de anexos ----------------------------------------------------------------------------------------------------------------------
+  const handleEdit = async (anexo: Anexo) => {
+
+    // verificar si el usuario puede editar
+    const fetchd = await fetchAnexoById(anexo.id);
+
+    // validar si se obtuvo el anexo
+    if (!fetchd) {
+      toast.error("No se pudo cargar el anexo para edición");
+      return;
+    }
+
+    // llenar el formulario
+    setValue("clave", fetchd.clave);
+    setValue("categoria", fetchd.categoria);
+    setValue("fecha_creacion", fetchd.fecha_creacion.split("T")[0]);
+    setValue("estado", fetchd.estado);
+    setValue("unidad_responsable_id", fetchd.unidad_responsable_id);
+    setValue("creador_id", fetchd.creador_id);
+    
+    // actualizar los datos
+    const datosArray = Array.isArray(fetchd.datos) ? fetchd.datos : [fetchd.datos];
+    setDatos(datosArray);
+
+    // guardar el id del anexo en edicion
+    setEditingAnexo(fetchd);
+
+    // cambiar a la pestaña de formulario
+    setActiveTab("nuevoAnexo");
+    //setShowForm(true);
+
   }
 
   const checkedOutAnexo = () => {
@@ -2200,8 +2260,6 @@ export default function AnexosPage() {
                                 </>
                               )}
 
-
-
                               {/* Subida de Excel */}
 
                             </div>
@@ -2271,6 +2329,8 @@ export default function AnexosPage() {
                         </div>
                       </div>
                     )}
+
+                    {/*botones para la edicion de anexos */}
 
 
 
