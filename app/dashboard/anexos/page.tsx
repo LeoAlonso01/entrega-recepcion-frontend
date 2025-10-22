@@ -22,11 +22,11 @@ import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
 import { z } from "zod";
-import { inferirTipo } from "@/lib/inferirTipo"
-import FMJList from "@/components/forms/MarcoJuridico/FMJList"
 import { EstructuraDatosPorClave, CALVES_CON_PDF } from "@/lib/estructuraPorClave"
 import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
 import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
+import { SubcategoriaEnum } from "../../../components/json/categorias";
+import { SubcategoriaClaves } from "@/components/json/categorias";
 
 // Simple ExcelPreview component definition
 interface ExcelPreviewProps {
@@ -137,10 +137,10 @@ export interface Anexo {
 
 // funcion para validar clave
 // Debe estar dentro del componente o recibir anexos y userid como argumentos
-function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number): boolean {
+function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number, editingId?: number): boolean {
   if (!clave || !anexos || !userid) return false;
 
-  return anexos.some(anexo => anexo.clave === clave && anexo.creador_id === userid);
+  return anexos.some(anexo => anexo.clave === clave && anexo.creador_id === userid && anexo.id !== editingId);
 }
 
 const getAnexos = async () => {
@@ -164,6 +164,31 @@ const getAnexos = async () => {
     return [];
   }
 };
+
+// obtener anexo por id 
+const fetchAnexoById = async (id: number): Promise<Anexo | null> => {
+  try {
+
+    // llamada a la API
+    const response = await fetch(`${API_URL}/anexos/${id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    // validar respuesta
+    if (!response.ok) throw new Error("Error en la respuesta de la API") && toast.error("Error al obtener el anexo para edicion");
+
+    // recuperar los datos
+    const anexo: Anexo = await response.json();
+    return anexo;
+
+  } catch (error) {
+    toast.error("Error al obtener el anexo para edicion");
+    return null;
+  }
+}
 
 const exportAnexosToPDF = (anexos: Anexo[], title = "Reporte de Anexos") => {
   const doc = new jsPDF()
@@ -1134,14 +1159,10 @@ export default function AnexosPage() {
         toast.error("No se pudieron cargar los anexos");
       });
 
-      // obtener anexos por ID propio
-      fetchAnexoById(anexos[0]?.id).then((anexo) => {
-        if (anexo) {
-          console.log("Anexo obtenido por ID:", anexo);
-        }
-      });
+
 
   }, []); // Dependencia vacía: se ejecuta una vez
+
 
 
   // Manejador de items
@@ -1161,85 +1182,179 @@ export default function AnexosPage() {
     return true;
   };
 
-  // obtener anexo por id 
-  const fetchAnexoById = async (id: number) : Promise<Anexo | null> => {
-    try {
-      
-      // llamada a la API
-      const response = await fetch(`${API_URL}/anexos/${id}`, {
-        method: "GET",
+
+
+  // handleSubmit primero
+  /* const onSubmit: SubmitHandler<IFormInput> = (data) => {
+  
+      // Aseguramos que `datos` sea un array o objeto válido
+      const payload = {
+        clave: data.clave,
+        categoria: data.categoria,
+        creador_id: userid,
+        unidad_responsable_id: unidadResponsable,
+        fecha_creacion: new Date(data.fecha_creacion).toISOString(), // formato ISO
+        estado: data.estado,
+        datos: Array.isArray(data.datos) ? data.datos : [data.datos],
+      };
+  
+      console.log("✅ Payload final a enviar:", payload);
+  
+      // validacion si el campo datos no existe
+      const datosValidos = Array.isArray(data.datos)
+        ? data.datos.length > 0
+        : Object.keys(data.datos || {}).length > 0;
+  
+      if (!datosValidos) {
+        toast.error("El campo 'datos' no puede estar vacío.");
+        return;
+      }
+  
+      // Validación: ¿Ya existe un anexco con esa clave?
+      if (yaTieneAnexoConClave(data.clave, anexos, userid)) {
+        toast.error(`Ya existe un anexo con la clave ${data.clave}`);
+        return;
+      }
+  
+      // Aquí haces el fetch
+      fetch(`${API_URL}/anexos`, {
+        method: "POST",
         headers: {
+          // encoders
           "Content-Type": "application/json",
         },
-      });
+        body: JSON.stringify(payload),
+      })
+        .then(res => res.json())
+        .then(result => {
+          toast.success("Anexo creado", { description: `Clave: ${result.clave}` });
+          reset();
+          setDatos([]);
+          setActiveTab("anexos");
+        })
+        .catch(err => {
+          toast.error("Error", { description: err.message });
+          console.error(err);
+        });
+    }; */
 
-      // validar respuesta
-      if (!response.ok) throw new Error("Error en la respuesta de la API") && toast.error("Error al obtener el anexo para edicion");
-
-      // recuperar los datos
-      const anexo: Anexo = await response.json();
-      return anexo;
-
-    } catch (error) {
-      toast.error("Error al obtener el anexo para edicion");
-      return null;
-    }
-  }
-
-  // handleSubmit
+  // handlesubmit modificado 
   const onSubmit: SubmitHandler<IFormInput> = (data) => {
-    console.log("🚀 Datos del formulario (RHF):", data);
-
-    // Aseguramos que `datos` sea un array o objeto válido
-    const payload = {
-      clave: data.clave,
-      categoria: data.categoria,
-      creador_id: userid,
-      unidad_responsable_id: unidadResponsable,
-      fecha_creacion: new Date(data.fecha_creacion).toISOString(), // formato ISO
-      estado: data.estado,
-      datos: Array.isArray(data.datos) ? data.datos : [data.datos],
-    };
-
-    console.log("✅ Payload final a enviar:", payload);
-
-    // validacion si el campo datos no existe
-    const datosValidos = Array.isArray(data.datos)
-      ? data.datos.length > 0
-      : Object.keys(data.datos || {}).length > 0;
+    // Aseguramos que `datos` sea un array válido
+    const datosArray = Array.isArray(data.datos) ? data.datos : [data.datos];
+    const datosValidos = datosArray.length > 0 && (
+      datosArray.some(item => item && Object.keys(item).length > 0)
+    );
 
     if (!datosValidos) {
       toast.error("El campo 'datos' no puede estar vacío.");
       return;
     }
 
-    // Validación: ¿Ya existe un anexco con esa clave?
-    if (yaTieneAnexoConClave(data.clave, anexos, userid)) {
+    const payload = {
+      clave: data.clave,
+      categoria: data.categoria,
+      creador_id: userid,
+      unidad_responsable_id: unidadResponsable,
+      fecha_creacion: new Date(data.fecha_creacion).toISOString(),
+      estado: data.estado,
+      datos: datosArray,
+    };
+
+    console.log("✅ Payload final a enviar:", payload);
+
+    // Si NO estamos editando → validamos duplicados
+    if (!editingAnexo && yaTieneAnexoConClave(data.clave, anexos, userid)) {
       toast.error(`Ya existe un anexo con la clave ${data.clave}`);
       return;
     }
 
-    // Aquí haces el fetch
-    fetch(`${API_URL}/anexos`, {
-      method: "POST",
-      headers: {
-        // encoders
-        "Content-Type": "application/json",
-      },
+    const url = editingAnexo
+      ? `${API_URL}/anexos/${editingAnexo.id}` // PUT
+      : `${API_URL}/anexos`;                   // POST
+
+    const method = editingAnexo ? "PUT" : "POST";
+
+    fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
-      .then(res => res.json())
-      .then(result => {
-        toast.success("Anexo creado", { description: `Clave: ${result.clave}` });
+      .then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Error en la operación");
+        }
+        return res.json();
+      })
+      .then((result) => {
+        const message = editingAnexo ? "Anexo actualizado" : "Anexo creado";
+        toast.success(message, { description: `Clave: ${result.clave}` });
+
+        // Actualizar lista local
+        if (editingAnexo) {
+          setAnexos((prev) =>
+            prev.map((a) => (a.id === result.id ? result : a))
+          );
+        } else {
+          setAnexos((prev) => [...prev, result]);
+        }
+
+        // Resetear formulario
         reset();
         setDatos([]);
+        setEditingAnexo(null);
         setActiveTab("anexos");
       })
-      .catch(err => {
-        toast.error("Error", { description: err.message });
+      .catch((err) => {
+        toast.error("Error", { description: err.message || "Operación fallida" });
         console.error(err);
       });
   };
+
+
+  // cambiar el estado del anexo
+  const toggleAnexosEstado = async (anexo: Anexo) => {
+
+     // verificar el estado de el anexo
+      if (anexo.estado === "Completado") {
+    toast.warning("🔒 Este anexo está cerrado.", {
+      description: "Para reabrirlo, se requiere justificación ante el administrador.",
+    });
+    return;
+  }
+
+  // confirmar la a
+   if (!confirm(`¿Cambiar el estado del anexo ${anexo.clave}?`)) {
+    return;
+  }
+
+  const updatedAnexo = { ...anexo, estado: anexo.estado === "Borrador" ? "Revisión" : "Completado" };
+  
+  try {
+    const response = await fetch(`${API_URL}/anexos/${anexo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedAnexo),
+    });
+
+    if (!response.ok) {
+      throw new Error("Error al actualizar el estado del anexo");
+    }
+
+    const result = await response.json();
+    setAnexos((prev) =>
+      prev.map((a) => (a.id === result.id ? result : a))
+    );
+
+    toast.success("✅ Estado del anexo actualizado", { description: `Nuevo estado: ${result.estado}` });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    toast.error("Error al actualizar el estado del anexo", { description: message });
+    console.error("Error al actualizar el estado del anexo:", error);
+  }
+  }
+
 
   // manejar el cambio de archivo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1281,7 +1396,7 @@ export default function AnexosPage() {
     setValue("estado", fetchd.estado);
     setValue("unidad_responsable_id", fetchd.unidad_responsable_id);
     setValue("creador_id", fetchd.creador_id);
-    
+
     // actualizar los datos
     const datosArray = Array.isArray(fetchd.datos) ? fetchd.datos : [fetchd.datos];
     setDatos(datosArray);
@@ -1890,7 +2005,7 @@ export default function AnexosPage() {
                                     className="text-blue-600 hover:text-red-800"
                                   >
                                     <Check className="h-4 w-4" />
-                                  </Button> 
+                                  </Button>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1948,6 +2063,7 @@ export default function AnexosPage() {
                       </div>
 
                       {watch("clave") && (
+                        
                         <Button
                           type="button"
                           variant="outline"
@@ -2096,9 +2212,9 @@ export default function AnexosPage() {
                                         }}
                                         disabled={
                                           !watch("clave") ||
-                                          yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                                          yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)
                                         }
-                                        className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
+                                        className={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined) ? "opacity-50 cursor-not-allowed" : ""}
                                       >
                                         + Agregar fila
                                       </Button>
@@ -2145,7 +2261,7 @@ export default function AnexosPage() {
                                                               setValue("datos", nuevas);
                                                             }}
                                                             className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                            disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                                                           />
                                                         </td>
                                                       ))}
@@ -2160,7 +2276,7 @@ export default function AnexosPage() {
                                                             setDatos(nuevas);
                                                             setValue("datos", nuevas);
                                                           }}
-                                                          disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                          disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                                                         >
                                                           Eliminar
                                                         </Button>
@@ -2178,6 +2294,7 @@ export default function AnexosPage() {
                                           <div className="flex justify-center mt-3 space-x-1">
                                             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                               <Button
+                                                type="button"
                                                 key={page}
                                                 variant={currentPage === page ? "default" : "outline"}
                                                 size="sm"
@@ -2202,7 +2319,7 @@ export default function AnexosPage() {
                                             return;
                                           }
 
-                                          if (yaTieneAnexoConClave(clave, anexos, userid)) {
+                                          if (yaTieneAnexoConClave(clave, anexos, userid, editingAnexo ? editingAnexo.id : undefined)) {
                                             toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
                                             return;
                                           }
@@ -2275,10 +2392,12 @@ export default function AnexosPage() {
                             onClick={() => {
                               reset();
                               setDatos([]);
+                              setEditingAnexo(null); // Asegúrate de limpiar el modo edición
                               setShowForm(false);
+                              setActiveTab("anexos"); // Opcional: volver a la lista
                             }}
                           >
-                            Limpiar
+                            {editingAnexo ? "Cancelar" : "Limpiar"}
                           </Button>
                           <Button
                             type="submit"
@@ -2288,35 +2407,37 @@ export default function AnexosPage() {
                               || !watch("fecha_creacion")
                               || !watch("estado")
                               || !datos.length
-                              || yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                              || yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                           >
-                            {yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                            {yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)
                               ? "Ya tienes este anexo"
                               : !datos.length
                                 ? "Agrega datos primero"
                                 : "Guardar Anexo"}
                           </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              const draft = {
-                                clave: watch("clave"),
-                                categoria: watch("categoria"),
-                                fecha_creacion: watch("fecha_creacion"),
-                                estado: watch("estado"),
-                                datos,
-                                timestamp: new Date().toISOString(),
-                              };
-                              localStorage.setItem(
-                                `draft_anexo_${userid}`,
-                                JSON.stringify(draft)
-                              );
-                              toast.success("✅ Borrador guardado");
-                            }}
-                          >
-                            Guardar como Borrador
-                          </Button>
+                          {!editingAnexo && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                const draft = {
+                                  clave: watch("clave"),
+                                  categoria: watch("categoria"),
+                                  fecha_creacion: watch("fecha_creacion"),
+                                  estado: watch("estado"),
+                                  datos,
+                                  timestamp: new Date().toISOString(),
+                                };
+                                localStorage.setItem(
+                                  `draft_anexo_${userid}`,
+                                  JSON.stringify(draft)
+                                );
+                                toast.success("✅ Borrador guardado");
+                              }}
+                            >
+                              Guardar Borrador
+                            </Button>
+                          )}
                         </div>
                       </>
                     ) : (
