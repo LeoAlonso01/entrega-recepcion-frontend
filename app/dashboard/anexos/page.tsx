@@ -22,11 +22,22 @@ import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
 import { z } from "zod";
-import { inferirTipo } from "@/lib/inferirTipo"
-import FMJList from "@/components/forms/MarcoJuridico/FMJList"
 import { EstructuraDatosPorClave, CALVES_CON_PDF } from "@/lib/estructuraPorClave"
 import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
 import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
+import { SubcategoriaEnum } from "../../../components/json/categorias";
+import { SubcategoriaClaves } from "@/components/json/categorias";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { set } from "date-fns"
+
 
 // Simple ExcelPreview component definition
 interface ExcelPreviewProps {
@@ -137,10 +148,10 @@ export interface Anexo {
 
 // funcion para validar clave
 // Debe estar dentro del componente o recibir anexos y userid como argumentos
-function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number): boolean {
+function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number, editingId?: number): boolean {
   if (!clave || !anexos || !userid) return false;
 
-  return anexos.some(anexo => anexo.clave === clave && anexo.creador_id === userid);
+  return anexos.some(anexo => anexo.clave === clave && anexo.creador_id === userid && anexo.id !== editingId);
 }
 
 const getAnexos = async () => {
@@ -164,6 +175,31 @@ const getAnexos = async () => {
     return [];
   }
 };
+
+// obtener anexo por id 
+const fetchAnexoById = async (id: number): Promise<Anexo | null> => {
+  try {
+
+    // llamada a la API
+    const response = await fetch(`${API_URL}/anexos/${id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    // validar respuesta
+    if (!response.ok) throw new Error("Error en la respuesta de la API") && toast.error("Error al obtener el anexo para edicion");
+
+    // recuperar los datos
+    const anexo: Anexo = await response.json();
+    return anexo;
+
+  } catch (error) {
+    toast.error("Error al obtener el anexo para edicion");
+    return null;
+  }
+}
 
 const exportAnexosToPDF = (anexos: Anexo[], title = "Reporte de Anexos") => {
   const doc = new jsPDF()
@@ -1015,6 +1051,10 @@ export default function AnexosPage() {
   const [unidadToShow, setUnidadToShow] = useState<string>("");
   const [creatorToShow, setCreatorToShow] = useState<string>("");
   const rowsPerPage = 5;
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+  const [anexoParaActualizar, setAnexoParaActualizar] = useState<Anexo | null>(null);
+  const [todosLosAnexos, setTodosLosAnexos] = useState<Anexo[]>([]); // Estado para todos los anexos
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Calcular filas actuales
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -1126,6 +1166,7 @@ export default function AnexosPage() {
     // Obtener y filtrar anexos
     getAnexos()
       .then((data) => {
+        setTodosLosAnexos(data); // Guardar todos los anexos
         const filtrados = data.filter((anexo: Anexo) => anexo.creador_id === currentUserId);
         setAnexos(filtrados);
       })
@@ -1134,7 +1175,12 @@ export default function AnexosPage() {
         toast.error("No se pudieron cargar los anexos");
       });
 
+
+
   }, []); // Dependencia vacía: se ejecuta una vez
+
+
+
   // Manejador de items
   const handleFMJChange = (jsonDataArray: Array<Record<string, any>>) => {
     setDatos(jsonDataArray); // Aquí guardas el array de marcos
@@ -1152,60 +1198,185 @@ export default function AnexosPage() {
     return true;
   };
 
-  // handleSubmit
+
+
+  // handleSubmit primero
+  /* const onSubmit: SubmitHandler<IFormInput> = (data) => {
+  
+      // Aseguramos que `datos` sea un array o objeto válido
+      const payload = {
+        clave: data.clave,
+        categoria: data.categoria,
+        creador_id: userid,
+        unidad_responsable_id: unidadResponsable,
+        fecha_creacion: new Date(data.fecha_creacion).toISOString(), // formato ISO
+        estado: data.estado,
+        datos: Array.isArray(data.datos) ? data.datos : [data.datos],
+      };
+  
+      console.log("✅ Payload final a enviar:", payload);
+  
+      // validacion si el campo datos no existe
+      const datosValidos = Array.isArray(data.datos)
+        ? data.datos.length > 0
+        : Object.keys(data.datos || {}).length > 0;
+  
+      if (!datosValidos) {
+        toast.error("El campo 'datos' no puede estar vacío.");
+        return;
+      }
+  
+      // Validación: ¿Ya existe un anexco con esa clave?
+      if (yaTieneAnexoConClave(data.clave, anexos, userid)) {
+        toast.error(`Ya existe un anexo con la clave ${data.clave}`);
+        return;
+      }
+  
+      // Aquí haces el fetch
+      fetch(`${API_URL}/anexos`, {
+        method: "POST",
+        headers: {
+          // encoders
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(res => res.json())
+        .then(result => {
+          toast.success("Anexo creado", { description: `Clave: ${result.clave}` });
+          reset();
+          setDatos([]);
+          setActiveTab("anexos");
+        })
+        .catch(err => {
+          toast.error("Error", { description: err.message });
+          console.error(err);
+        });
+    }; */
+
+  // handlesubmit modificado 
   const onSubmit: SubmitHandler<IFormInput> = (data) => {
-    console.log("🚀 Datos del formulario (RHF):", data);
-
-    // Aseguramos que `datos` sea un array o objeto válido
-    const payload = {
-      clave: data.clave,
-      categoria: data.categoria,
-      creador_id: userid,
-      unidad_responsable_id: unidadResponsable,
-      fecha_creacion: new Date(data.fecha_creacion).toISOString(), // formato ISO
-      estado: data.estado,
-      datos: Array.isArray(data.datos) ? data.datos : [data.datos],
-    };
-
-    console.log("✅ Payload final a enviar:", payload);
-
-    // validacion si el campo datos no existe
-    const datosValidos = Array.isArray(data.datos)
-      ? data.datos.length > 0
-      : Object.keys(data.datos || {}).length > 0;
+    // Aseguramos que `datos` sea un array válido
+    const datosArray = Array.isArray(data.datos) ? data.datos : [data.datos];
+    const datosValidos = datosArray.length > 0 && (
+      datosArray.some(item => item && Object.keys(item).length > 0)
+    );
 
     if (!datosValidos) {
       toast.error("El campo 'datos' no puede estar vacío.");
       return;
     }
 
-    // Validación: ¿Ya existe un anexco con esa clave?
-    if (yaTieneAnexoConClave(data.clave, anexos, userid)) {
+    const payload = {
+      clave: data.clave,
+      categoria: data.categoria,
+      creador_id: userid,
+      unidad_responsable_id: unidadResponsable,
+      fecha_creacion: new Date(data.fecha_creacion).toISOString(),
+      estado: data.estado,
+      datos: datosArray,
+    };
+
+    console.log("✅ Payload final a enviar:", payload);
+
+    // Si NO estamos editando → validamos duplicados
+    if (!editingAnexo && yaTieneAnexoConClave(data.clave, anexos, userid)) {
       toast.error(`Ya existe un anexo con la clave ${data.clave}`);
       return;
     }
 
-    // Aquí haces el fetch
-    fetch(`${API_URL}/anexos`, {
-      method: "POST",
-      headers: {
-        // encoders
-        "Content-Type": "application/json",
-      },
+    const url = editingAnexo
+      ? `${API_URL}/anexos/${editingAnexo.id}` // PUT
+      : `${API_URL}/anexos`;                   // POST
+
+    const method = editingAnexo ? "PUT" : "POST";
+
+    fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     })
-      .then(res => res.json())
-      .then(result => {
-        toast.success("Anexo creado", { description: `Clave: ${result.clave}` });
+      .then(async (res) => {
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.detail || "Error en la operación");
+        }
+        return res.json();
+      })
+      .then((result) => {
+        const message = editingAnexo ? "Anexo actualizado" : "Anexo creado";
+        toast.success(message, { description: `Clave: ${result.clave}` });
+
+        // Actualizar lista local
+        if (editingAnexo) {
+          setAnexos((prev) =>
+            prev.map((a) => (a.id === result.id ? result : a))
+          );
+        } else {
+          setAnexos((prev) => [...prev, result]);
+        }
+
+        // Resetear formulario
         reset();
         setDatos([]);
+        setEditingAnexo(null);
         setActiveTab("anexos");
       })
-      .catch(err => {
-        toast.error("Error", { description: err.message });
+      .catch((err) => {
+        toast.error("Error", { description: err.message || "Operación fallida" });
         console.error(err);
       });
   };
+
+
+  // cambiar el estado del anexo
+  /*  const toggleAnexoEstado = async (anexo: Anexo) => {
+     let nuevoEstado: string;
+ 
+     if (anexo.estado === "Borrador") {
+       nuevoEstado = "Revisión";
+     } else if (anexo.estado === "Revisión") {
+       nuevoEstado = "Completado";
+     } else if (anexo.estado === "Completado") {
+       toast.warning("🔒 Anexo cerrado", {
+         description: "Para reabrirlo se requiere justificación ante el administrador.",
+       });
+       return;
+     } else {
+       toast.error("Estado no válido");
+       return;
+     }
+ 
+     if (!confirm(`¿Cambiar estado a "${nuevoEstado}"?`)) return;
+ 
+     try {
+       const response = await fetch(`${API_URL}/anexos/${anexo.id}`, {
+         method: "PUT",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ ...anexo, estado: nuevoEstado }),
+       });
+ 
+       if (!response.ok) {
+         const errorData = await response.json().catch(() => ({}));
+         throw new Error(errorData.detail || "Error al actualizar el estado");
+       }
+ 
+       const updatedAnexo = await response.json();
+       setAnexos((prev) =>
+         prev.map((a) => (a.id === updatedAnexo.id ? updatedAnexo : a))
+       );
+ 
+       toast.success("✅ Estado actualizado", {
+         description: `El anexo ahora está en "${nuevoEstado}".`,
+       });
+     } catch (err: any) {
+       console.error("Error al actualizar estado:", err);
+       toast.error("❌ No se pudo actualizar el estado", {
+         description: err.message || "Inténtalo de nuevo.",
+       });
+     }
+   };
+  */
 
   // manejar el cambio de archivo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1228,11 +1399,37 @@ export default function AnexosPage() {
     setShowForm(false) // Ocultar el formulario al resetear
   }
 
-  const handleEdit = (anexo: Anexo) => {
-    toast("Función de edición aún no implementada", {
-      description: "Próximamente podrás editar anexos.",
-      duration: 1000,
-    })
+  // manejar la edicion de anexos ----------------------------------------------------------------------------------------------------------------------
+  const handleEdit = async (anexo: Anexo) => {
+
+    // verificar si el usuario puede editar
+    const fetchd = await fetchAnexoById(anexo.id);
+
+    // validar si se obtuvo el anexo
+    if (!fetchd) {
+      toast.error("No se pudo cargar el anexo para edición");
+      return;
+    }
+
+    // llenar el formulario
+    setValue("clave", fetchd.clave);
+    setValue("categoria", fetchd.categoria);
+    setValue("fecha_creacion", fetchd.fecha_creacion.split("T")[0]);
+    setValue("estado", fetchd.estado);
+    setValue("unidad_responsable_id", fetchd.unidad_responsable_id);
+    setValue("creador_id", fetchd.creador_id);
+
+    // actualizar los datos
+    const datosArray = Array.isArray(fetchd.datos) ? fetchd.datos : [fetchd.datos];
+    setDatos(datosArray);
+
+    // guardar el id del anexo en edicion
+    setEditingAnexo(fetchd);
+
+    // cambiar a la pestaña de formulario
+    setActiveTab("nuevoAnexo");
+    //setShowForm(true);
+
   }
 
   const checkedOutAnexo = () => {
@@ -1331,6 +1528,65 @@ export default function AnexosPage() {
     setActiveTab(value)
   }
 
+  const handleAbrirDialogo = (anexo: Anexo) => {
+    if (anexo.estado === "Completado") {
+      toast.warning("🔒 Anexo cerrado", {
+        description: "Para reabrirlo se requiere justificación ante el administrador."
+      });
+      return;
+    }
+    setAnexoParaActualizar(anexo);
+    setDialogOpen(true);
+  };
+
+  const handleConfirmCambioEstado = async () => {
+    if (!anexoParaActualizar) return;
+
+    let nuevoEstado: string;
+    if (anexoParaActualizar.estado === "Borrador") {
+      nuevoEstado = "Revisión";
+    }
+    else if (anexoParaActualizar.estado === "Revisión") {
+      nuevoEstado = "Completado";
+    }
+    else {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/anexos/${anexoParaActualizar.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...anexoParaActualizar, estado: nuevoEstado }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Error al actualizar el estado");
+      }
+
+      const updatedAnexo = await response.json();
+      setAnexos((prev) =>
+        prev.map((a) => (a.id === updatedAnexo.id ? updatedAnexo : a))
+      );
+
+      toast.success("✅ Estado actualizado", {
+        description: `El anexo ahora está en "${nuevoEstado}".`,
+      });
+    } catch (err: any) {
+      console.error("Error al actualizar estado:", err);
+      toast.error("❌ No se pudo actualizar el estado", {
+        description: err.message || "Inténtalo de nuevo.",
+      });
+    } finally {
+      setDialogOpen(false);
+      setAnexoParaActualizar(null);
+    }
+
+  }
+
+
+
   // manejo de edicion de anexos por usuario y por unidad responsable
   const canEdit = (anexo: Anexo): boolean => {
     // Si el estado es "Cerrado", nadie puede editar
@@ -1377,7 +1633,7 @@ export default function AnexosPage() {
             <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
               <TabsTrigger value="nuevoAnexo">Nuevo Anexo</TabsTrigger>
-              <TabsTrigger value="formulario">Anexos por usuario</TabsTrigger>
+              <TabsTrigger value="anexosPorUsuario">Anexos por usuario</TabsTrigger>
             </TabsList>
 
             <TabsContent value="anexos" className="mt-4 sm:mt-6 md:mt-8">
@@ -1815,22 +2071,93 @@ export default function AnexosPage() {
                                       <Edit className="h-4 w-4" />
                                     </Button>
                                   )}
+
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
                                     className="text-blue-600 hover:text-blue-800"
                                   >
+
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                  <Button
+
+
+                                  {/* <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => checkedOutAnexo()}
-                                    className="text-blue-600 hover:text-red-800"
+                                    onClick={() => toggleAnexoEstado(anexo)}
+                                    className={
+                                      anexo.estado === "Completado"
+                                        ? "text-green-600 hover:text-green-800"
+                                        : "text-gray-600 hover:text-gray-800"
+                                    }
+                                    title={
+                                      anexo.estado === "Borrador"
+                                        ? "Enviar a revisión"
+                                        : anexo.estado === "Revisión"
+                                          ? "Marcar como completado"
+                                          : "Anexo cerrado"
+                                    }
                                   >
                                     <Check className="h-4 w-4" />
-                                  </Button> 
+                                  </Button> */}
+
+                                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                                    <DialogTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleAbrirDialogo(anexo)}
+                                        className={
+                                          anexo.estado === "Completado"
+                                            ? "text-green-600 hover:text-green-800"
+                                            : "text-gray-600 hover:text-gray-800"
+                                        }
+                                        title={
+                                          anexo.estado === "Borrador"
+                                            ? "Enviar a revisión"
+                                            : anexo.estado === "Revisión"
+                                              ? "Marcar como completado"
+                                              : "Anexo cerrado"
+                                        }
+                                      >
+                                        <Check className="h-4 w-4" />
+                                      </Button>
+                                    </DialogTrigger>
+                                    {anexoParaActualizar && (
+                                      <DialogContent>
+                                        <DialogHeader>
+                                          <DialogTitle>
+                                            {anexoParaActualizar.estado === "Borrador"
+                                              ? "¿Enviar a revisión?"
+                                              : "¿Marcar como completado?"}
+                                          </DialogTitle>
+                                          <DialogDescription>
+                                            {anexoParaActualizar.estado === "Borrador"
+                                              ? "El anexo será enviado a revisión y ya no podrás editarlo libremente."
+                                              : "Esta acción es irreversible. El anexo quedará cerrado y no podrá modificarse sin justificación."}
+                                          </DialogDescription>
+                                        </DialogHeader>
+                                        <DialogFooter>
+                                          <Button
+                                            variant="outline"
+                                            onClick={() => setDialogOpen(false)}
+                                          >
+                                            Cancelar
+                                          </Button>
+                                          <Button
+                                            style={{ backgroundColor: "#24356B", color: "white" }}
+                                            onClick={handleConfirmCambioEstado}
+                                          >
+                                            Confirmar
+                                          </Button>
+                                        </DialogFooter>
+                                      </DialogContent>
+                                    )}
+                                  </Dialog>
+
+
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -1888,6 +2215,7 @@ export default function AnexosPage() {
                       </div>
 
                       {watch("clave") && (
+
                         <Button
                           type="button"
                           variant="outline"
@@ -2036,9 +2364,9 @@ export default function AnexosPage() {
                                         }}
                                         disabled={
                                           !watch("clave") ||
-                                          yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                                          yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)
                                         }
-                                        className={yaTieneAnexoConClave(watch("clave"), anexos, userid) ? "opacity-50 cursor-not-allowed" : ""}
+                                        className={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined) ? "opacity-50 cursor-not-allowed" : ""}
                                       >
                                         + Agregar fila
                                       </Button>
@@ -2085,7 +2413,7 @@ export default function AnexosPage() {
                                                               setValue("datos", nuevas);
                                                             }}
                                                             className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                            disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                                                           />
                                                         </td>
                                                       ))}
@@ -2100,7 +2428,7 @@ export default function AnexosPage() {
                                                             setDatos(nuevas);
                                                             setValue("datos", nuevas);
                                                           }}
-                                                          disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                                                          disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                                                         >
                                                           Eliminar
                                                         </Button>
@@ -2118,6 +2446,7 @@ export default function AnexosPage() {
                                           <div className="flex justify-center mt-3 space-x-1">
                                             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                                               <Button
+                                                type="button"
                                                 key={page}
                                                 variant={currentPage === page ? "default" : "outline"}
                                                 size="sm"
@@ -2142,7 +2471,7 @@ export default function AnexosPage() {
                                             return;
                                           }
 
-                                          if (yaTieneAnexoConClave(clave, anexos, userid)) {
+                                          if (yaTieneAnexoConClave(clave, anexos, userid, editingAnexo ? editingAnexo.id : undefined)) {
                                             toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
                                             return;
                                           }
@@ -2200,8 +2529,6 @@ export default function AnexosPage() {
                                 </>
                               )}
 
-
-
                               {/* Subida de Excel */}
 
                             </div>
@@ -2217,10 +2544,12 @@ export default function AnexosPage() {
                             onClick={() => {
                               reset();
                               setDatos([]);
+                              setEditingAnexo(null); // Asegúrate de limpiar el modo edición
                               setShowForm(false);
+                              setActiveTab("anexos"); // Opcional: volver a la lista
                             }}
                           >
-                            Limpiar
+                            {editingAnexo ? "Cancelar" : "Limpiar"}
                           </Button>
                           <Button
                             type="submit"
@@ -2230,35 +2559,37 @@ export default function AnexosPage() {
                               || !watch("fecha_creacion")
                               || !watch("estado")
                               || !datos.length
-                              || yaTieneAnexoConClave(watch("clave"), anexos, userid)}
+                              || yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                           >
-                            {yaTieneAnexoConClave(watch("clave"), anexos, userid)
+                            {yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)
                               ? "Ya tienes este anexo"
                               : !datos.length
                                 ? "Agrega datos primero"
                                 : "Guardar Anexo"}
                           </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              const draft = {
-                                clave: watch("clave"),
-                                categoria: watch("categoria"),
-                                fecha_creacion: watch("fecha_creacion"),
-                                estado: watch("estado"),
-                                datos,
-                                timestamp: new Date().toISOString(),
-                              };
-                              localStorage.setItem(
-                                `draft_anexo_${userid}`,
-                                JSON.stringify(draft)
-                              );
-                              toast.success("✅ Borrador guardado");
-                            }}
-                          >
-                            Guardar como Borrador
-                          </Button>
+                          {!editingAnexo && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                const draft = {
+                                  clave: watch("clave"),
+                                  categoria: watch("categoria"),
+                                  fecha_creacion: watch("fecha_creacion"),
+                                  estado: watch("estado"),
+                                  datos,
+                                  timestamp: new Date().toISOString(),
+                                };
+                                localStorage.setItem(
+                                  `draft_anexo_${userid}`,
+                                  JSON.stringify(draft)
+                                );
+                                toast.success("✅ Borrador guardado");
+                              }}
+                            >
+                              Guardar Borrador
+                            </Button>
+                          )}
                         </div>
                       </>
                     ) : (
@@ -2272,6 +2603,8 @@ export default function AnexosPage() {
                       </div>
                     )}
 
+                    {/*botones para la edicion de anexos */}
+
 
 
 
@@ -2284,12 +2617,131 @@ export default function AnexosPage() {
 
             </TabsContent>
 
-            <TabsContent value="formulario" className="mt-4 sm:mt-6 md:mt-8">
+            {userrole === "ADMIN" && (
+              <TabsContent value="anexosPorUsuario" className="mt-4 sm:mt-6 md:mt-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Anexos por Usuario</CardTitle>
+                    <CardDescription>
+                      Visualiza los anexos creados por cada usuario
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      // Skeleton mientras carga
+                      <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                          <div
+                            key={i}
+                            className="h-16 animate-pulse bg-gray-100 rounded-lg"
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Creador</TableHead>
+                              <TableHead>Clave</TableHead>
+                              <TableHead>Estado</TableHead>
+                              <TableHead>Fecha de Creación</TableHead>
+                              <TableHead>Unidad Responsable</TableHead>
+                              <TableHead>Acciones</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-gray-200">
+                            {todosLosAnexos.length > 0 ? (
+                              todosLosAnexos.map((anexo) => (
+                                <TableRow
+                                  key={anexo.id}
+                                  className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
+                                >
+                                  {/* Creador */}
+                                  <TableCell className="px-4 py-4 md:table-cell">
+                                    <div className="md:hidden font-semibold text-gray-500">Creador</div>
+                                    <div className="font-medium text-gray-900">{anexo.creador_id}</div>
+                                  </TableCell>
 
+                                  {/* Clave */}
+                                  <TableCell className="px-4 py-4 md:table-cell">
+                                    <div className="md:hidden font-semibold text-gray-500">Clave</div>
+                                    <div className="text-gray-800">{anexo.clave}</div>
+                                  </TableCell>
 
-            </TabsContent>
+                                  {/* Estado */}
+                                  <TableCell className="px-4 py-4 md:table-cell">
+                                    <div className="md:hidden font-semibold text-gray-500">Estado</div>
+                                    <span
+                                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(
+                                        anexo.estado
+                                      )}`}
+                                    >
+                                      {anexo.estado}
+                                    </span>
+                                  </TableCell>
 
+                                  {/* Fecha */}
+                                  <TableCell className="px-4 py-4 md:table-cell">
+                                    <div className="md:hidden font-semibold text-gray-500">Fecha</div>
+                                    <div className="text-gray-800">
+                                      {new Date(anexo.fecha_creacion).toLocaleDateString('es-MX', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      })}
+                                    </div>
+                                  </TableCell>
 
+                                  {/* Unidad Responsable */}
+                                  <TableCell className="px-4 py-4 md:table-cell">
+                                    <div className="md:hidden font-semibold text-gray-500">Unidad Responsable</div>
+                                    <div className="text-gray-800">{anexo.unidad_responsable_id}</div>
+                                  </TableCell>
+
+                                  {/* Acciones */}
+                                  <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
+                                    <div className="md:hidden font-semibold text-gray-500 mb-1">
+                                      Acciones
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDownload(anexo.id)}
+                                      className="text-blue-600 hover:text-blue-800"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
+                                      className="text-blue-600 hover:text-blue-800"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                    
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                  No se encontraron anexos.
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
 
         </div>

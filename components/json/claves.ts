@@ -11,7 +11,8 @@ export enum CategoriaEnum {
   TRANSPARENCIA = "10",
   MARCO_JURIDICO = "11",
   SIN_CATEGORIA = "12",
-  ASUNTOS_RELEVANTES = "13"
+  ASUNTOS_RELEVANTES = "13",
+  SISTEMA_GESTION_CALIDAD = "14"
 }
 
 // Opcional: Objeto con las etiquetas para mostrar
@@ -28,7 +29,8 @@ export const CategoriaLabels = {
   [CategoriaEnum.TRANSPARENCIA]: "Transparencia",
   [CategoriaEnum.MARCO_JURIDICO]: "Marco Jurídico",
   [CategoriaEnum.SIN_CATEGORIA]: "Sin Categoría",
-  [CategoriaEnum.ASUNTOS_RELEVANTES]: "Asuntos Relevantes"
+  [CategoriaEnum.ASUNTOS_RELEVANTES]: "Asuntos Relevantes",
+  [CategoriaEnum.SISTEMA_GESTION_CALIDAD]: "Sistema de Gestión de Calidad (SGC)"
 };
 
 export enum SubcategoriaEnum {
@@ -108,11 +110,22 @@ export enum SubcategoriaEnum {
 
   // Categoría 11: Marco Jurídico
   ADMINISTRATIVO_ACTUACION = "55",
-  ASUNTOS_RELEVANTES_TRAMITE = "56"
+  ASUNTOS_RELEVANTES_TRAMITE = "56",
+
+  // Categoria 14: Sistema de Gestión de Calidad (SGC)
+  SGC_DOCUMENTACION = "57",
+  // SGC_REGISTROS = "58",
+  // SGC_MEJORA_CONTINUA = "59"
 }
 
 // Objeto con toda la información de las subcategorías
 export const SubcategoriaClaves = {
+  [SubcategoriaEnum.SGC_DOCUMENTACION]: {
+    clave: "SGC01",
+    descripcion: "DOCUMENTACIÓN DEL SISTEMA DE GESTIÓN DE CALIDAD",
+    id_categoria: "57"
+  },
+
   [SubcategoriaEnum.PRESUPUESTO_AUTORIZADO]: {
     clave: "RF01",
     descripcion: "PRESUPUESTO AUTORIZADO Y EJERCIDO",
