@@ -204,5 +204,9 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
   TA01: ["solicitud", "solicitante", "fecha", "estatus", "respuesta"],
 
   // Por defecto
-  default: ["campo1", "campo2", "campo3"]
+  default: ["campo1", "campo2", "campo3"],
+
+  // Sistenma de Gestión de Calidad
+  SGC01: ["Proceso", "Responsable", "Objetivo", "Indicadores", "Recursos", "Riesgos", "Controles"],
+  
 };
