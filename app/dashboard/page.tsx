@@ -222,7 +222,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-gray-600">
-                    Crear y gestionar anexos de documentación
+                    Crear y gestionar anexos de documentación para la entrega recepción
                   </p>
                 </CardContent>
               </Card>
