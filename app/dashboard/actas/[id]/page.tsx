@@ -2,12 +2,14 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Edit, Trash2, Eye, ExternalLink } from "lucide-react";
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,6 +29,19 @@ interface Unidad {
     id_unidad: number;
     nombre: string;
     descripcion?: string;
+}
+
+interface Anexo {
+    id: number;
+    clave: string;
+    creador_id?: number;
+    datos?: any[];
+    estado?: string;
+    unidad_responsable_id?: number;
+    fecha_creacion?: string;
+    acta_id?: number;
+    creado_en?: string;
+    actualizado_en?: string;
 }
 
 interface ActaForm {
@@ -59,6 +74,7 @@ interface ActaForm {
     estado: "Pendiente" | "Completada" | "Revisión";
     creado_en?: string;
     actualizado_en?: string;
+    anexos?: Anexo[];
 }
 
 // Formatear fecha legible
@@ -173,6 +189,74 @@ export default function ViewActaPage({ params }: { params: { id: string } }) {
 
         const anexos = []; // Aquí podrías agregar la lógica para manejar anexos si es necesario
     }
+
+    // Estados y funciones para paginación, preview y descarga de anexos
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [downloadLoadingId, setDownloadLoadingId] = useState<number | null>(null);
+
+    // Valores derivados para evitar errores de "posiblemente undefined"
+    const totalAnexos = acta?.anexos?.length || 0;
+    const totalPages = Math.max(1, Math.ceil(totalAnexos / pageSize));
+
+    const getAnexoUrls = (anexo: Anexo) => {
+        if (!anexo?.datos) return [] as string[];
+        const urls = new Set<string>();
+        try {
+            anexo.datos.forEach(d => {
+                const s = JSON.stringify(d);
+                const matches = s.match(/https?:\/\/[^\s"'}]+/g);
+                if (matches) matches.forEach(m => urls.add(m));
+            });
+        } catch (e) {
+            console.error(e);
+        }
+        return Array.from(urls);
+    };
+
+    const handlePreview = (url: string) => {
+        setPreviewLoading(true);
+        setPreviewUrl(url);
+        setPreviewOpen(true);
+    };
+
+    const handleIframeLoad = () => {
+        setPreviewLoading(false);
+    };
+
+    const handleIframeError = () => {
+        setPreviewLoading(false);
+        toast.error("No se pudo cargar el documento para vista previa");
+        setPreviewOpen(false);
+        setPreviewUrl(null);
+    };
+
+    const handleDownload = async (url: string, anexoId?: number) => {
+        setDownloadLoadingId(anexoId ?? null);
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Error al descargar");
+            const blob = await res.blob();
+            const filename = url.split("/").pop() || "document";
+            const href = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = href;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(href);
+            toast.success("Descarga iniciada");
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al descargar el documento");
+        } finally {
+            setDownloadLoadingId(null);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -433,12 +517,132 @@ export default function ViewActaPage({ params }: { params: { id: string } }) {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex flex-col items-start space-y-2">
+                    <CardFooter className="flex flex-col items-start space-y-4">
                         <CardTitle className="text-lg font-semibold">Anexos</CardTitle>
 
-                        <p className="text-sm text-gray-700">
-                            No hay anexos disponibles para este acta.
-                        </p>
+                        {acta.anexos && acta.anexos.length > 0 ? (
+                            <>
+                                {/* Paginación y controles */}
+                                <div className="flex items-center justify-between mb-3 w-full">
+                                    <div className="text-sm text-gray-600">Mostrando {Math.min((currentPage - 1) * pageSize + 1, acta.anexos.length)} - {Math.min(currentPage * pageSize, acta.anexos.length)} de {acta.anexos.length}</div>
+                                    <div className="flex items-center gap-3">
+                                        <label className="text-sm text-gray-600">Filas</label>
+                                        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="text-sm border rounded px-2 py-1 bg-white">
+                                            <option value={5}>5</option>
+                                            <option value={10}>10</option>
+                                            <option value={25}>25</option>
+                                        </select>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Anterior</Button>
+                                            <div className="text-sm text-gray-700">{currentPage} / {Math.max(1, Math.ceil(acta.anexos.length / pageSize))}</div>
+                                            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Siguiente</Button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tabla de anexos */}
+                                <div className="w-full overflow-x-auto">
+                                    <table className="w-full text-sm table-auto border-collapse">
+                                        <thead>
+                                            <tr className="text-left text-xs text-gray-500 border-b">
+                                                <th className="py-2">Clave</th>
+                                                <th className="py-2">Estado</th>
+                                                <th className="py-2">Fecha</th>
+                                                <th className="py-2">Filas</th>
+                                                <th className="py-2">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {acta.anexos.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((anexo: any) => {
+                                                const urls = getAnexoUrls(anexo as Anexo);
+                                                return (
+                                                    <tr key={anexo.id} className="border-b last:border-b-0">
+                                                        <td className="py-2 align-top">
+                                                            <div className="font-medium">{anexo.clave}</div>
+                                                            <div className="text-xs text-gray-500">#{anexo.id}</div>
+                                                        </td>
+                                                        <td className="py-2 align-top">{anexo.estado || '–'}</td>
+                                                        <td className="py-2 align-top">{formatDate(anexo.fecha_creacion)}</td>
+                                                        <td className="py-2 align-top">{(anexo.datos && anexo.datos.length) || 0}</td>
+                                                        <td className="py-2 align-top">
+                                                            <div className="flex items-center gap-2">
+                                                                {/* Si hay URLs disponibles mostrar acciones */}
+                                                                {urls.length > 0 ? (
+                                                                    <>
+                                                                        {urls.length === 1 ? (
+                                                                            <>
+                                                                                <Button variant="ghost" size="sm" onClick={() => handlePreview(urls[0])} className="flex items-center gap-2">
+                                                                                    <Eye className="h-4 w-4" />
+                                                                                    <span className="sr-only">Vista previa</span>
+                                                                                </Button>
+                                                                                <Button variant="outline" size="sm" onClick={() => handleDownload(urls[0], anexo.id)} disabled={downloadLoadingId === anexo.id}>
+                                                                                    {downloadLoadingId === anexo.id ? <Download className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                                                                </Button>
+                                                                                <a href={urls[0]} target="_blank" rel="noreferrer" className="text-sm text-blue-600 flex items-center gap-1"><ExternalLink className="h-4 w-4"/> Abrir</a>
+                                                                            </>
+                                                                        ) : (
+                                                                            <div className="flex items-center gap-2">
+                                                                                {/* Dropdown con varias URLs */}
+                                                                                <div className="relative inline-block text-left">
+                                                                                    <div className="flex gap-1">
+                                                                                        <Button variant="ghost" size="sm">Acciones</Button>
+                                                                                        <div className="bg-white border rounded-md shadow-md p-2 absolute right-0 mt-2 z-10">
+                                                                                            {urls.map((u: string, i: number) => (
+                                                                                                <div key={u} className="flex items-center gap-2 mb-1">
+                                                                                                    <button className="text-sm text-gray-700 hover:text-gray-900" onClick={() => handlePreview(u)}><Eye className="h-4 w-4 inline mr-1"/> Vista previa {i + 1}</button>
+                                                                                                    <button className="text-sm text-gray-700 hover:text-gray-900" onClick={() => handleDownload(u, anexo.id)}>{downloadLoadingId === anexo.id ? <Download className="h-4 w-4 animate-spin"/> : <Download className="h-4 w-4"/>} Descargar</button>
+                                                                                                    <a className="text-sm text-blue-600 flex items-center gap-1" href={u} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4"/> Abrir</a>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-500">Sin archivos</span>
+                                                                )}
+                                                            </div>
+                                                            {/* Enlace a la vista de detalle del anexo (JSON o formulario) */}
+                                                            <div className="ml-2">
+                                                                <Link href={`/dashboard/anexos/${anexo.id}`} className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                                                                    <ExternalLink className="h-4 w-4" />
+                                                                    <span>Ver anexo</span>
+                                                                </Link>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Dialog para vista previa */}
+                                <Dialog open={previewOpen} onOpenChange={(open) => { if (!open) { setPreviewUrl(null); setPreviewOpen(false); } }}>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Vista previa del documento</DialogTitle>
+                                            <DialogDescription>{previewUrl}</DialogDescription>
+                                        </DialogHeader>
+                                        <div className="h-[70vh] w-full bg-white">
+                                            {previewLoading && (
+                                                <div className="flex items-center justify-center h-full">
+                                                    <Download className="h-6 w-6 animate-spin text-gray-500" />
+                                                </div>
+                                            )}
+                                            {previewUrl && (
+                                                // iframe puede fallar por CORS, se maneja en onError
+                                                <iframe src={previewUrl} className="w-full h-full border" onLoad={handleIframeLoad} onError={handleIframeError} />
+                                            )}
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                            </>
+                        ) : (
+                            <p className="text-sm text-gray-700">No hay anexos disponibles para este acta.</p>
+                        )}
 
                         <CardDescription className="text-xs text-gray-500">
                             Los campos con <span className="font-medium">"–"</span> indican que no se proporcionó información.
