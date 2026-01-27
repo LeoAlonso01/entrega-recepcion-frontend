@@ -178,6 +178,7 @@ export default function AdministracionPage(user: { role: string } | null) {
     usuarioId: number;
     usuarioNombre: string;
   } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [searchUser, setSearchUser] = useState<string>("")
@@ -215,42 +216,49 @@ export default function AdministracionPage(user: { role: string } | null) {
     },
   });
 
-  const handleGetUsers = async () => {
-    // llamada a la api
+  const handleGetUsers = async (search = "") => {
     try {
-      const response = await fetch(`${API_URL}/users`, {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Token no encontrado. Por favor inicia sesión.");
+        router.push("/");
+        return;
+      }
+
+      const url = new URL(`${API_URL}/users`);
+      if (search) url.searchParams.set("search", search);
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
       });
-      // manejar la respuesta negativa
+
+      if (response.status === 401) {
+        toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
+        router.push("/");
+        return;
+      }
+
       if (!response.ok) {
         throw new Error("Error al obtener los usuarios");
       }
 
       const data = await response.json();
-      // llenar el state para tener los usuarios 
-      // Asegurarse de que los datos sean del tipo Usuario[]
       if (!Array.isArray(data)) {
         throw new Error("Datos de usuarios no válidos");
       }
-      // Actualizar el estado con los usuarios obtenidos
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      //setUsuarios(data as Usuario[]); // Ensure data is cast to Usuario[]
+
       console.log("Usuarios obtenidos:", data);
-      // Aquí puedes actualizar el estado de usuarios en tu componente
+      setUsuarios(data as Usuario[]);
       setIsLoading(false);
-      setUsuarios(data as Usuario[]); // Asegúrate de que data sea del tipo Usuario[]    
     } catch (error) {
-      // manejar los errores 
       console.error("Error al obtener los usuarios:", error);
       toast.error("Error al obtener los usuarios: " + (error as Error).message);
       setIsLoading(false);
-
     }
-
   }
 
 
@@ -258,6 +266,7 @@ export default function AdministracionPage(user: { role: string } | null) {
     const token = localStorage.getItem("token")
     if (!token) {
       router.push("/")
+      return;
     }
 
     // Obtener los usuarios desde la API
@@ -266,12 +275,26 @@ export default function AdministracionPage(user: { role: string } | null) {
     // Obtener unidades
     const handleGetUnidades = async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          toast.error("Token no encontrado. Por favor inicia sesión.");
+          router.push("/");
+          return;
+        }
+
         const response = await fetch(`${API_URL}/unidades_responsables`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
         });
+
+        if (response.status === 401) {
+          toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
+          router.push("/");
+          return;
+        }
 
         if (!response.ok) throw new Error("Error al obtener las unidades");
 
@@ -557,6 +580,17 @@ export default function AdministracionPage(user: { role: string } | null) {
                 <span className="hidden xs:inline">Exportar Excel</span>
                 <span className="xs:hidden">Excel</span>
               </Button>
+
+              <Button
+                style={{ backgroundColor: "#24356B", color: "white" }}
+                onClick={() => setIsModalOpen(true)}
+                disabled={!localStorage.getItem("token")}
+                className="flex-1 xs:flex-none text-sm flex items-center justify-center"
+              >
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Asignar Responsable</span>
+                <span className="xs:hidden">Asignar</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -719,6 +753,15 @@ export default function AdministracionPage(user: { role: string } | null) {
               </div>
             ) : (
               <div className="py-4 flex-1 overflow-y-auto">
+                <div className="mb-4">
+                  <Label className="text-xs">Buscar usuario</Label>
+                  <Input
+                    placeholder="Buscar por username o email"
+                    value={searchUser}
+                    onChange={(e) => setSearchUser(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -767,11 +810,17 @@ export default function AdministracionPage(user: { role: string } | null) {
                                     <SelectValue placeholder="Seleccionar usuario" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {usuarios.map((usuario) => (
-                                      <SelectItem key={usuario.id} value={usuario.id.toString()} className="text-xs sm:text-sm">
-                                        {usuario.username} ({usuario.email})
-                                      </SelectItem>
-                                    ))}
+                                    {usuarios
+                                      .filter((u) =>
+                                        searchUser === "" ||
+                                        u.username.toLowerCase().includes(searchUser.toLowerCase()) ||
+                                        u.email.toLowerCase().includes(searchUser.toLowerCase())
+                                      )
+                                      .map((usuario) => (
+                                        <SelectItem key={usuario.id} value={usuario.id.toString()} className="text-xs sm:text-sm">
+                                          {usuario.username} ({usuario.email})
+                                        </SelectItem>
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               )}
@@ -830,49 +879,95 @@ export default function AdministracionPage(user: { role: string } | null) {
                 style={{ backgroundColor: "#24356B", color: "white" }}
                 onClick={async () => {
                   if (!pendingAssignment) return;
+                  if (isSubmitting) return; // prevenir doble envío
+
+                  const token = localStorage.getItem("token");
+                  if (!token) {
+                    toast.error("Token no encontrado. Por favor inicia sesión.");
+                    router.push("/");
+                    return;
+                  }
 
                   const { unidadId, usuarioId } = pendingAssignment;
 
+                  // Verificar que el usuario exista en la lista actual
+                  const usuarioExistente = usuarios.find((u) => u.id === usuarioId);
+                  if (!usuarioExistente) {
+                    toast.error("El usuario seleccionado no existe en el listado.");
+                    setIsConfirmOpen(false);
+                    return;
+                  }
+
                   try {
-                    const res = await fetch(
-                      `${API_URL}/unidades_responsables/${unidadId}/asignar-responsable`,
-                      {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ usuario_id: usuarioId }),
-                      }
-                    );
+                    setIsSubmitting(true);
 
-                    if (!res.ok) throw new Error("Error al asignar");
+                    const res = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ responsable_id: usuarioId }),
+                    });
 
+                    if (res.status === 401) {
+                      toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
+                      router.push("/");
+                      return;
+                    }
+
+                    if (res.status === 404) {
+                      toast.error("Unidad o usuario no encontrado (404).");
+                      return;
+                    }
+
+                    if (res.status === 422) {
+                      const err = await res.json().catch(() => ({}));
+                      toast.error("Datos mal formados: " + (err.detail || JSON.stringify(err)));
+                      return;
+                    }
+
+                    if (!res.ok) {
+                      throw new Error("Error al asignar responsable");
+                    }
+
+                    // El backend debería devolver la unidad con el responsable embebido
                     const data = await res.json();
-                    toast.success(
-                      `✅ ${data.unidad.responsable_nombre} asignado a ${data.unidad.nombre}`
-                    );
 
-                    setUnidades((prev) =>
-                      prev.map((u) =>
-                        u.id_unidad === unidadId
-                          ? {
-                            ...u,
-                            responsable: {
-                              id: usuarioId,
-                              username: usuarios.find((u) => u.id === usuarioId)!.username,
-                            },
-                          }
-                          : u
-                      )
-                    );
+                    // Refrescar la unidad desde el backend para asegurar consistencia
+                    try {
+                      const refreshed = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
+                        method: "GET",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                        },
+                      });
 
+                      if (refreshed.ok) {
+                        const unidadActualizada = await refreshed.json();
+                        setUnidades((prev) =>
+                          prev.map((u) => (u.id_unidad === unidadId ? unidadActualizada : u))
+                        );
+                      }
+                    } catch (e) {
+                      // no crítico: ya tenemos la respuesta del PUT
+                    }
+
+                    toast.success("Responsable asignado correctamente");
                     setIsConfirmOpen(false);
                   } catch (error) {
+                    console.error(error);
                     toast.error("No se pudo asignar el responsable");
                     setIsConfirmOpen(false);
+                  } finally {
+                    setIsSubmitting(false);
                   }
                 }}
+                disabled={!localStorage.getItem("token") || isSubmitting}
                 className="w-full sm:w-auto order-1 sm:order-2"
               >
-                Confirmar
+                {isSubmitting ? "Procesando..." : "Confirmar"}
               </Button>
             </DialogFooter>
           </DialogContent>

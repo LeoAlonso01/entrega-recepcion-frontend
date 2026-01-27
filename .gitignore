@@ -25,3 +25,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated presentation and screenshots (do NOT commit)
+/docs/presentation.pdf
+/docs/screens/
+/docs/screens/*
+/docs/*
