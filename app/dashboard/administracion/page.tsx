@@ -36,6 +36,7 @@ import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { Eye } from "lucide-react"
+import { set } from "date-fns";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
@@ -171,6 +172,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [error, setError] = useState<Error | null>(null)
   const [unidadesOriginales, setUnidadesOriginales] = useState<Unidad[]>([]);
   const [isModalLoading, setIsModalLoading] = useState(false);
+  const [loadingAsignacion, setLoadingAsignacion] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingAssignment, setPendingAssignment] = useState<{
     unidadId: number;
@@ -583,7 +585,7 @@ export default function AdministracionPage(user: { role: string } | null) {
 
               <Button
                 style={{ backgroundColor: "#24356B", color: "white" }}
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => { setIsModalOpen(true); setLoadingAsignacion(true); }}
                 disabled={!localStorage.getItem("token")}
                 className="flex-1 xs:flex-none text-sm flex items-center justify-center"
               >
