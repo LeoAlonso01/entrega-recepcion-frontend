@@ -198,6 +198,10 @@ export default function ActasPage() {
   }
 
   const handleView = (acta: ActaForm) => {
+    if (acta?.id === undefined || acta?.id === null || Number.isNaN(Number(acta.id))) {
+      toast.error("ID de acta inválido");
+      return;
+    }
     router.push(`/dashboard/actas/${acta.id}`)
   }
 
