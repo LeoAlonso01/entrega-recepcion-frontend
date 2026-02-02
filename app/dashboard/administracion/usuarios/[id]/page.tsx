@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import ResetPasswordModal from '@/components/ResetPasswordModal';
 import { ArrowLeft, User, Mail, Shield, Check, X, Calendar, Hash, Lock, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import NavbarWithBreadcrumb from '../../../../../components/NavbarBreadcrumb';
@@ -32,6 +35,18 @@ export default function UsuarioDetallePage( user: Usuario | null) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
+
+    // Password change/reset states
+    const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+    const [newPasswordInput, setNewPasswordInput] = useState("");
+    const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+    // Modal states for password workflows
+    const [openSelfChange, setOpenSelfChange] = useState(false);
+    const [openAdminReset, setOpenAdminReset] = useState(false);
+    const [resetTarget, setResetTarget] = useState<{ id: number; username: string } | null>(null);
 
     const fetchUsuario = async () => {
         try {
@@ -84,8 +99,97 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                 router.push('/login');
                 return;
             }
+        // leer usuario actual almacenado (si existe) para decisiones de UI (si es admin o el mismo usuario)
+        const stored = localStorage.getItem('currentUser');
+        if (stored) {
+            try {
+                setCurrentUser(JSON.parse(stored));
+            } catch (e) {
+                console.warn('No se pudo parsear currentUser', e);
+            }
+        }
         fetchUsuario();
     }, [id]);
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newPasswordInput || newPasswordInput !== confirmPasswordInput) {
+            toast.error('Las contraseñas no coinciden o están vacías');
+            return;
+        }
+        setIsChangingPassword(true);
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                toast.error('Token no encontrado. Inicia sesión de nuevo.');
+                router.push('/login');
+                return;
+            }
+            const res = await fetch(`${API_URL}/users/${id}/change_password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ currentPassword: currentPasswordInput, newPassword: newPasswordInput }),
+            });
+            if (res.ok) {
+                toast.success('Contraseña cambiada correctamente.');
+                setCurrentPasswordInput('');
+                setNewPasswordInput('');
+                setConfirmPasswordInput('');
+            } else if (res.status === 401) {
+                toast.error('Credenciales inválidas.');
+            } else {
+                const err = await res.json().catch(() => null);
+                toast.error(err?.message || 'Error al cambiar la contraseña');
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('Error al cambiar la contraseña');
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
+
+    const handleAdminResetPassword = async () => {
+        if (!confirm('¿Resetear la contraseña de este usuario a la contraseña universal?')) return;
+        setIsResettingPassword(true);
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                toast.error('Token no encontrado.');
+                router.push('/login');
+                return;
+            }
+            const universal = 'user123';
+            const res = await fetch(`${API_URL}/admin/users/${id}/reset_password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ newPassword: universal }),
+            });
+            if (res.ok) {
+                toast.success(`Contraseña reseteada a "${universal}"`);
+                // copiar al portapapeles para conveniencia del admin
+                try { await navigator.clipboard.writeText(universal); toast.success('Contraseña copiada al portapapeles'); } catch (e) { /* no-crash */ }
+            } else if (res.status === 403) {
+                toast.error('No tienes permisos para resetear la contraseña');
+            } else {
+                const err = await res.json().catch(() => null);
+                toast.error(err?.message || 'Error al resetear la contraseña');
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('Error al resetear la contraseña');
+        } finally {
+            setIsResettingPassword(false);
+            // refrescar información de usuario rápidamente
+            fetchUsuario();
+        }
+    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('es-ES', {
@@ -206,6 +310,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                                 ]}
                             />
                         </div>
+                      
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
                             <DetailSection
@@ -223,6 +328,35 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                                     }
                                 ]}
                             />
+                        </div>
+
+                        {/* Seguridad: cambiar contraseña o resetear desde admin */}
+                        <div className="py-6">
+                            <h3 className="text-lg font-medium mb-4">Seguridad</h3>
+
+                            <div className="flex gap-3">
+                                {/* Botón único: abre el flujo correspondiente según permisos (self -> cambiar, admin -> resetear) */}
+                                <Button
+                                    onClick={() => {
+                                        if (currentUser?.username === usuario.username) {
+                                            setOpenSelfChange(true);
+                                        } else if (usuario.role === 'ADMIN') {
+                                            setResetTarget({ id: usuario.id, username: usuario.username });
+                                            setOpenAdminReset(true);
+                                        } else {
+                                            toast.error('No tienes permisos para cambiar esta contraseña');
+                                        }
+                                    }}
+                                    style={ { backgroundColor: '#24356B', color: 'white' } }
+                                    disabled={isChangingPassword || isResettingPassword}
+                                >
+                                    {usuario.username === usuario.username ? 'Cambiar contraseña' : 'No permitido'}
+                                </Button>
+                            </div>
+
+                            {/* Modal components */}
+                            <ResetPasswordModal open={openSelfChange} onOpenChange={setOpenSelfChange} userId={usuario.id} username={usuario.username} mode="self" onSuccess={() => { /* no-op, handled inside modal */ }} />
+                            <ResetPasswordModal open={openAdminReset} onOpenChange={(v) => { setOpenAdminReset(v); if (!v) setResetTarget(null); }} userId={resetTarget?.id ?? null} username={resetTarget?.username ?? null} mode="admin" onSuccess={() => { fetchUsuario(); setOpenAdminReset(false); }} />
                         </div>
                     </CardContent>
                 </Card>
@@ -273,17 +407,17 @@ function DetailSection({ title, items }: {
 // Componente para el estado de carga
 function LoadingSkeleton() {
 
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    if (!currentUser) {
+    const usuario = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    if (!usuario) {
         return null; // O un loading spinner si prefieres
     }
     // Simulación de un usuario actual
-    const user = ''; currentUser || { username: "Cargando...", role: "Cargando..." };
+    const user = usuario || { username: "Cargando...", role: "Cargando..." };
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Breadcrumbs */}
             <NavbarWithBreadcrumb
-                user={currentUser?.username || null}
+                user={usuario?.username || null}
                 role={user && typeof user === 'object' ? "ADMIN" : ""}
             />
             <div className="max-w-4xl mx-auto p-4">
