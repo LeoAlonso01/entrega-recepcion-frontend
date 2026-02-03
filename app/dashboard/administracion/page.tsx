@@ -165,6 +165,11 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
 }
 
 export default function AdministracionPage(user: { role: string } | null) {
+  // Prevent server-side execution of client-only code by short-circuiting during SSR/build
+  if (typeof window === 'undefined') {
+    return <div className="min-h-screen bg-gray-50"></div>;
+  }
+
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   // Estados para el manejo del diálogo y formulario
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

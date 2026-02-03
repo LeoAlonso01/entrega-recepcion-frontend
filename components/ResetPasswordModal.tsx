@@ -236,14 +236,16 @@ export default function ResetPasswordModal({ open, onOpenChange, userId, usernam
         router.push("/auth/login");
         return;
       }
+      const bodyPayload = { new_password: newPassword, newPassword };
       const res = await fetch(`${API_URL}/admin/users/${userId}/reset_password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify(bodyPayload),
       });
+      console.debug('handleAdminReset: sent payload', bodyPayload);
 
       if (res.ok) {
         toast.success("Contraseña reseteada correctamente.");

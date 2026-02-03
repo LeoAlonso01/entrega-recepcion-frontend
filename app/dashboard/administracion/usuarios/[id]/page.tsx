@@ -406,6 +406,8 @@ function DetailSection({ title, items }: {
 
 // Componente para el estado de carga
 function LoadingSkeleton() {
+    // Loading skeleton runs also during SSR/build; avoid accessing localStorage on server
+    if (typeof window === 'undefined') return null;
 
     const usuario = JSON.parse(localStorage.getItem("currentUser") || "{}");
     if (!usuario) {
