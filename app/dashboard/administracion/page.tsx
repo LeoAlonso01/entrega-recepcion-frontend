@@ -27,7 +27,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, ArrowLeft, Shield, User } from "lucide-react"
+import { Plus, Edit, Trash2, ArrowLeft, Shield, User, Lock } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import jsPDF from "jspdf"
@@ -35,6 +35,7 @@ import "jspdf-autotable"
 import * as XLSX from "xlsx"
 import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
+import ResetPasswordModal from "@/components/ResetPasswordModal"
 import { Eye } from "lucide-react"
 import { set } from "date-fns";
 
@@ -164,6 +165,11 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
 }
 
 export default function AdministracionPage(user: { role: string } | null) {
+  // Prevent server-side execution of client-only code by short-circuiting during SSR/build
+  if (typeof window === 'undefined') {
+    return <div className="min-h-screen bg-gray-50"></div>;
+  }
+
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   // Estados para el manejo del diálogo y formulario
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -200,6 +206,21 @@ export default function AdministracionPage(user: { role: string } | null) {
   })
   const [unidades, setUnidades] = useState<Unidad[]>([]);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
+  // Paging / caching for unidades to improve performance
+  const [unidadesPage, setUnidadesPage] = useState(1);
+  const unidadesLimit = 20; // items per page / chunk
+  const [unidadesHasMore, setUnidadesHasMore] = useState(true);
+  const [unidadesCache, setUnidadesCache] = useState<Unidad[]>([]); // full cache when server returns everything
+  const [showedUnidadesCount, setShowedUnidadesCount] = useState(0); // how many items are currently rendered
+
+  // Reset password modal state (admin flows)
+  const [openResetModal, setOpenResetModal] = useState(false);
+  const [resetTarget, setResetTarget] = useState<{ id: number; username: string } | null>(null);
+
+  // Self-change modal state (for the logged-in user)
+  const [openSelfChange, setOpenSelfChange] = useState(false);
+  const [selfTarget, setSelfTarget] = useState<{ id: number; username: string } | null>(null);
+
   const router = useRouter()
   const {
     register,
@@ -274,44 +295,14 @@ export default function AdministracionPage(user: { role: string } | null) {
     // Obtener los usuarios desde la API
     handleGetUsers();
 
-    // Obtener unidades
-    const handleGetUnidades = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          toast.error("Token no encontrado. Por favor inicia sesión.");
-          router.push("/");
-          return;
-        }
+    // Cargar el usuario actual desde localStorage para decisiones de UI (mostrar botón de "cambiar contraseña" solo en la fila propia)
+    const storedCurrent = localStorage.getItem('currentUser');
+    if (storedCurrent) {
+      try { setCurrentUser(JSON.parse(storedCurrent)); } catch (e) { console.warn('No se pudo parsear currentUser', e); }
+    }
 
-        const response = await fetch(`${API_URL}/unidades_responsables`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 401) {
-          toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
-          router.push("/");
-          return;
-        }
-
-        if (!response.ok) throw new Error("Error al obtener las unidades");
-
-        const data: Unidad[] = await response.json();
-        setUnidades(data);
-        console.log("Unidades obtenidas:", data);
-        setLoadingUnidades(false);
-      } catch (error) {
-        console.error("Error al obtener unidades:", error);
-        toast.error("No se pudieron cargar las unidades");
-        setLoadingUnidades(false);
-      }
-    };
-
-    handleGetUnidades();
+    // Obtener unidades: NOTE: we no longer fetch all unidades automatically on mount to avoid loading delays.
+    // Loading of unidades is performed lazily when opening the "Asignar" modal to improve performance.
   }, [router])
 
   const handleCreateUser: SubmitHandler<CreateUserForm> = (data) => {
@@ -345,6 +336,89 @@ export default function AdministracionPage(user: { role: string } | null) {
     }
 
     resetForm();
+  };
+
+  // Load a page/chunk of unidades. Tries server-side pagination first (page & limit),
+  // and falls back to client-side chunking if the server returns the full list.
+  const loadUnidadesPage = async (page = 1) => {
+    setIsModalLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Token no encontrado. Por favor inicia sesión.");
+        router.push("/");
+        setIsModalLoading(false);
+        return;
+      }
+
+      const url = new URL(`${API_URL}/unidades_responsables`);
+      url.searchParams.set("page", page.toString());
+      url.searchParams.set("limit", unidadesLimit.toString());
+
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.status === 401) {
+        toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
+        router.push("/");
+        setIsModalLoading(false);
+        return;
+      }
+
+      if (!res.ok) throw new Error("Error al obtener las unidades");
+
+      const data: Unidad[] = await res.json();
+
+      // Case A: server-side pagination
+      if (data.length <= unidadesLimit) {
+        // append or set
+        if (page === 1) {
+          setUnidades(data);
+          setUnidadesCache(data);
+          setShowedUnidadesCount(data.length);
+        } else {
+          setUnidades((prev) => [...prev, ...data]);
+          setUnidadesCache((prev) => [...prev, ...data]);
+          setShowedUnidadesCount((prev) => prev + data.length);
+        }
+
+        setUnidadesHasMore(data.length === unidadesLimit);
+        setUnidadesPage(page);
+      } else {
+        // Case B: server returned many items (maybe whole list). Cache and only render first chunk to reduce rendering cost.
+        setUnidadesCache(data);
+        const firstChunk = data.slice(0, unidadesLimit);
+        setUnidades(firstChunk);
+        setShowedUnidadesCount(firstChunk.length);
+        setUnidadesHasMore(data.length > firstChunk.length);
+        setUnidadesPage(1);
+      }
+    } catch (e) {
+      console.error("Error al cargar unidades por página", e);
+      toast.error("No se pudieron cargar las unidades");
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
+  // Handler for modal open/close to clear heavy state on close for faster UX
+  const handleModalOpenChange = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+      // Clear big arrays quickly so closing animation is snappy
+      setUnidades([]);
+      setUnidadesCache([]);
+      setUnidadesPage(1);
+      setUnidadesHasMore(true);
+      setShowedUnidadesCount(0);
+      setIsModalLoading(false);
+      setLoadingAsignacion(false);
+    }
   };
 
   const resetForm = () => {
@@ -385,6 +459,17 @@ export default function AdministracionPage(user: { role: string } | null) {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 lg:py-8">
+        {loadingAsignacion && !isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="flex items-center gap-3 bg-white bg-opacity-95 px-5 py-4 rounded-md shadow-md">
+              <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+              <span className="text-sm font-medium">Cargando...</span>
+            </div>
+          </div>
+        )}
 
         {/* estadisticas Cards */}
         <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 lg:mb-8">
@@ -585,13 +670,32 @@ export default function AdministracionPage(user: { role: string } | null) {
 
               <Button
                 style={{ backgroundColor: "#24356B", color: "white" }}
-                onClick={() => { setIsModalOpen(true); setLoadingAsignacion(true); }}
-                disabled={!localStorage.getItem("token")}
+                onClick={async () => {
+                  if (!localStorage.getItem("token")) return;
+                  setLoadingAsignacion(true);
+                  // Load the first page/chunk of unidades and show overlay while fetching
+                  await loadUnidadesPage(1);
+                  setIsModalOpen(true);
+                  setLoadingAsignacion(false);
+                }}
+                disabled={!localStorage.getItem("token") || loadingAsignacion}
                 className="flex-1 xs:flex-none text-sm flex items-center justify-center"
               >
-                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Asignar Responsable</span>
-                <span className="xs:hidden">Asignar</span>
+                {loadingAsignacion ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                    <span>Cargando...</span>
+                  </span>
+                ) : (
+                  <>
+                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden xs:inline">Asignar Responsable</span>
+                    <span className="xs:hidden">Asignar</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -704,6 +808,32 @@ export default function AdministracionPage(user: { role: string } | null) {
                               </Button>
                             </Link>
 
+                            {/* Cambiar contraseña (propio usuario) */}
+                            {usuario?.username === usuario.username && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => { setSelfTarget({ id: usuario.id, username: usuario.username }); setOpenSelfChange(true); }}
+                                className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-amber-600 hover:text-amber-800"
+                              >
+                                <Lock className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="sr-only">Cambiar contraseña</span>
+                              </Button>
+                            )}
+
+                            {/* Reset password (admin) */}
+                        
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => { setResetTarget({ id: usuario.id, username: usuario.username }); setOpenResetModal(true); }}
+                                className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-indigo-600 hover:text-indigo-800"
+                              >
+                                <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="sr-only">Resetear contraseña</span>
+                              </Button>
+                            
+
                             <Button
                               variant="outline"
                               size="sm"
@@ -727,8 +857,14 @@ export default function AdministracionPage(user: { role: string } | null) {
           </Card>
         )}
 
+        {/* Reset password modal (admin) */}
+        <ResetPasswordModal open={openResetModal} onOpenChange={(v) => { setOpenResetModal(v); if (!v) setResetTarget(null); }} userId={resetTarget?.id ?? null} username={resetTarget?.username ?? null} mode="admin" onSuccess={() => { handleGetUsers(); setOpenResetModal(false); }} />
+
+        {/* Self-change modal (open for the logged-in user via the row button) */}
+        <ResetPasswordModal open={openSelfChange} onOpenChange={(v) => { setOpenSelfChange(v); if (!v) setSelfTarget(null); }} userId={selfTarget?.id ?? null} username={selfTarget?.username ?? null} mode="self" onSuccess={() => { /* handled inside modal (logout) */ }} />
+
         {/* Asignación de usuario */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
           <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">Asignar Responsable a Unidad</DialogTitle>
@@ -832,6 +968,30 @@ export default function AdministracionPage(user: { role: string } | null) {
                       ))}
                     </TableBody>
                   </Table>
+                  {/* Load more control */}
+                  {(unidadesHasMore || (unidadesCache.length > unidades.length)) && (
+                    <div className="p-4 flex justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          // If we have cached full list, reveal next slice, otherwise request next page
+                          if (unidadesCache.length > unidades.length) {
+                            const nextCount = Math.min(unidadesCache.length, unidades.length + unidadesLimit);
+                            setUnidades(unidadesCache.slice(0, nextCount));
+                            setShowedUnidadesCount(nextCount);
+                            setUnidadesHasMore(nextCount < unidadesCache.length);
+                          } else if (unidadesHasMore) {
+                            const nextPage = unidadesPage + 1;
+                            await loadUnidadesPage(nextPage);
+                          }
+                        }}
+                        className="text-sm"
+                        disabled={isModalLoading}
+                      >
+                        {isModalLoading ? "Cargando..." : "Cargar más"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

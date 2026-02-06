@@ -1,12 +1,11 @@
-"use client"
-import { useState, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+export const dynamic = 'force-dynamic';
+
+import React, { Suspense } from 'react'
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import ResetPasswordForm from '@/components/ResetPasswordForm'
+import { useSearchParams, useRouter } from 'next/navigation';
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -82,41 +81,8 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#24356B" }}>
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center" style={{ backgroundColor: "#B59E60", color: "white" }}>
-          <CardTitle className="text-2xl font-bold">Restablecer Contraseña</CardTitle>
-          <CardDescription className="text-white/90">Introduce una nueva contraseña segura</CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="new_password">Nueva contraseña</Label>
-              <Input id="new_password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirm_password">Confirmar nueva contraseña</Label>
-              <Input id="confirm_password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-            </div>
-
-            <Button type="submit" className="w-full py-3 text-base font-medium" style={{ backgroundColor: "#751518", color: "white" }} disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                "Restablecer contraseña"
-              )}
-            </Button>
-
-            <div className="mt-4 text-center">
-              <a href="/recuperacionContrasena" className="text-sm text-blue-500 hover:underline">Solicitar nuevo enlace</a>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#24356B" }}>Cargando...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }
