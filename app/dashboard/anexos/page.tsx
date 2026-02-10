@@ -358,7 +358,7 @@ const categoria_anexos = [
   },
   {
     "id": "12",
-    "nombre_categoria": "Sin Categoría"
+    "nombre_categoria": "Sisteama de Gestión de Calidad"
   },
   {
     "id": "13",
@@ -872,6 +872,15 @@ const claves_anexos = [
     "id_categoria": "11"
   },
   {
+    "id": "60",
+    "clave": "SGC01",
+    "descripcion": "SISTEMA DE GESTIÓN DE CALIDAD",
+    "creado_en": " 2026-01-01 12:00:00+00",
+    "editado_en": " 2026-01-01 12:00:00+00",
+    "is_deleted": "False",
+    "id_categoria": "12"
+  },
+  {
     "id": "59",
     "clave": "",
     "descripcion": "",
@@ -931,6 +940,102 @@ interface IFormInput {
   datos: Record<string, any>;
   estado: string;
   unidad_responsable_id: number;
+}
+
+// campos de la tabla editable
+const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: string; obligatorio?: boolean; Descripcion?: string }>> = {
+  RF01: [
+    { campo: "partida", tipo: "string", obligatorio: true, Descripcion: "Partida Presupuestal" },
+    { campo: "Denominacion", tipo: "string", obligatorio: true, Descripcion: "Denominación de la partida" },
+    { campo: "Presupuesto_Autorizado", tipo: "number", obligatorio: true, Descripcion: "Monto Aprobado" },
+    { campo: "Presupuesto_Modificado", tipo: "number", obligatorio: false, Descripcion: "Monto Modificado" },
+    { campo: "Presupuesto_Ejercido", tipo: "number", obligatorio: false, Descripcion: "Monto Ejercido" },
+    { campo: "Presupuesto_Por_Ejercer", tipo: "number", obligatorio: false, Descripcion: "Monto por Ejercer" },
+  ],
+}
+
+/**
+ * 
+ * @param clave - Clave del Anexo (ej. AR01, DA01, etc.)
+ * @param datos - Arrray de objetos con los datos del anexo ingresados por el usuario
+ * @param estructura - Objeto ESTRUCTURA_DATOS_POR_CLAVE que define los campos esperados para cada clave
+ * @returns - { valido: boolean, errores: string[] } 
+ */
+
+export function validarDatosAnexo(
+  clave: string,
+  datos: Record<string, any>[],
+  estructura: Record<string, Array<{
+    campo: string;
+    tipo: 'string' | 'number';
+    obligatorio: boolean;
+    Descripcion: string;
+  }>>
+): { valido: boolean; errores: string[] } {
+  const errores: string[] = [];
+
+  // Verificar que exista la estructura para esa clave
+  const camposEsperados = estructura[clave];
+  if (!camposEsperados || !Array.isArray(camposEsperados)) {
+    return {
+      valido: false,
+      errores: [`No se encontró la estructura para la clave: ${clave}`]
+    };
+  }
+
+  // Mapear nombres de campos esperados para comparación rápida
+  const nombresCamposEsperados = new Set(camposEsperados.map(c => c.campo));
+
+  // Recorrer cada fila de datos
+  for (let i = 0; i < datos.length; i++) {
+    const fila = datos[i];
+
+    // Validar que todos los campos esperados estén presentes (aunque sean vacíos)
+    for (const def of camposEsperados) {
+      const { campo, tipo, obligatorio, Descripcion } = def;
+      const valor = fila[campo];
+
+      // Caso 1: campo faltante
+      if (!(campo in fila)) {
+        errores.push(`Fila ${i + 1}: Falta el campo "${campo}" (${Descripcion})`);
+        continue;
+      }
+
+      // Caso 2: campo obligatorio y vacío
+      if (obligatorio && (valor === "" || valor == null)) {
+        errores.push(`Fila ${i + 1}: El campo "${campo}" (${Descripcion}) es obligatorio`);
+        continue;
+      }
+
+      // Caso 3: campo no obligatorio y vacío → aceptable, saltar validación de tipo
+      if (valor === "" || valor == null) {
+        continue;
+      }
+
+      // Caso 4: validación de tipo
+      if (tipo === 'number') {
+        const num = Number(valor);
+        if (isNaN(num) || String(valor).trim() === "") {
+          errores.push(`Fila ${i + 1}: El campo "${campo}" (${Descripcion}) debe ser un número válido. Valor recibido: "${valor}"`);
+        }
+      } else if (tipo === 'string') {
+        // Cualquier cosa que no sea number se trata como string (incluyendo fechas)
+        // No hay validación adicional, ya que incluso "123" es string válido si se espera string
+        // Pero podrías agregar validación de formato de fecha si lo deseas más adelante
+      }
+    }
+
+    // Validar que no haya campos extra (opcional, pero útil para detectar errores de mapeo)
+    const camposExtras = Object.keys(fila).filter(k => !nombresCamposEsperados.has(k));
+    if (camposExtras.length > 0) {
+      errores.push(`Fila ${i + 1}: Campos no esperados: ${camposExtras.join(', ')}`);
+    }
+  }
+
+  return {
+    valido: errores.length === 0,
+    errores
+  };
 }
 
 

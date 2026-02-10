@@ -34,7 +34,7 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-interface ActaForm {
+export interface ActaForm {
   id: number
   unidad_responsable: number
   folio?: string

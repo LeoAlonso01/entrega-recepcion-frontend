@@ -484,5 +484,14 @@
   "editado_en": "2025-07-08 19:28:09.954822+00",
   "is_deleted": "False",
   "id_categoria": "11"
+ },
+ {
+    "id": "55",
+    "clave": "SGC01",
+    "descripcion": "MANUAL DE CALIDAD Y PROCEDIMIENTOS DEL SGC",
+    "creado_en": "2025-07-08 19:28:09.954822+00",
+    "editado_en": "2025-07-08 19:28:09.954822+00",
+    "is_deleted": "False",
+    "id_categoria": "12"
  }
-]]
+]
