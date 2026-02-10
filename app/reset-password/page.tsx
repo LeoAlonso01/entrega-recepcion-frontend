@@ -1,3 +1,5 @@
+"use client";
+
 export const dynamic = 'force-dynamic';
 
 import React, { Suspense } from 'react'
@@ -82,7 +84,7 @@ export default function ResetPasswordPage() {
 
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#24356B" }}>Cargando...</div>}>
-      <ResetPasswordForm />
+      <ResetPasswordForm/>
     </Suspense>
   )
 }
