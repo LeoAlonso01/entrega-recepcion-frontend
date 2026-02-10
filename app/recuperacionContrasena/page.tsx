@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
         toast.success("Correo enviado", {
           description: "Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña."
         })
-        router.push("/login")
+        router.push("/")
       } else {
         toast.error("Error", { description: data.detail || "No se pudo enviar el correo" })
       }
@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
             </Button>
           </form>
           <div className="mt-4 text-center">
-            <Link href="/login" className="text-sm text-blue-500 hover:underline">
+            <Link href="/" className="text-sm text-blue-500 hover:underline">
               ← Volver a iniciar sesión
             </Link>
           </div>

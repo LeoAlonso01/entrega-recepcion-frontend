@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,14 +97,18 @@ const getUnidadNombre = (unidades: Unidad[], id?: number) => {
     return unidad ? unidad.nombre : `Unidad ${id}`;
 };
 
-export default function ViewActaPage({ params }: { params: { id: string } }) {
+export default function ViewActaPage() {
     const router = useRouter();
+    const params = useParams();
     const [acta, setActa] = useState<ActaForm | null>(null);
     const [unidades, setUnidades] = useState<Unidad[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    const actaId = parseInt(params.id, 10);
+    // Normalize params.id to a string (if it's an array take the first element) before parsing
+    const idParam = params?.id;
+    const idStr = Array.isArray(idParam) ? idParam[0] : idParam;
+    const actaId = idStr ? parseInt(idStr, 10) : NaN;
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -115,6 +119,13 @@ export default function ViewActaPage({ params }: { params: { id: string } }) {
 
         const fetchData = async () => {
             try {
+                // Validar ID antes de hacer peticiones
+                if (Number.isNaN(actaId)) {
+                    toast.error("ID de acta inválido");
+                    router.push("/dashboard/actas");
+                    return;
+                }
+
                 setIsLoading(true);
 
                 // Obtener unidades
@@ -132,7 +143,7 @@ export default function ViewActaPage({ params }: { params: { id: string } }) {
                 if (!actaRes.ok) {
                     if (actaRes.status === 404) {
                         toast.error("Acta no encontrada");
-                        router.push("/actas");
+                        router.push("/dashboard/actas");
                         return;
                     }
                     throw new Error('Error al cargar el acta');
@@ -142,7 +153,7 @@ export default function ViewActaPage({ params }: { params: { id: string } }) {
             } catch (error) {
                 console.error(error);
                 toast.error("No se pudo cargar el acta");
-                router.push("/actas");
+                router.push("/dashboard/actas");
             } finally {
                 setIsLoading(false);
             }
@@ -170,7 +181,7 @@ export default function ViewActaPage({ params }: { params: { id: string } }) {
             if (!response.ok) throw new Error("Error al eliminar");
 
             toast.success("Acta eliminada correctamente");
-            router.push("/actas");
+            router.push("/dashboard/actas");
         } catch (error) {
             console.error(error);
             toast.error("No se pudo eliminar el acta");

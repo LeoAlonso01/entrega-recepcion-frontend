@@ -38,6 +38,7 @@ const baseNavLinks: Record<string, NavLink[]> = {
     { name: "Actas", href: "/dashboard/actas", icon: IconMap["Actas"] },
     { name: "Unidades", href: "/dashboard/unidades", icon: IconMap["Unidades"] },
     { name: "Anexos", href: "/dashboard/anexos", icon: IconMap["Anexos"] },
+    { name: "AuditPlatform", href: "/dashboard/auditplatform", icon: IconMap["Administración"] },
   ],
   USER: [
     { name: "Anexos", href: "/dashboard/anexos", icon: IconMap["Anexos"] },
