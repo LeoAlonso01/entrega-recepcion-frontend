@@ -4,6 +4,26 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
   MJ01: ["ORDENAMIENTO", "TITULO", "FECHA DE EMISION"], // CHECKED
   AR01: ["ASUNTO", "DESCRIPCION", "FECHA INICIO", "RESPONSABLE", "ESTATUS"],
 
+  // planeacion 
+  PP02: ["Tipo de Documento", "Nombre", "Fecha", "Observaciones"],
+
+  // organizacion
+  EO02: ["Tipo", "Fecha Actualización, Autorización ó Publicación", "Observaciones"],
+
+  // Recursos Humanos
+  RH01: ["NUMERO DE EMPLEADO", "NOMBRE", "R.F.C.", "PLAZA (CATEGORÍA)", "TIPO", "FECHA DE INGRESO", "SUELDO", "OTRAS PERCEPCIONES", "TOTAL", "UNIDAD DE ADSCRIPCIÓN (UPP)", "ÁREA LABORAL (UR)", "ESTATUS", "OBSERVACIONES"],
+  RH02: ["NOMBRE", "RFC", "FECHA DE INICIO DE CONTRATO", "FECHA FIN DE CONTRATO", "FUENTE DE RECURSO", "ACTIVIDADES A DESARROLLAR", "FECHA DE INGRESO", "SUELDO", "OTRAS PERCEPCIONES", "TOTAL", "UNIDAD DE ADSCRIPCIÓN (UPP)", "ÁREA LABORAL (UR)", "OBSERVACIONES"],
+  RH03: ["NUMERO DE EMPLEADO", "NOMBRE", "R.F.C.", "CATEGORÍA: DENOMINACIÓN", "TIPO", "UNIDAD DE ADSCRIPCIÓN (UPP)", "COMISIONADO A: UR", "REFERENCIA DOCUMENTAL (OFICIO)", "FOLIO DE OFICIO DE COMISIÓN", "INICIO DE COMISIÓN", "FIN DE COMISIÓN", "SUELDO", "OTRAS PERCEPCIONES", "OBSERVACIONES"],
+  RH04: ["NOMBRE", "R.F.C.", "FECHA INICIO DE CONTRATO", "FECHA FIN DE CONTRATO", "FUENTE DEL RECURSO", "ACTIVIDADES A DESARROLLAR", "SALARIO", "OTRA PERCEPCIÓN", "TOTAL", "UNIDAD DE ADSCRIPCION (UPP)", "ÁREA LABORAL(UR)", "OBSERVACIONES"],
+
+
+  // Derechos y Obligaciones
+  DO01: ["NOMBRE Y PUESTO DEL SERVIDOR QUE OTORGA EL PODER", "TIPO DE PODER OTORGADO", "ESPECIFICAR", "FECHA DE EXPEDICIÓN", "NOTARIO No.", "INSCRITO EN EL REGISTRO PÚBLICO DE LA PROPIEDAD Y COMERCIO", "OBSERVACIONES"],
+  DO02: ["DATOS DE LA SESIÓN: No. DE SESIÓN", "DATOS DE LA SESIÓN: FECHA", "DATOS DE LA SESIÓN: ORD/EXT", "DATOS DEL ACUERDO: NÚMERO", "DATOS DEL ACUERDO: DESCRIPCIÓN BREVE", "DATOS DEL ACUERDO: RESPONSABLE", "DATOS DEL ACUERDO: ÁREAS INVOLUCRADAS", "ESTATUS DEL ACUERDO: % DE AVANCE", "ESTATUS DEL ACUERDO: COMENTARIOS"],
+  DO03: ["AUDITORÍA REALIZADA POR:", "PERIODO AUDITADO DE:", "PERIODO AUDITADO A:", "TIPO DE AUDITORIA", "OBSERVACIONES: No.", "OBSERVACIONES: ATENDIDAS", "OBSERVACIONES: PENDIENTES", "SITUACIÓN ACTUAL"],
+  DO04: ["CARGO", "CON DERECHO A:", "FECHA DE INICIO DEL CARGO", "PERIODICIDAD CON QUE SE REÚNEN", "OBSERVACIONES"],
+
+
   // Recursos Presupuestales
   RF01: ["PARTIDA", "DENOMINACION","PRESUPUESTO: AUTORIZADO","PRESUPUESTO: AMPLIACIONES Y/O REDUCCIONES", "PRESUPUESTO: MODIFICADO", "PRESUPUESTO: EJERCIDO", "PRESUPUESTO: POR EJERCER"],
   RF02: ["PARTIDA", "DESCRIPCION", "PRESUPUESTO: AUTORIZADO", "PRESUPUESTO: AMPLIACIONES Y/O REDUCCIONES", "MODIFICADO", "EJERCIDO", "POR EJERCER"],
@@ -29,159 +49,32 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
   CCL03: ["DATOS DEL CONTRATO"  , "MONTO", "OBJETIVO", "FECHA INICIO", "FECHA FIN"],
 
   // Estructura Interna
-  ENI01: ["url", "blob"], // organigrama pdf libre
-  ENI02: ["TIPO", 
-    "NOMBRE",
-    "FECHA DE PUBLICACION",
-    "VERSION",
-    "OBSERVACIONES"
-  ], // reglamento interno y manuales generales
-  ENI03: ["NÚMERO DE SESIÓN",
-    "FECHA DE LA SESIÓN",
-    "ORDINARIA O EXTRAORDINARIA",
-    "DATOS DEL ACUERDO: TIPO DE ACUERDO",
-    "DATOS DEL ACUERRDO: DESCRIPCION BREVE",
-    "DATOS DEL ACUERDO: RESPONSABLE",
-    "DATOS DEL ACUERDO: AREAS INVOLUCRADAS",
-    "ESTATUS DEL ACUERDO: PORCENTAJE DEL AVANCE",
-    "ESTATUS DEL ACUERDO: OBSERVACIONES"
-  ], // Acuerdo de organos de gobierno y Actas de consejo
-  ENI04: ["CARGO",
-    "CON DERECHO A ",
-    "FECHA DE INICIO DEL CARGO",
-    "PERIODICIDAD DE LA REUNION",
-    "OBSERVACIONES"
-  ], // representaciones y cargos honoríficos
-  ENI05: ["NOMBRE Y PUESTO DEL SERVIDOR QUE OTORGA EL PODER",
-    "TIPO DE PODER OTORGADO",
-    "FECHA DE OTORGAMIENTO",
-    "NOTARIO NO.",
-    "INSCRITO AL REGISTRO PÚBLICO DE LA PROPIEDAD Y EL COMERCIO",
-    "OBSERVACIONES"], // poderes otorgados
+  
 
+  // Recursos Materiales
+  RM01: ["Descripción", "Marca", "Modelo", "No. de serie", "No. de patrimonio", "No. de resguardo interno", "Estado de uso", "UR", "Número de Empleado", "Responsable", "Puesto del usuario resguardante"],
+  RM02: ["Marca", "Modelo", "Color", "Placas / Matrícula / Registro", "No. de serie", "No. de motor", "Estado físico", "UR", "Clave Patrimonial", "Número de resguardo interno", "Número de Empleado del resguardante", "Responsable del uso del vehiculo", "Cargo de usuario resguardante"],
+  RM03: ["Descripción", "Marca", "Modelo", "Serie", "Clave patrimonial", "No. de resguardo interno", "Número de Empleado", "Responsable", "Estado físico", "UR", "Ubicación actual", "Observaciones"],
+  RM04: ["Clave patrimonial", "Descripción", "Marca", "Modelo", "No. Serie", "CANTIDAD", "PRECIO UNITARIO", "PRECIO TOTAL", "LOCALIZACIÓN", "UR"],
+  RM05: ["Tipo de bien", "Descripción del bien", "Marca", "Modelo", "No. de serie", "Estado físico", "Ubicación", "Nombre del otorgante", "Fecha de firma del comodato", "Período"],
+  RM06: ["Descripción", "Tipo de predio", "Superficie m2", "Calle y número", "Localidad", "Estatus legal", "Descripción de la situación jurídica y/o administrativa"],
+  RM07: ["No. DE INVENTARIO", "No. CTA. PREDIAL", "UBICACIÓN", "SUPERFICIE TERRENO MTS2", "ZONA", "DOCT. QUE ACREDITA LA POSESION", "FECHA DE ADQUISICIÓN", "COSTO DE ADQUISICIÓN", "USO O DESTINO", "COMENTARIOS"],
+  RM08: ["Número de registro y/o inventario", "Título de la obra / artículo", "Descripción", "Ubicación", "Certificado de autenticidad", "Estado físico", "Datos del resguardante Nombre", "Datos del resguardante Puesto", "Datos del resguardante Núm. de resguardo", "Observaciones"],
+  RM09: ["Especie", "Cantidad de planta en existencia", "Tipo de producción", "Fecha de siembra", "Talla", "Observaciones"],
+  RM10: ["Nombre común", "Nombre científico", "Clave", "Origen", "Familia", "Sexo", "Marcaje", "Fecha Alta", "Observaciones"],
+  RM11: ["Nombre común del animal", "Ubicación física", "No. de resguardo", "Observaciones"],
+  RM12: ["Descripción", "Tipo y calibre", "Marca y modelo", "Matrícula", "No. de serie", "No. de registro", "UR", "Estado", "No. de inventario", "No. de resguardo", "Número de empleado del responsable", "Nombre del responsable", "Puesto del responsable", "Observaciones"],
+  RM13: ["Nombre del paquete", "Licencia", "Versión", "No. de serie", "Origen", "Fecha de adquisición", "Equipo en que opera", "Usuario", "Medio de almacenamiento", "No. de manuales"],
+  RM14: ["Nombre del sistema / subsistema", "Fase de", "Fecha de liberación", "Origen", "Equipo en que opera", "Medio de distribución", "Documentación", "UR", "código fuente"],
+  RM15: ["Descripción del equipo", "Especificaciones", "Marca", "Modelo", "No. de serie", "Estado", "Área de asignación", "Ubicación física del equipo", "Número de Empleado del responsable", "Nombre del usuario responsable", "Puesto del usuario responsable", "No. de resguardo"],
+  RM16: ["Área", "Descripción", "Responsable", "Número de Empleado", "Fecha de Entrega", "URE", "Descripción.1", "Observaciones"],
+  
 
-    // Recursos Humanos
-  RRH01: ["NUMERO DE EMPLEADO",
-    "NOMBRE",
-    "RFC",
-    "PLAZA (CATEGORIA)",
-    "TIPO DE ENCARGO",
-    "FECHA DE INGRESO",
-    "SUELDO",
-    "OTRAS PERCEPCIONES",
-    "TOTAL",
-    "UNIDAD DE ADSCRIPCION",
-    "AREA LABORAL",
-    "OBSERVACIONES",
-    "ESTATUS: Base, Apoyo, Comisionado",
-  ], // plantilla de personal
-  RRH02: ["NOMBRE",
-    "RFC",
-    "FECHA DE INICIO DE CONTRATO",
-    "FECHA DE FIN DE CONTRATO",
-    "FUENTE DE RECURSO",
-    "ACTIVIDADES A DESARROLLAR",
-    "SALARIO",
-    "OTRAS PERCEPCIONES",
-    "TOTAL",
-    "UNIDAD DE ADSCRIPCION",
-    "AREA LABORAL"
-  ], // personal de honorarios
-
-  // Inventario de Bienes
-  IBM01: [
-    "ARTICULO",
-    "MARCA",
-    "MODELO",
-    "NUMERO DE SERIE",
-    "NUMERO DE PATRIMONIO",
-    "CANTIDAD",
-    "VALOR",
-    "UBICACION",
-    "RESPONSABLE",
-
-  ], // MObiliario de oficina, vehiculos, maquinaria y equipo
-  IBM02: ["CLAVE PATRIMONIAL",
-    "DESCRIPCION",
-    "MARCA",
-    "MODELO",
-    "NO. DE SERIE",
-    "CANTIDAD",
-    "VALOR",
-    "UBICACION",
-    "RESPONSABLE"], 
-    // Almacenes de papeleria y plantas de vivero
-  IBM03: ["TIPO DE BIEN",
-    "DESCRIPCION",
-    "MARCA",
-    "MODELO",
-    "NO. DE SERIE",
-    "ESTADO FÍSICO",
-    "UBICACION",
-    "RESPONSABLE",
-    "NOMBRE DE OTORGANTE",
-    "FECHA DE FIRMA DE COMODATO"
-  ], // Inventario de bienes en comodato
-  IBM04: [
-    "DESCRIPCION",
-    "TIPO DE PREDIO",
-    "CALLE Y NÚMERO",
-    "LOCALIDAD",
-    "OBSERVACIONES",
-  ], // Bienes inmuebes de la dependencia
-  IBM05: [
-    "NUMERO DE REGISTRO O INVENTARIO",
-    "TITULO DE LA OBRA",
-    "DESCRIPCION",
-    "UBICACION",
-    "CERTIFICADO DE AUTENTICIDAD",
-    "ESTADO FISICO",
-    "OBSERVACIONES"
-  ], // Inventario de arte
-  IBM06: [
-    "NOMBRE COMUN",
-    "NOMBRE CIENTIFICO",
-    "CLAVE",
-    "ORIGEN",
-    "SEXO",
-    "MARCADO",
-    "FECHA DE ALTA",
-    "OBSERVACIONES"
-  ], //Inventario Faunistico (especimen y taxidemnizados)
-  // Inventario de Armamento, accesorios de seguridad y municiones
-  IBM07: [
-    "TIPO DE ARMAMENTO",
-    "DESCRIPCION",
-    "MARCA",
-    "MODELO",
-    "NUMERO DE SERIE",
-    "CANTIDAD",
-    "UBICACION",
-    "RESPONSABLE",
-    "OBSERVACIONES"
-  ],
-  // Inventario de Software (sistemas desarrolados y paquetes computacionales)
-  IBM08: [
-    "NOMBRE DEL SOFTWARE",
-    "VERSION",
-    "PROVEEDOR",
-    "NUMERO DE SERIE",
-    "MANUAL",
-    "LICENCIA",
-    "EQUIPO EN EL QUE OPERA",
-    "DOCUMENTACION"
-  ],
-  // Inventario de tecnologia (equipos de computo y telecomunicaciones)
-  IBM09: [
-    "NOMBRE DEL EQUIPO",
-    "MARCA",
-    "MODELO",
-    "NUMERO DE SERIE",
-    "CANTIDAD",
-    "UBICACION",
-    "RESPONSABLE",
-    "OBSERVACIONES"
-  ],
+  // Obra Publica
+  OP01: ["No. de Expediente", "Clave de contrato o Acuerdo", "Nombre de Obra y Ubicación", "Fecha de contrato o acuerdo", "Estado de la Obra", "Fuente de Financiamiento", "Origen de Recurso", "Suficiencia Presupuestal", "Monto Contratado", "Monto ejercido", "Avance Físico (%)", "Avance Financiero (%)", "Modalidad de Contratación"],
+  OP02: ["No. de Expediente", "Tipo de Obra", "Programa de Inversión", "Nombre de la Obra", "Municipio", "Localidad", "Dependencia Beneficiada", "Ejercicio Presupuestal", "Ejecutora", "Documentación contenida en el expediente unitario de las obras", "Observaciones"],
+  OP03: ["No. de Expediente", "Tipo de Obra", "Programa de Inversión", "Nombre de la Obra", "Municipio", "Localidad", "Dependencia Beneficiada", "Ejercicio Presupuestal", "Ejecutora", "Documentación contenida en el expediente unitario de las obras", "Observaciones"],
+  OP04: ["LICITACIÓN", "OBRA", "LOCALIDAD", "MUNICIPIO", "ÁREA OPERATIVA", "TRÁMITE ACTUAL", "OBSERVACIONES"],
 
   // Documentación y Archivo
   DA01: ["SISTEMA", "FRECUENCIA", "ULTIMO_RESPALDO", "RESPONSABLE"],
@@ -191,23 +84,25 @@ export const EstructuraDatosPorClave: Record<string, string[]> = {
   DA05: ["TIPO", "DESCRIPCION", "FECHA_INICIO", "FECHA_FIN", "RESPONSABLE"],
   DA07: ["EXPEDIENTE", "PROYECTO", "UBICACION", "RESPONSABLE"],
 
-  // Asuntos Legales
-  ALA01: ["ASUNTO", "TIPO", "ESTADO", "ABOGADO", "FECHA DE INICIO"],
-  ALA02: ["TIPO DE AUDITORIA",
-    "PERIODO DE LA AUDITORIA",
-    "DATOS DE LA AUDITORIA: REALIZADA POR",
-    "DATOS DE LA AUDITORIA: OBSERVACIONES", // Observaciones de Auditorias pendientes
-    "DATOS DE LA AUDITORIA: OBSERVACIONES ATENDIDAS",
-    "DATOS DE LA AUDITORIA: OBSERVACIONES PENDIENTES",
-    "ESTATUS DE LA AUDITORIA: SITUACIÓN ACTUAL"
-  ],
+  // archivos documegntales e Informaticos
+  ADI01: ["Nombre del sistema, programa o archivo", "Descripción", "Tipo de respaldo", "Periodicidad del respaldo", "Medio", "Fecha", "Nombre del responsable", "Puesto del responsable", "Observaciones"],
+  ADI02: ["No. de clasificación", "Título", "Acervo bibliográfico Autor", "Acervo bibliográfico Editorial", "Acervo bibliográfico Fecha de publicación", "Acervo bibliográfico No. de tomos", "Acervo hemerográfico Fecha del", "Acervo hemerográfico Fecha hasta", "Acervo hemerográfico No. de ejemplares", "Estado físico"],
 
-  // Programas y Proyectos FORMATO LIBRE PDF 
-  PP01: ["url", "blob"],// PDF libre
-  PP02: ["TIPO DE DOCUMENTO", "NOMBRE", "FECHA", "OBSERVACIONES"],// checked
+  //Control y Fiscalizacion
+  CF01: ["Unidad Responsable Solicitante", "Adquisición", "Pedido", "Trámite Actual"],
+  CF02: ["Asunto", "Fecha de Inicio", "Situación actual", "Observaciones"],
 
-  // Transparencia
-  TA01: ["SOLICITUD", "SOLICITANTE", "FECHA", "ESTATUS", "RESPUESTA"],
+  // Informe de Gestion
+  IG01: ["Clave documento o expediente", "Contenido del acrhivo o expediente", "Unidad De concentración"],
+  IG02: ["Tipo de Acta", "Número de Acta", "Fecha de Acta", "Descripción", "Observaciones"],
+
+  //Transparencia y acceso a la información
+  TAI01: ["Fecha de Solicitud", "Área que atiende", "No. De Expediente o Solicitud", "Estado de Solicitud", "Fecha Límite de Respuesta", "Recurso de Revisión", "Status Actual"],
+
+  // Convenios y Contratos
+  CC01: ["Tipo de Instrumento", "Objetivo", "Partes Involucradas", "Vigencia", "Importe Convenido", "Observaciones"],
+  CC02: ["Nombre", "Descripción", "Origen", "Repercución Presupuestal", "Vigencia", "Acciones Relevantes por Concluir"],
+
 
   // Por defecto
   default: ["*"]
@@ -217,3 +112,55 @@ export const CALVES_CON_PDF: Record<string, string[]> = {
   PP01: ["url", "blob"],
   ENI01: ["url", "blob"]
 }
+
+// categhorias o Rubros 
+export const CATEGORIAS: { id: string; nombre_categoria: string }[] = [
+ {
+  "id": "1",
+  "nombre_categoria": "RECURSOS PRESUPUESTALES Y FINANCIEROS"
+ },
+ {
+  "id": "2",
+  "nombre_categoria": "CONTRATOS, CONVENIOS Y LICITACIONES"
+ },
+ {
+  "id": "3",
+  "nombre_categoria": "ESTRUCTURA Y NORMATIVA INTERNA"
+ },
+ {
+  "id": "4",
+  "nombre_categoria": "RECURSOS HUMANOS"
+ },
+ {
+  "id": "5",
+  "nombre_categoria": "INVENTARIO DE BIENES MUEBLES E INMUEBLES"
+ },
+ {
+  "id": "6",
+  "nombre_categoria": "SEGURIDAD Y CONTROL DE ACCESOS"
+ },
+ {
+  "id": "7",
+  "nombre_categoria": "DOCUMENTACIÓN Y ARCHIVO"
+ },
+ {
+  "id": "8",
+  "nombre_categoria": "ASUNTOS LEGALES Y DE AUDITORÍA"
+ },
+ {
+  "id": "9",
+  "nombre_categoria": "PROGRAMAS Y PROYECTOS:"
+ },
+ {
+  "id": "10",
+  "nombre_categoria": "TRANSPARENCIA"
+ },
+ {
+  "id": "11",
+  "nombre_categoria": "OTROS"
+ },
+ {
+  "id": "12",
+  "nombre_categoria": "SISTEMA DE GESTIÓN DE CALIDAD"
+ }
+];
