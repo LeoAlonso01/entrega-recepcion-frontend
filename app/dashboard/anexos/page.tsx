@@ -1060,8 +1060,6 @@ export const claves_anexos = [
   { id: "69", clave: "SGC02", descripcion: "", id_categoria: "15" } // <-- corregido (antes venía SCG02)
 ] as const;
 
-
-
 // ======================================================
 // ENUM + LABELS (opcional pero recomendado en tu app)
 // ======================================================

@@ -114,53 +114,118 @@ export const CALVES_CON_PDF: Record<string, string[]> = {
 }
 
 // categhorias o Rubros 
-export const CATEGORIAS: { id: string; nombre_categoria: string }[] = [
- {
-  "id": "1",
-  "nombre_categoria": "RECURSOS PRESUPUESTALES Y FINANCIEROS"
- },
- {
-  "id": "2",
-  "nombre_categoria": "CONTRATOS, CONVENIOS Y LICITACIONES"
- },
- {
-  "id": "3",
-  "nombre_categoria": "ESTRUCTURA Y NORMATIVA INTERNA"
- },
- {
-  "id": "4",
-  "nombre_categoria": "RECURSOS HUMANOS"
- },
- {
-  "id": "5",
-  "nombre_categoria": "INVENTARIO DE BIENES MUEBLES E INMUEBLES"
- },
- {
-  "id": "6",
-  "nombre_categoria": "SEGURIDAD Y CONTROL DE ACCESOS"
- },
- {
-  "id": "7",
-  "nombre_categoria": "DOCUMENTACIÓN Y ARCHIVO"
- },
- {
-  "id": "8",
-  "nombre_categoria": "ASUNTOS LEGALES Y DE AUDITORÍA"
- },
- {
-  "id": "9",
-  "nombre_categoria": "PROGRAMAS Y PROYECTOS:"
- },
- {
-  "id": "10",
-  "nombre_categoria": "TRANSPARENCIA"
- },
- {
-  "id": "11",
-  "nombre_categoria": "OTROS"
- },
- {
-  "id": "12",
-  "nombre_categoria": "SISTEMA DE GESTIÓN DE CALIDAD"
- }
-];
+export const categoria_anexos = [
+  { id: "1",  nombre_categoria: "ARCHIVOS DOCUMENTALES E INFORMATICOS" },
+  { id: "2",  nombre_categoria: "ASUNTOS GENERALES" },
+  { id: "3",  nombre_categoria: "ASUNTOS RELEVANTES EN TRAMITE DE ATENCION" },
+  { id: "4",  nombre_categoria: "CONVENIOS Y CONTRATOS" },
+  { id: "5",  nombre_categoria: "CONTROL Y FISCALIZACION" },
+  { id: "6",  nombre_categoria: "DERECHOS Y OBLIGACIONES" },
+  { id: "7",  nombre_categoria: "ORGANIZACION" },
+  { id: "8",  nombre_categoria: "MARCO JURIDICO" },
+  { id: "9",  nombre_categoria: "OBRAS PUBLICAS" },
+  { id: "10", nombre_categoria: "RECURSOS MATERIALES" },
+  { id: "11", nombre_categoria: "PLANEACION" },
+  { id: "12", nombre_categoria: "RECURSOS PRESUPUESTALES Y FINANCIEROS" },
+  { id: "13", nombre_categoria: "RECURSOS HUMANOS" },
+  { id: "14", nombre_categoria: "TRANSPARENCIA Y ACCESO A LA INFORMACION" },
+  { id: "15", nombre_categoria: "SISTEMA DE GESTION DE CALIDAD" }
+] as const;
+
+// ✅ Mapa: CLAVE de anexo -> id de categoría (rubro)
+// (no modifica EstructuraDatosPorClave; solo agrega metadata)
+export const CATEGORIA_ID_POR_CLAVE: Record<string, (typeof categoria_anexos)[number]["id"]> = {
+  // Marco Jurídico
+  MJ01: "8",
+  AR01: "8",
+
+  // Planeación
+  PP02: "11",
+
+  // Organización
+  EO02: "7",
+
+  // Recursos Humanos
+  RH01: "13",
+  RH02: "13",
+  RH03: "13",
+  RH04: "13",
+
+  // Derechos y Obligaciones
+  DO01: "6",
+  DO02: "6",
+  DO03: "6",
+  DO04: "6",
+
+  // Recursos Presupuestales y Financieros
+  RF01: "12",
+  RF02: "12",
+  RF03: "12",
+  RF04: "12",
+  RF05: "12",
+  RF06: "12",
+  RF07: "12",
+  RF08: "12",
+  RF09: "12",
+  RF11: "12",
+  RF12: "12",
+  RF13: "12",
+  RF14: "12",
+  RF15: "12",
+  RF16: "12",
+  RF17: "12",
+
+  // Convenios y Contratos
+  CCL01: "4",
+  CCL02: "4",
+  CCL03: "4",
+  CC01: "4",
+  CC02: "4",
+
+  // Recursos Materiales
+  RM01: "10",
+  RM02: "10",
+  RM03: "10",
+  RM04: "10",
+  RM05: "10",
+  RM06: "10",
+  RM07: "10",
+  RM08: "10",
+  RM09: "10",
+  RM10: "10",
+  RM11: "10",
+  RM12: "10",
+  RM13: "10",
+  RM14: "10",
+  RM15: "10",
+  RM16: "10",
+
+  // Obra Pública
+  OP01: "9",
+  OP02: "9",
+  OP03: "9",
+  OP04: "9",
+
+  // Documentación y Archivo
+  DA01: "1",
+  DA02: "1",
+  DA03: "1",
+  DA04: "1",
+  DA05: "1",
+  DA07: "1",
+
+  // Archivos documentales e informáticos
+  ADI01: "1",
+  ADI02: "1",
+
+  // Control y fiscalización
+  CF01: "5",
+  CF02: "5",
+
+  // Asuntos generales
+  IG01: "2",
+  IG02: "2",
+
+  // Transparencia
+  TAI01: "14",
+};
