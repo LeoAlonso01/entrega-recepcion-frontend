@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Download, Trash2 } from 'lucide-react';
 import VisualizadorDatos from '@/components/visualizadorDatos'; // Lo crearemos
-import { exportAnexoToPDF, exportAnexoToExcel } from '@/lib/exports';
+import { exportAnexoToExcel, exportAnexoToPDF } from '@/lib/exports';
+import { generarAnexoPdf, type PdfMeta } from '@/lib/exports/pdf';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -120,6 +121,21 @@ const AnexoDetail: React.FC = () => {
     );
   }
 
+  const onDownloadPdf = async () => {
+    const filas = Array.isArray(anexo?.datos) ? anexo.datos : [];
+
+    const meta: PdfMeta = {
+      fechaElaboracion: anexo.fecha_creacion,
+      categoriaId: anexo.categoria,
+      dependenciaClave: anexo.unidad_responsable_id.toString(),
+    };
+    await generarAnexoPdf(anexo.clave, meta, filas);
+    console.log("Categoria desde BD:", anexo.categoria);
+
+    toast.success("PDF generado correctamente");
+  };
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Breadcrumbs */}
@@ -135,7 +151,7 @@ const AnexoDetail: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toast.success("Funcionalidad en desarrollo")}
+              onClick={onDownloadPdf}
               className="gap-2"
             >
               <FileText className="h-4 w-4" />
@@ -168,13 +184,12 @@ const AnexoDetail: React.FC = () => {
             <div>
               <strong>Estado:</strong>{' '}
               <span
-                className={`px-2 py-1 rounded-full text-xs ${
-                  anexo.estado === 'Completado'
-                    ? 'bg-green-100 text-green-800'
-                    : anexo.estado === 'Borrador'
+                className={`px-2 py-1 rounded-full text-xs ${anexo.estado === 'Completado'
+                  ? 'bg-green-100 text-green-800'
+                  : anexo.estado === 'Borrador'
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-blue-100 text-blue-800'
-                }`}
+                  }`}
               >
                 {anexo.estado}
               </span>
