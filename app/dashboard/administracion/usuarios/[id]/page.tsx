@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
-import { ArrowLeft, User, Mail, Shield, Check, X, Calendar, Hash, Lock, RefreshCw } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, Check, X, Calendar, Hash, Lock, RefreshCw, Building2 } from 'lucide-react';
 import Link from 'next/link';
 import NavbarWithBreadcrumb from '../../../../../components/NavbarBreadcrumb';
 import { toast } from 'sonner';
@@ -26,9 +26,15 @@ interface Usuario {
     created_at: string;
     updated_at: string;
     password?: string; // Campo opcional para no mostrarlo
+    reset_token?: string | null;
+    reset_token_expiration?: string | null;
+    unidad_responsable?: { id_unidad: number; nombre: string } | null;
+    cargos_actuales?: any[];
+    cargos_historial?: any[];
+    cargos_asignados?: any[];
 }
 
-export default function UsuarioDetallePage( user: Usuario | null) {
+export default function UsuarioDetallePage() {
     const { id } = useParams();
     const router = useRouter();
     const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -72,6 +78,10 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                 if (response.status === 401) {
                     throw new Error("Sesión expirada, por favor inicia sesión nuevamente");
                 }
+                if (response.status === 500) {
+                    const text = await response.text().catch(() => "");
+                    throw new Error(`Error interno del servidor: ${text || response.statusText}`);
+                }
                 throw new Error(`Error ${response.status}: ${response.statusText}`);
             }
 
@@ -84,7 +94,9 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                 localStorage.removeItem("token");
                 router.push('/auth/login');
             } else {
-                router.push('/dashboard/administracion/usuarios');
+                // we don't have a dedicated `/administracion/usuarios` page,
+                // the listing lives at `/dashboard/administracion`, so jump there
+                router.push('/dashboard/administracion');
             }
         } finally {
             setLoading(false);
@@ -211,7 +223,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                 {/* Breadcrumbs */}
                 <NavbarWithBreadcrumb
                     user={currentUser?.username || null}
-                    role={user?.role || ""}
+                    role={currentUser?.role || ""}
                 />
                 <div className="max-w-4xl mx-auto p-4">
                     <div className="flex justify-center items-center h-64">
@@ -227,9 +239,8 @@ export default function UsuarioDetallePage( user: Usuario | null) {
             {/* Breadcrumbs */}
             <NavbarWithBreadcrumb
                 user={currentUser?.username || null}
-                role={user?.role || ""}
+                role={currentUser?.role || ""}
             />
-
             <div className="max-w-4xl mx-auto p-4">
                 <div className="flex justify-between items-center mb-6">
                     <Link href="/dashboard/administracion/">
@@ -362,6 +373,7 @@ export default function UsuarioDetallePage( user: Usuario | null) {
                 </Card>
             </div>
         </div>
+        
     );
 }
 

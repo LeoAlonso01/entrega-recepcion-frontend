@@ -61,6 +61,33 @@ const userSchema = z.object({
   role: z.enum(["USER", "ADMIN", "AUDITOR"], { message: "Rol inválido" }),
 });
 
+interface Cargo {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  activo?: boolean;
+  creado_en?: string;
+  actualizado_en?: string;
+  is_deleted?: boolean;
+}
+
+interface CargoAssignment {
+  id: number;
+  cargo_id: number;
+  user_id: number;
+  unidad_responsable_id: number;
+  fecha_inicio: string;
+  fecha_fin?: string | null;
+  asignado_por_user_id?: number;
+  motivo?: string;
+  creado_en?: string;
+  actualizado_en?: string;
+  is_deleted?: boolean;
+  // nested objects if backend includes them
+  cargo?: Cargo;
+  unidad_responsable?: Unidad;
+}
+
 interface Usuario {
   id: number
   username: string
@@ -68,6 +95,12 @@ interface Usuario {
   role: "USER" | "ADMIN" | "AUDITOR"
   is_deleted?: boolean // Optional property for soft delete
   created_at: string
+  reset_token?: string | null;
+  reset_token_expiration?: string | null;
+  unidad_responsable?: Unidad | null;
+  cargos_actuales?: CargoAssignment[];
+  cargos_historial?: CargoAssignment[];
+  cargos_asignados?: CargoAssignment[];
 }
 
 interface Unidad {
@@ -109,11 +142,15 @@ const exportUsersToPDF = (usuarios: Usuario[], title = "Reporte de Usuarios") =>
   const tableData = usuarios.map((usuario) => [
     usuario.username,
     usuario.email,
+    usuario.unidad_responsable?.nombre || "-",
+    usuario.cargos_actuales && usuario.cargos_actuales.length > 0
+      ? usuario.cargos_actuales.map((c) => c.cargo?.nombre || (c as any).nombre || "").join(", ")
+      : "-",
     usuario.role === "ADMIN" ? "Administrador" : "Usuario",
     usuario.created_at,
   ])
     ; (doc as any).autoTable({
-      head: [["Usuario", "Email", "Rol", "Estado", "Fecha Registro"]],
+      head: [["Usuario", "Email", "Unidad", "Cargo", "Rol", "Fecha Registro"]],
       body: tableData,
       startY: 70,
       styles: {
@@ -139,6 +176,10 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
     usuarios.map((usuario) => ({
       Usuario: usuario.username,
       Email: usuario.email,
+      Unidad: usuario.unidad_responsable?.nombre || "",
+      Cargo: usuario.cargos_actuales && usuario.cargos_actuales.length > 0
+         ? usuario.cargos_actuales.map((c) => c.cargo?.nombre || (c as any).nombre || "").join(", ")
+         : "Sin cargo",
       Rol: usuario.role === "ADMIN" ? "Administrador" : "Usuario",
       "Fecha Registro": usuario.created_at,
     })),
@@ -185,6 +226,8 @@ export default function AdministracionPage(user: { role: string } | null) {
     unidadNombre: string;
     usuarioId: number;
     usuarioNombre: string;
+    cargoId?: number;
+    cargoNombre?: string;
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true)
@@ -212,6 +255,11 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [unidadesHasMore, setUnidadesHasMore] = useState(true);
   const [unidadesCache, setUnidadesCache] = useState<Unidad[]>([]); // full cache when server returns everything
   const [showedUnidadesCount, setShowedUnidadesCount] = useState(0); // how many items are currently rendered
+
+  // Cargos state (flat list fetched once; currently no pagination)
+  const [cargos, setCargos] = useState<Cargo[]>([]);
+  const [cargosLoading, setCargosLoading] = useState(false);
+  const [cargosLoaded, setCargosLoaded] = useState(false);
 
   // Reset password modal state (admin flows)
   const [openResetModal, setOpenResetModal] = useState(false);
@@ -275,6 +323,7 @@ export default function AdministracionPage(user: { role: string } | null) {
       }
 
       console.log("Usuarios obtenidos:", data);
+      // Type assertion is okay, at runtime extra fields are harmless
       setUsuarios(data as Usuario[]);
       setIsLoading(false);
     } catch (error) {
@@ -403,6 +452,43 @@ export default function AdministracionPage(user: { role: string } | null) {
       toast.error("No se pudieron cargar las unidades");
     } finally {
       setIsModalLoading(false);
+    }
+  };
+
+  // Fetch cargos list once (no pagination assumed)
+  const loadCargos = async () => {
+    if (cargosLoaded || cargosLoading) return;
+    setCargosLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Token no encontrado. Por favor inicia sesión.");
+        router.push("/");
+        return;
+      }
+      const res = await fetch(`${API_URL}/cargos`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.status === 401) {
+        toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
+        router.push("/");
+        return;
+      }
+      if (!res.ok) {
+        throw new Error("Error al obtener los cargos");
+      }
+      const data: Cargo[] = await res.json();
+      setCargos(data);
+      setCargosLoaded(true);
+    } catch (e) {
+      console.error("Error cargando cargos", e);
+      toast.error("No se pudieron cargar los cargos");
+    } finally {
+      setCargosLoading(false);
     }
   };
 
@@ -673,8 +759,9 @@ export default function AdministracionPage(user: { role: string } | null) {
                 onClick={async () => {
                   if (!localStorage.getItem("token")) return;
                   setLoadingAsignacion(true);
-                  // Load the first page/chunk of unidades and show overlay while fetching
+                  // Load the first page/chunk of unidades and cargos and show overlay while fetching
                   await loadUnidadesPage(1);
+                  if (!cargosLoaded) await loadCargos();
                   setIsModalOpen(true);
                   setLoadingAsignacion(false);
                 }}
@@ -735,6 +822,12 @@ export default function AdministracionPage(user: { role: string } | null) {
                         Email
                       </TableHead>
                       <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                        Unidad
+                      </TableHead>
+                      <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
+                        Cargo
+                      </TableHead>
+                      <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
                         Rol
                       </TableHead>
                       <TableHead className="px-4 py-3 text-left uppercase tracking-wider text-xs font-medium">
@@ -760,6 +853,26 @@ export default function AdministracionPage(user: { role: string } | null) {
                         <TableCell className="px-4 py-4 md:table-cell">
                           <div className="md:hidden font-semibold text-gray-500 text-xs">Email</div>
                           <div className="text-gray-800 text-sm">{usuario.email}</div>
+                        </TableCell>
+
+                        {/* Unidad responsable */}
+                        <TableCell className="px-4 py-4 md:table-cell">
+                          <div className="md:hidden font-semibold text-gray-500 text-xs">Unidad</div>
+                          <div className="text-gray-800 text-sm">
+                            {usuario.unidad_responsable?.nombre || "-"}
+                          </div>
+                        </TableCell>
+
+                        {/* Cargo actual */}
+                        <TableCell className="px-4 py-4 md:table-cell">
+                          <div className="md:hidden font-semibold text-gray-500 text-xs">Cargo</div>
+                          <div className="text-gray-800 text-sm">
+                            {usuario.cargos_actuales && usuario.cargos_actuales.length > 0
+                              ? usuario.cargos_actuales
+                                  .map((c) => c.cargo?.nombre || (c as any).nombre || "-")
+                                  .join(", ")
+                              : "-"}
+                          </div>
                         </TableCell>
 
                         {/* Rol */}
@@ -1050,7 +1163,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                     return;
                   }
 
-                  const { unidadId, usuarioId } = pendingAssignment;
+                  const { unidadId, usuarioId, cargoId } = pendingAssignment;
 
                   // Verificar que el usuario exista en la lista actual
                   const usuarioExistente = usuarios.find((u) => u.id === usuarioId);
@@ -1063,13 +1176,16 @@ export default function AdministracionPage(user: { role: string } | null) {
                   try {
                     setIsSubmitting(true);
 
+                    const body: any = { responsable_id: usuarioId };
+                    if (cargoId) body.cargo_id = cargoId; // include cargo if selected
+
                     const res = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
                       method: "PUT",
                       headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
                       },
-                      body: JSON.stringify({ responsable_id: usuarioId }),
+                      body: JSON.stringify(body),
                     });
 
                     if (res.status === 401) {
@@ -1126,7 +1242,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                     setIsSubmitting(false);
                   }
                 }}
-                disabled={!localStorage.getItem("token") || isSubmitting}
+                disabled={!localStorage.getItem("token") || isSubmitting || !pendingAssignment?.cargoId}
                 className="w-full sm:w-auto order-1 sm:order-2"
               >
                 {isSubmitting ? "Procesando..." : "Confirmar"}

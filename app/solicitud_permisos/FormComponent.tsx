@@ -17,7 +17,7 @@ import jsPDF from "jspdf"
 
 
 export default function SolicitudPermisosPage() {
-  const [userData, setUserData] = useState<any>(null)
+  // userData state removed; we'll use query params directly
   const [formData, setFormData] = useState({
     nombre_completo: "",
     domicilio: "",
@@ -33,14 +33,7 @@ export default function SolicitudPermisosPage() {
     const username = searchParams.get("username")
      const email = searchParams.get("email")
 
-  /* useEffect(() => {
-    const newUserData = localStorage.getItem("newUser")
-    if (!newUserData) {
-      router.push("/")
-      return
-    }
-    setUserData(JSON.parse(newUserData))
-  }, [router]) */
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -88,9 +81,10 @@ export default function SolicitudPermisosPage() {
     doc.setFontSize(11)
     doc.setFont("helvetica", "normal")
     doc.setTextColor(0, 0, 0)
-    doc.text(`Usuario del sistema: ${userData?.username}`, margin, yPosition)
+    // show username/email from query params; if not available leave blank
+    doc.text(`Usuario del sistema: ${username || ""}`, margin, yPosition)
     yPosition += 8
-    doc.text(`Correo electrónico: ${userData?.email}`, margin, yPosition)
+    doc.text(`Correo electrónico: ${email || ""}`, margin, yPosition)
     yPosition += 15
 
     // Información Personal
@@ -194,7 +188,7 @@ export default function SolicitudPermisosPage() {
     })
 
     // Guardar el PDF
-    const fileName = `Solicitud_Permisos_${userData?.username}_${new Date().toISOString().split("T")[0]}.pdf`
+    const fileName = `Solicitud_Permisos_${username || ""}_${new Date().toISOString().split("T")[0]}.pdf`
     doc.save(fileName)
 
     setIsGenerating(false)
