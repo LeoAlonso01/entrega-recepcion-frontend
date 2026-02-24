@@ -88,6 +88,11 @@ interface CargoAssignment {
   unidad_responsable?: Unidad;
 }
 
+type UnidadResponsableSimple = {
+  id_unidad: number;
+  nombre: string;
+}
+
 interface Usuario {
   id: number
   username: string
@@ -97,7 +102,7 @@ interface Usuario {
   created_at: string
   reset_token?: string | null;
   reset_token_expiration?: string | null;
-  unidad_responsable?: Unidad | null;
+  unidad_responsable?: UnidadResponsableSimple | null;
   cargos_actuales?: CargoAssignment[];
   cargos_historial?: CargoAssignment[];
   cargos_asignados?: CargoAssignment[];
@@ -122,6 +127,7 @@ interface AsignarResponsableModalProps {
   isOpen: boolean;
   onClose: () => void;
   // onConfirm: (responsableId: number) => void;
+
 }
 
 const exportUsersToPDF = (usuarios: Usuario[], title = "Reporte de Usuarios") => {
@@ -178,8 +184,8 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
       Email: usuario.email,
       Unidad: usuario.unidad_responsable?.nombre || "",
       Cargo: usuario.cargos_actuales && usuario.cargos_actuales.length > 0
-         ? usuario.cargos_actuales.map((c) => c.cargo?.nombre || (c as any).nombre || "").join(", ")
-         : "Sin cargo",
+        ? usuario.cargos_actuales.map((c) => c.cargo?.nombre || (c as any).nombre || "").join(", ")
+        : "Sin cargo",
       Rol: usuario.role === "ADMIN" ? "Administrador" : "Usuario",
       "Fecha Registro": usuario.created_at,
     })),
@@ -260,6 +266,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [cargosLoading, setCargosLoading] = useState(false);
   const [cargosLoaded, setCargosLoaded] = useState(false);
+  const [selectCargoId, setSelectCargoId] = useState<number | null>(null);
 
   // Reset password modal state (admin flows)
   const [openResetModal, setOpenResetModal] = useState(false);
@@ -869,8 +876,8 @@ export default function AdministracionPage(user: { role: string } | null) {
                           <div className="text-gray-800 text-sm">
                             {usuario.cargos_actuales && usuario.cargos_actuales.length > 0
                               ? usuario.cargos_actuales
-                                  .map((c) => c.cargo?.nombre || (c as any).nombre || "-")
-                                  .join(", ")
+                                .map((c) => c.cargo?.nombre || (c as any).nombre || "-")
+                                .join(", ")
                               : "-"}
                           </div>
                         </TableCell>
@@ -935,17 +942,17 @@ export default function AdministracionPage(user: { role: string } | null) {
                             )}
 
                             {/* Reset password (admin) */}
-                        
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => { setResetTarget({ id: usuario.id, username: usuario.username }); setOpenResetModal(true); }}
-                                className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-indigo-600 hover:text-indigo-800"
-                              >
-                                <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span className="sr-only">Resetear contraseña</span>
-                              </Button>
-                            
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setResetTarget({ id: usuario.id, username: usuario.username }); setOpenResetModal(true); }}
+                              className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-indigo-600 hover:text-indigo-800"
+                            >
+                              <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="sr-only">Resetear contraseña</span>
+                            </Button>
+
 
                             <Button
                               variant="outline"
@@ -1047,6 +1054,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                                     field.onChange(value);
                                     const usuarioId = parseInt(value);
                                     const usuario = usuarios.find((u) => u.id === usuarioId);
+                                    setSelectCargoId(null); // reset cargo selection when changing user
                                     setPendingAssignment({
                                       unidadId: unidad.id_unidad,
                                       unidadNombre: unidad.nombre,
@@ -1142,6 +1150,37 @@ export default function AdministracionPage(user: { role: string } | null) {
                 <strong>{pendingAssignment?.unidadNombre}</strong>?
               </DialogDescription>
             </DialogHeader>
+
+            {/* Cargo selection (optional) */}
+            <div className="space-y-2">
+              <Label className="text-sm">Cargo</Label>
+
+              <Select
+                onValueChange={(v) => setSelectCargoId(parseInt(v))}
+                value={selectCargoId ? selectCargoId.toString() : ""}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={cargosLoading ? "Cargando cargos..." : "Selecciona un cargo (opcional)"}
+                  >
+                  </SelectValue>
+                </SelectTrigger>
+
+                <SelectContent>
+                  {
+                    cargos
+                      .filter((c) => !c.is_deleted && (c.activo ?? true))
+                      .map((cargo) => (
+                        <SelectItem key={cargo.id} value={cargo.id.toString()} className="text-sm">
+                          {cargo.nombre}
+                        </SelectItem>
+                      ))
+                  }
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Selecciona un cargo si deseas asignar uno.</p>
+            </div>
+
             <DialogFooter className="flex flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
@@ -1154,7 +1193,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                 style={{ backgroundColor: "#24356B", color: "white" }}
                 onClick={async () => {
                   if (!pendingAssignment) return;
-                  if (isSubmitting) return; // prevenir doble envío
+                  if (isSubmitting) return;
 
                   const token = localStorage.getItem("token");
                   if (!token) {
@@ -1163,9 +1202,9 @@ export default function AdministracionPage(user: { role: string } | null) {
                     return;
                   }
 
-                  const { unidadId, usuarioId, cargoId } = pendingAssignment;
+                  const { unidadId, usuarioId } = pendingAssignment;
 
-                  // Verificar que el usuario exista en la lista actual
+                  // 1) Validaciones
                   const usuarioExistente = usuarios.find((u) => u.id === usuarioId);
                   if (!usuarioExistente) {
                     toast.error("El usuario seleccionado no existe en el listado.");
@@ -1173,46 +1212,82 @@ export default function AdministracionPage(user: { role: string } | null) {
                     return;
                   }
 
+                  if (!selectCargoId) {
+                    toast.error("Selecciona un cargo para continuar.");
+                    return;
+                  }
+
                   try {
                     setIsSubmitting(true);
 
-                    const body: any = { responsable_id: usuarioId };
-                    if (cargoId) body.cargo_id = cargoId; // include cargo if selected
-
-                    const res = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
-                      method: "PUT",
+                    // 2) ASIGNAR CARGO (transaccional en backend)
+                    const resCargo = await fetch(`${API_URL}/cargos/asignar`, {
+                      method: "POST",
                       headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${token}`,
                       },
-                      body: JSON.stringify(body),
+                      body: JSON.stringify({
+                        cargo_id: selectCargoId,
+                        user_id: usuarioId,
+                        unidad_responsable_id: unidadId,
+                        motivo: "Asignación desde panel de administración",
+                      }),
                     });
 
-                    if (res.status === 401) {
+                    if (resCargo.status === 401) {
                       toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
                       router.push("/");
                       return;
                     }
 
-                    if (res.status === 404) {
+                    // Conflicto: ya existe asignación activa para ese cargo/unidad
+                    if (resCargo.status === 409) {
+                      const err = await resCargo.json().catch(() => ({}));
+                      toast.error(err.detail || "Ya existe una asignación activa para ese cargo y unidad.");
+                      return;
+                    }
+
+                    if (!resCargo.ok) {
+                      const err = await resCargo.json().catch(() => ({}));
+                      toast.error(err.detail || "No se pudo asignar el cargo.");
+                      return;
+                    }
+
+                    // 3) ASIGNAR RESPONSABLE A UNIDAD
+                    const resUnidad = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ responsable_id: usuarioId }),
+                    });
+
+                    if (resUnidad.status === 401) {
+                      toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
+                      router.push("/");
+                      return;
+                    }
+
+                    if (resUnidad.status === 404) {
                       toast.error("Unidad o usuario no encontrado (404).");
                       return;
                     }
 
-                    if (res.status === 422) {
-                      const err = await res.json().catch(() => ({}));
+                    if (resUnidad.status === 422) {
+                      const err = await resUnidad.json().catch(() => ({}));
                       toast.error("Datos mal formados: " + (err.detail || JSON.stringify(err)));
                       return;
                     }
 
-                    if (!res.ok) {
-                      throw new Error("Error al asignar responsable");
+                    if (!resUnidad.ok) {
+                      const err = await resUnidad.json().catch(() => ({}));
+                      toast.error(err.detail || "Error al asignar responsable.");
+                      return;
                     }
 
-                    // El backend debería devolver la unidad con el responsable embebido
-                    const data = await res.json();
-
-                    // Refrescar la unidad desde el backend para asegurar consistencia
+                    // 4) Refrescar unidad (UI)
                     try {
                       const refreshed = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
                         method: "GET",
@@ -1224,25 +1299,26 @@ export default function AdministracionPage(user: { role: string } | null) {
 
                       if (refreshed.ok) {
                         const unidadActualizada = await refreshed.json();
-                        setUnidades((prev) =>
-                          prev.map((u) => (u.id_unidad === unidadId ? unidadActualizada : u))
-                        );
+                        setUnidades((prev) => prev.map((u) => (u.id_unidad === unidadId ? unidadActualizada : u)));
                       }
-                    } catch (e) {
-                      // no crítico: ya tenemos la respuesta del PUT
-                    }
+                    } catch { }
 
-                    toast.success("Responsable asignado correctamente");
+                    toast.success("Cargo asignado y responsable actualizado correctamente ✅");
                     setIsConfirmOpen(false);
+                    setSelectCargoId(null);
+
+                    // opcional (recomendado): refrescar usuarios para ver cargos_actuales en tabla
+                    await handleGetUsers();
+
                   } catch (error) {
                     console.error(error);
-                    toast.error("No se pudo asignar el responsable");
+                    toast.error("No se pudo completar la asignación.");
                     setIsConfirmOpen(false);
                   } finally {
                     setIsSubmitting(false);
                   }
                 }}
-                disabled={!localStorage.getItem("token") || isSubmitting || !pendingAssignment?.cargoId}
+                disabled={!localStorage.getItem("token") || isSubmitting || !selectCargoId}
                 className="w-full sm:w-auto order-1 sm:order-2"
               >
                 {isSubmitting ? "Procesando..." : "Confirmar"}
