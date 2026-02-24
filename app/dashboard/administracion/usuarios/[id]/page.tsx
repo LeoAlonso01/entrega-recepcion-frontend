@@ -5,8 +5,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import { ArrowLeft, User, Mail, Shield, Check, X, Calendar, Hash, Lock, RefreshCw, Building2 } from 'lucide-react';
 import Link from 'next/link';
@@ -14,8 +12,49 @@ import NavbarWithBreadcrumb from '../../../../../components/NavbarBreadcrumb';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { get } from 'http';
+import { parse } from 'path';
+import { set } from 'date-fns';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
+
+type UnidadResponsableSimple = {
+    id_unidad: number;
+    nombre: string;
+}
+
+type Cargo = {
+    id: number;
+    nombre: string;
+    descripcion: string;
+    activo?: boolean;
+    creado_en?: string;
+    actualizado_en?: string;
+    is_deleted?: boolean;
+}
+
+type CargoActual = {
+    id: number;
+    cargo_id: number;
+    user_id: number;
+    unidad_responsable_id: number;
+    fecha_inicio: string;
+    fecha_fin: string | null;
+    motivo: string;
+    is_deleted?: boolean;
+    cargo?: Cargo;
+}
 
 interface Usuario {
     id: number;
@@ -23,15 +62,18 @@ interface Usuario {
     email: string;
     role: string;
     is_deleted: boolean;
+
     created_at: string;
     updated_at: string;
-    password?: string; // Campo opcional para no mostrarlo
+
     reset_token?: string | null;
     reset_token_expiration?: string | null;
-    unidad_responsable?: { id_unidad: number; nombre: string } | null;
-    cargos_actuales?: any[];
-    cargos_historial?: any[];
-    cargos_asignados?: any[];
+
+    unidad_responsable?: UnidadResponsableSimple | null;
+
+    cargos_actuales?: CargoActual[];
+    cargos_historial?: CargoActual[];
+    cargos_asignados?: CargoActual[];
 }
 
 export default function UsuarioDetallePage() {
@@ -53,6 +95,19 @@ export default function UsuarioDetallePage() {
     const [openSelfChange, setOpenSelfChange] = useState(false);
     const [openAdminReset, setOpenAdminReset] = useState(false);
     const [resetTarget, setResetTarget] = useState<{ id: number; username: string } | null>(null);
+
+    // Modal / asignación de cargo
+    const [openCargoModal, setOpenCargoModal] = useState(false);
+    const [cargosDisponibles, setCargosDisponibles] = useState<{ id: number; nombre: string }[]>([]);
+    const [cargosLoading, setCargosLoading] = useState(false);
+    const [selectedCargoId, setSelectedCargoId] = useState<string>("");
+    const [motivoCargo, setMotivoCargo] = useState("Asignación desde panel de administración");
+    const [assigningCargo, setAssigningCargo] = useState(false);
+
+    // cargo mas actual
+    const cargoActual = (usuario?.cargos_actuales ?? [])
+        .filter((c) => !c.fecha_fin && !c.is_deleted)
+        .sort((a, b) => new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime())[0];
 
     const fetchUsuario = async () => {
         try {
@@ -107,10 +162,10 @@ export default function UsuarioDetallePage() {
     useEffect(() => {
         // el token existe
         const token = localStorage.getItem("token");
-            if (!token) {
-                router.push('/login');
-                return;
-            }
+        if (!token) {
+            router.push('/login');
+            return;
+        }
         // leer usuario actual almacenado (si existe) para decisiones de UI (si es admin o el mismo usuario)
         const stored = localStorage.getItem('currentUser');
         if (stored) {
@@ -203,15 +258,124 @@ export default function UsuarioDetallePage() {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+    const formatDate = (dateString?: string | null) => {
+        if (!dateString) return "-";
+        const d = new Date(dateString);
+        if (Number.isNaN(d.getTime())) return "-";
+        return d.toLocaleDateString("es-ES", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
         });
     };
+
+    const handleAddCargo = async () => {
+        // Requisito: unidad responsable
+        if (!usuario?.unidad_responsable?.id_unidad) {
+            toast.error("Este usuario no tiene unidad responsable asignada. Asigna la unidad primero.");
+            return;
+        }
+
+        setOpenCargoModal(true);
+
+        // Cargar cargos solo si no están cargados
+        if (cargosDisponibles.length > 0) return;
+
+        setCargosLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                toast.error("Token no encontrado. Inicia sesión de nuevo.");
+                router.push("/");
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/cargos`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+            });
+
+            if (!res.ok) throw new Error("No se pudieron cargar los cargos");
+
+            const data = await res.json();
+            setCargosDisponibles(Array.isArray(data) ? data : []);
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al cargar cargos");
+        } finally {
+            setCargosLoading(false);
+        }
+    };
+
+    const handleConfirmAssignCargo = async () => {
+        if (!usuario) return;
+
+        const unidadId = usuario.unidad_responsable?.id_unidad;
+        if (!unidadId) {
+            toast.error("No hay unidad responsable para asignar el cargo.");
+            return;
+        }
+
+        const cargoIdNum = parseInt(selectedCargoId, 10);
+        if (!cargoIdNum) {
+            toast.error("Selecciona un cargo.");
+            return;
+        }
+
+        setAssigningCargo(true);
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                toast.error("Token no encontrado. Inicia sesión de nuevo.");
+                router.push("/");
+                return;
+            }
+
+            const res = await fetch(`${API_URL}/cargos/asignar`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    cargo_id: cargoIdNum,
+                    user_id: usuario.id,
+                    unidad_responsable_id: unidadId,
+                    motivo: motivoCargo || null,
+                }),
+            });
+
+            if (res.status === 409) {
+                const err = await res.json().catch(() => ({}));
+                toast.error(err?.detail || "Ya existe una asignación activa para ese cargo y unidad.");
+                return;
+            }
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                toast.error(err?.detail || "No se pudo asignar el cargo");
+                return;
+            }
+
+            toast.success("Cargo asignado correctamente");
+            setOpenCargoModal(false);
+            setSelectedCargoId("");
+            // refrescar usuario para que se pinte el cargo actual
+            await fetchUsuario();
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al asignar cargo");
+        } finally {
+            setAssigningCargo(false);
+        }
+    };
+
+
 
     if (loading) {
         return <LoadingSkeleton />;
@@ -321,7 +485,7 @@ export default function UsuarioDetallePage() {
                                 ]}
                             />
                         </div>
-                      
+
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
                             <DetailSection
@@ -339,13 +503,34 @@ export default function UsuarioDetallePage() {
                                     }
                                 ]}
                             />
+                            <DetailSection
+                                title="Unidad Responsable"
+                                items={[
+                                    {
+                                        icon: <Building2 className="h-5 w-5" />,
+                                        title: "Unidad",
+                                        value: usuario.unidad_responsable ? usuario.unidad_responsable.nombre : "-",
+                                        hint: usuario.unidad_responsable ? `ID: ${usuario.unidad_responsable.id_unidad}` : "No tiene unidad responsable asignada"
+                                    },
+                                    {
+                                        icon: <Hash className="h-5 w-5" />,
+                                        title: "Cargo Actual",
+                                        value: usuario.cargos_actuales && usuario.cargos_actuales.length > 0
+                                            ? cargoActual?.cargo?.nombre || "Cargo sin nombre"
+                                            : (cargoActual ? `Unidad ID: ${cargoActual.unidad_responsable_id}` : "-"),
+                                        hint: cargoActual ? `Asignado el ${formatDate(cargoActual.fecha_inicio)}` : "No tiene cargo asignado"
+                                    }
+                                ]}
+                            />
+
                         </div>
 
                         {/* Seguridad: cambiar contraseña o resetear desde admin */}
-                        <div className="py-6">
+                        <div className="py-6 flex flex-col gap-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+
                             <h3 className="text-lg font-medium mb-4">Seguridad</h3>
 
-                            <div className="flex gap-3">
+                            <div className="flex flex-col gap-3">
                                 {/* Botón único: abre el flujo correspondiente según permisos (self -> cambiar, admin -> resetear) */}
                                 <Button
                                     onClick={() => {
@@ -358,11 +543,19 @@ export default function UsuarioDetallePage() {
                                             toast.error('No tienes permisos para cambiar esta contraseña');
                                         }
                                     }}
-                                    style={ { backgroundColor: '#24356B', color: 'white' } }
+                                    style={{ backgroundColor: '#24356B', color: 'white' }}
                                     disabled={isChangingPassword || isResettingPassword}
                                 >
                                     {usuario.username === usuario.username ? 'Cambiar contraseña' : 'No permitido'}
                                 </Button>
+                            </div>
+
+                            <h3 className="text-lg font-medium mb-4">Asignación</h3>
+                            <div className="flex flex-col gap-3">
+                                <Button
+                                    onClick={handleAddCargo}
+                                    className='mt-3'
+                                >Asignar Cargo</Button>
                             </div>
 
                             {/* Modal components */}
@@ -371,9 +564,62 @@ export default function UsuarioDetallePage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Modal para asignar cargo */}
+                <Dialog open={openCargoModal} onOpenChange={setOpenCargoModal}>
+                    <DialogContent className="w-[95vw] max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Asignar cargo</DialogTitle>
+                            <DialogDescription>
+                                Usuario: <strong>{usuario?.username}</strong><br />
+                                Unidad: <strong>{usuario?.unidad_responsable?.nombre ?? "-"}</strong>
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Cargo</Label>
+                                <Select value={selectedCargoId} onValueChange={setSelectedCargoId} disabled={cargosLoading}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={cargosLoading ? "Cargando cargos..." : "Selecciona un cargo"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {cargosDisponibles.map((c) => (
+                                            <SelectItem key={c.id} value={c.id.toString()}>
+                                                {c.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Motivo (opcional)</Label>
+                                <Input
+                                    value={motivoCargo}
+                                    onChange={(e) => setMotivoCargo(e.target.value)}
+                                    placeholder="Ej. Asignación desde panel de administración"
+                                />
+                            </div>
+                        </div>
+
+                        <DialogFooter className="flex gap-2">
+                            <Button variant="outline" onClick={() => setOpenCargoModal(false)} disabled={assigningCargo}>
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={handleConfirmAssignCargo}
+                                disabled={assigningCargo || !selectedCargoId}
+                                style={{ backgroundColor: "#24356B", color: "white" }}
+                            >
+                                {assigningCargo ? "Asignando..." : "Confirmar"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
-        
+
     );
 }
 
@@ -472,11 +718,3 @@ function LoadingSkeleton() {
     );
 }
 
-
-/* // app/dashboard/administracion/usuarios/[id]/page.tsx
-import { useParams } from 'next/navigation';
-
-export default function Page() {
-  const { id } = useParams();
-  return <div>ID del usuario: {id}</div>;
-} */
