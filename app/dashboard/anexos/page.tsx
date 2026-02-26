@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-import RectDOM from "react-dom"
 import { useForm, SubmitHandler } from "react-hook-form"
-import { useState, useEffect, use } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,7 +35,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { set } from "date-fns"
 
 
 // Simple ExcelPreview component definition
@@ -129,8 +127,8 @@ interface IFormInput {
   clave: string;
   categoria: string;
   fecha_creacion: string;
-  creador_id: number; // ← debe ser creador_id
-  datos: Record<string, any>;
+  creador_id: number;
+  datos: Array<Record<string, any>>;
   estado: string;
   unidad_responsable_id: number;
 }
@@ -141,7 +139,7 @@ export interface Anexo {
   categoria: string
   creador_id: number
   fecha_creacion: string       // formato ISO, ej: "2025-08-07"
-  datos: Record<string, any>   // o simplemente `any` si prefieres
+  datos: Array<Record<string, any>>   // o simplemente `any` si prefieres
   estado: string
   unidad_responsable_id: number
 }
@@ -224,7 +222,7 @@ const exportAnexosToPDF = (anexos: Anexo[], title = "Reporte de Anexos") => {
     anexo.fecha_creacion,
   ])
     ; (doc as any).autoTable({
-      head: [["Código", "Título", "Tipo", "Estado", "Fecha", "Descripción"]],
+      head: [["Clave", "Categoria", "Estado", "Fecha Creación"]],
       body: tableData,
       startY: 70,
       styles: {
@@ -939,15 +937,15 @@ enum CategoriasAnexos {
 // ======================================================
 
 export const categoria_anexos = [
-  { id: "1",  nombre_categoria: "ARCHIVOS DOCUMENTALES E INFORMATICOS" },
-  { id: "2",  nombre_categoria: "ASUNTOS GENERALES" },
-  { id: "3",  nombre_categoria: "ASUNTOS RELEVANTES EN TRAMITE DE ATENCION" },
-  { id: "4",  nombre_categoria: "CONVENIOS Y CONTRATOS" },
-  { id: "5",  nombre_categoria: "CONTROL Y FISCALIZACION" },
-  { id: "6",  nombre_categoria: "DERECHOS Y OBLIGACIONES" },
-  { id: "7",  nombre_categoria: "ORGANIZACION" },
-  { id: "8",  nombre_categoria: "MARCO JURIDICO" },
-  { id: "9",  nombre_categoria: "OBRAS PUBLICAS" },
+  { id: "1", nombre_categoria: "ARCHIVOS DOCUMENTALES E INFORMATICOS" },
+  { id: "2", nombre_categoria: "ASUNTOS GENERALES" },
+  { id: "3", nombre_categoria: "ASUNTOS RELEVANTES EN TRAMITE DE ATENCION" },
+  { id: "4", nombre_categoria: "CONVENIOS Y CONTRATOS" },
+  { id: "5", nombre_categoria: "CONTROL Y FISCALIZACION" },
+  { id: "6", nombre_categoria: "DERECHOS Y OBLIGACIONES" },
+  { id: "7", nombre_categoria: "ORGANIZACION" },
+  { id: "8", nombre_categoria: "MARCO JURIDICO" },
+  { id: "9", nombre_categoria: "OBRAS PUBLICAS" },
   { id: "10", nombre_categoria: "RECURSOS MATERIALES" },
   { id: "11", nombre_categoria: "PLANEACION" },
   { id: "12", nombre_categoria: "RECURSOS PRESUPUESTALES Y FINANCIEROS" },
@@ -972,8 +970,8 @@ export const claves_anexos = [
   { id: "7", clave: "AR01", descripcion: "ASUNTOS RELEVANTES EN TRAMITE DE ATENCION", id_categoria: "3" },
 
   // 4) CONVENIOS Y CONTRATOS
-  { id: "8",  clave: "CC01", descripcion: "CONTRATOS Y CONVENIOS VIGENTES", id_categoria: "4" },
-  { id: "9",  clave: "CC02", descripcion: "CONVENIOS DE COORDINACION CON INSTANCIAS FEDERALES, ESTATALES, MUNICIPALES E INICIATIVA PRIVADA", id_categoria: "4" },
+  { id: "8", clave: "CC01", descripcion: "CONTRATOS Y CONVENIOS VIGENTES", id_categoria: "4" },
+  { id: "9", clave: "CC02", descripcion: "CONVENIOS DE COORDINACION CON INSTANCIAS FEDERALES, ESTATALES, MUNICIPALES E INICIATIVA PRIVADA", id_categoria: "4" },
   { id: "10", clave: "CC03", descripcion: "RELACION DE CONTRATOS DE FIDEICOMISOS", id_categoria: "4" },
 
   // 5) CONTROL Y FISCALIZACION
@@ -1099,16 +1097,6 @@ export const CategoriaLabels: Record<string, string> = {
   "14": "TRANSPARENCIA Y ACCESO A LA INFORMACION",
   "15": "SISTEMA DE GESTION DE CALIDAD"
 };
-
-interface IFormInput {
-  clave: string;
-  categoria: string;
-  fecha_creacion: string;
-  creado_id: number;
-  datos: Record<string, any>;
-  estado: string;
-  unidad_responsable_id: number;
-}
 
 // campos de la tabla editable
 const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: string; obligatorio?: boolean; Descripcion?: string }>> = {
@@ -1328,6 +1316,10 @@ export default function AnexosPage() {
   const [anexoParaActualizar, setAnexoParaActualizar] = useState<Anexo | null>(null);
   const [todosLosAnexos, setTodosLosAnexos] = useState<Anexo[]>([]); // Estado para todos los anexos
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Función para filtrar anexos por categoría
+  const [filterCategory, setFilterCategory] = useState<string>("__all__");
+  const [formCategory, setFormCategory] = useState<string>("");
 
   // Calcular filas actuales
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -1566,7 +1558,7 @@ export default function AnexosPage() {
 
     fetch(url, {
       method,
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${localStorage.getItem('token') || ''}`
       },
@@ -1748,33 +1740,6 @@ export default function AnexosPage() {
     }
   }
 
-  const getTipoColor = (tipo: string) => {
-    switch (tipo) {
-      case "Recursos Presupuestales y Financieros":
-        return "bg-purple-100 text-purple-800"
-      case "Contratos Convenios y Licitaciones":
-        return "bg-blue-100 text-blue-800"
-      case "Estrucura y Normativa Interna":
-        return "bg-orange-100 text-orange-800"
-      case "Recursos Humanos":
-        return "bg-gray-100 text-gray-800"
-      case "Inventario de Binenes Muebles e Inmuebles":
-        return "bg-green-100 text-green-800"
-      case "Segurirdad y Control de Acceso":
-        return "bg-red-100 text-red-800"
-      case "Documentación y Archivos":
-        return "bg-yellow-100 text-yellow-800"
-      case "Asuntos Legales y de Auditoría":
-        return "bg-teal-100 text-teal-800"
-      case "Porgramas y Proyectos":
-        return "bg-cyan-100 text-cyan-800"
-      case "Transparencia":
-        return "bg-pink-100 text-pink-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const removeFile = () => {
     setPreviewUrl(null)
     setSelectedFile(null)
@@ -1787,7 +1752,7 @@ export default function AnexosPage() {
   }
 
   const requierePDF = (clave: string): boolean => {
-    return ["ENI01", "PP01", "SGC01"].includes(clave.toUpperCase().trim());
+    return ["PP01", "SGC01", "EO01", "PPA01"].includes(clave.toUpperCase().trim());
   };
 
   function claveRequierePDF(clave?: string): boolean {
@@ -1909,7 +1874,9 @@ export default function AnexosPage() {
             <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
               <TabsTrigger value="nuevoAnexo">Nuevo Anexo</TabsTrigger>
-              <TabsTrigger value="anexosPorUsuario">Anexos por usuario</TabsTrigger>
+              {userrole === "ADMIN" &&(
+                <TabsTrigger value="anexosPorUsuario">Anexos por usuario</TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="anexos" className="mt-4 sm:mt-6 md:mt-8">
@@ -2023,266 +1990,7 @@ export default function AnexosPage() {
                   </div>
                 </div>
                 <br />
-
-                {showForm ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{editingAnexo ? "Editar Anexo" : "Nuevo Anexo"}</CardTitle>
-                      <CardDescription>
-                        {editingAnexo ? "Modifica los datos del anexo seleccionado" : "Completa los datos para crear un nuevo anexo"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <form onSubmit={() => { console.log("Datos del formulario:", formData); }}>
-                        <div className="space-y-4">
-
-                          <div className="grid w-full sm:grid-cols-3 grid-cols-2 gap-2 sm:gap-3 gap-3 text-sm" >
-
-                            {/* Selector de Categoría */}
-                            <div className="space-y-2">
-                              <Label htmlFor="categoria">Categoría</Label>
-                              <Select
-                                value={selectedCategory}
-                                onValueChange={(value: string) => {
-                                  setSelectedCategory(value)
-                                  setFormData(prev => ({ ...prev, categoria: value, clave: "" }))
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona una categoría" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {categoria_anexos.map((categoria) => (
-                                    <SelectItem key={categoria.id} value={categoria.nombre_categoria}>
-                                      {categoria.nombre_categoria}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Selector de Clave (solo visible si hay una categoría seleccionada) */}
-                            {selectedCategory && (
-                              <div className="space-y-2">
-                                <Label htmlFor="clave">Clave del Anexo</Label>
-                                <Select
-                                  value={formData.clave}
-                                  onValueChange={(value: string) => setFormData({ ...formData, clave: value })}
-                                  disabled={!selectedCategory}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder={filteredKeys.length ? "Selecciona una clave" : "No hay claves disponibles"} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {filteredKeys.map((key) => (
-                                      <SelectItem key={key.id} value={key.clave}>
-                                        {key.clave} - {key.descripcion}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="grid w-full sm:grid-cols-3 grid-cols-2 gap-2 sm:gap-3 gap-3 text-sm" >
-                            <div className="mt-2">
-                              {/* id de quien lo crea, que viene del usuario en su id */}
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Creado por:
-                              </label>
-                              <input
-                                type="text"
-                                value={userName}
-                                readOnly
-                                className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                              />
-                              <input type="hidden" value={userid} readOnly className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" />
-                            </div>
-                            <div className="mt-2">
-                              {/* unidad responsable del anexo */}
-                              <label htmlFor="unidad_responsable" className="block text-sm font-medium text-gray-700 mb-2">
-                                Unidad Responsable
-                              </label>
-                              <input
-                                type="text"
-                                id="unidad_responsable"
-                                value={(unidadResponsable ? unidadResponsable : "NO ASIGNADA")}
-                                /* onChange={(e) => setUnidadResponsable(Number(e.target.value))} */
-                                readOnly
-                                className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-                              />
-                            </div>
-                            <div className="mt-2">
-                              {/* estado del anexo */}
-                              <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-2">
-                                Estado del Anexo
-                              </label>
-                              <select
-                                id="estado"
-                                value={formData.estado}
-                                onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                                required
-                              >
-                                <option value="Borrador">Borrador</option>
-                                <option value="Completado">Completado</option>
-                                <option value="Revisión">Revisión</option>
-                                <option value="Cerrado">Cerrado</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          {/* Sección de archivo (se mantiene igual) */}
-
-                          <label htmlFor="info-loader" className="block text-sm font-medium text-gray-700 mb-2">
-                            Información
-                          </label>
-                          <div className="grid w-full sm:grid-cols-2 gap-2 gap-3 ">
-                            {/*   */}
-                            {selectedCategory === "Marco Jurídico" && (
-                              <div>
-
-                              </div>
-                            )}
-                          </div>
-
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Subir Archivo (PDF o Excel)
-                          </label>
-
-                          {selectedCategory && requierePDF(formData.clave) ? (
-                            <div>
-                              <label htmlFor="pdf-uploader">Subir PDF</label>
-                              <PdfUploader
-                                onUploadSuccess={(url) =>
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    datos: { pdf_url: url },
-                                  }))
-                                }
-                              />
-
-                            </div>
-                          ) : (
-                            <div>
-                              <label htmlFor="excel-uploader">Subir Excel</label>
-                              <ExcelUploader
-                                onUploadSuccess={(excelData) => {
-                                  const clave = watch("clave")
-                                  const estructura = EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default
-
-                                  if (estructura.length > 0 && excelData.length > 0) {
-                                    const columnasExcel = Object.keys(excelData[0])
-                                    const faltantes = estructura.filter(campo => !columnasExcel.includes(campo))
-                                    const extras = columnasExcel.filter(campo => !estructura.includes(campo))
-
-                                    if (faltantes.length > 0) {
-                                      toast.warning(
-                                        `Faltan columnas: ${faltantes.join(", ")}. Se llenarán como vacías.`,
-                                        { duration: 5000 }
-                                      )
-                                    };
-                                    if (extras.length > 0) {
-                                      toast.warning(
-                                        `Columnas extras: ${extras.join(", ")}. Se ignorarán.`,
-                                        { duration: 5000 }
-                                      )
-                                    }
-
-                                    setRows(excelData)
-                                    setValue("datos", excelData) // sincroniza con RHF
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      datos: excelData, // esto sincroniza directamente con formData
-                                    }))
-                                  }
-                                }} onUploadError={function (error: string): void {
-                                  throw new Error("Function not implemented.")
-                                }} />
-                            </div>
-                          )}
-
-
-                          {/* llenar el campo datos con el json desde excel */}
-                          {formData.clave === "Excel" && (
-                            <div>
-                              <label htmlFor="datos">Datos</label>
-                              <textarea
-                                id="datos"
-                                value={JSON.stringify(formData.datos, null, 2)}
-                                onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                              />
-                              <EditableTable
-                                data={Array.isArray(formData.datos) ? formData.datos : []}
-                                onChange={(newData) =>
-                                  setFormData({
-                                    ...formData,
-                                    datos: newData
-                                  })
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {/* en el campo datos subir la url del archivo pdf */}
-                          {formData.clave === "PDF" && (
-                            <div>
-                              <label htmlFor="datos">Datos</label>
-                              <textarea
-                                id="datos"
-                                value={JSON.stringify(formData.datos, null, 2)}
-                                onChange={(e) => setFormData({ ...formData, datos: JSON.parse(e.target.value) })}
-                                className="w-full p-2 border border-gray-300 rounded-md"
-                              />
-                              <div className="border border-gray-300 rounded-md p-2 overflow-hidden mt-4"
-                                style={
-                                  {
-                                    width: "60%", // Ancho del contenedor
-                                    height: "400px", // Altura del contenedor
-                                  }
-                                }
-                              >
-                                {/* Directly use the Viewer component from @react-pdf-viewer/core */}
-                                {/* <Viewer fileUrl={formData.datos.pdf_url} /> */}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Previsualización del archivo seleccionado */}
-                          {/* <label htmlFor="pdf-uploader">Subir PDF</label>
-                    <PdfUploader /> */}
-
-                          {/* Subir excel */}
-                          {/*   <label htmlFor="excel-uploader">Subir Excel</label>
-                    <ExcelUploader /> */}
-
-                          {/* Previsualización del archivo (si es PDF) */}
-                          {previewUrl && (
-                            <div className="mt-4">
-                              <p className="text-sm text-gray-600">Archivo seleccionado: {selectedFile?.name}</p>
-                              <Button variant="outline" size="sm" onClick={removeFile} className="mt-2">
-                                Eliminar Archivo
-                              </Button>
-                            </div>
-                          )}
-
-
-
-                          <div className="flex justify-end space-x-4 pt-4">
-                            <Button type="button" variant="outline" onClick={resetForm}>
-                              Cancelar
-                            </Button>
-                            <Button type="submit" style={{ backgroundColor: "#24356B", color: "white" }}>
-                              {editingAnexo ? "Actualizar" : "Crear"} Anexo
-                            </Button>
-                          </div>
-                        </div>
-                      </form>
-                    </CardContent>
-                  </Card>
-                ) : (
+                
                   <Card className="w-full">
                     <CardHeader className="p-3 sm:p-6 flex justify-between items-center">
                       <div>
@@ -2469,9 +2177,7 @@ export default function AnexosPage() {
                       </div>
                     </CardContent>
                   </Card>
-
-
-                )}
+              
               </main>
 
             </TabsContent>
@@ -3044,7 +2750,7 @@ export default function AnexosPage() {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
-                                    
+
                                   </TableCell>
                                 </TableRow>
                               ))

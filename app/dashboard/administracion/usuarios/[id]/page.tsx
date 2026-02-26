@@ -526,17 +526,18 @@ export default function UsuarioDetallePage() {
                         </div>
 
                         {/* Seguridad: cambiar contraseña o resetear desde admin */}
-                        <div className="py-6 flex flex-col gap-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-
+                        <div className="py-6">
                             <h3 className="text-lg font-medium mb-4">Seguridad</h3>
 
                             <div className="flex flex-col gap-3">
                                 {/* Botón único: abre el flujo correspondiente según permisos (self -> cambiar, admin -> resetear) */}
                                 <Button
                                     onClick={() => {
-                                        if (currentUser?.username === usuario.username) {
+                                        if (currentUser.username === usuario.username) {
+                                            toast("Abriendo formulario de cambio de contraseña", { icon: <Lock className="h-5 w-5" /> });
                                             setOpenSelfChange(true);
-                                        } else if (usuario.role === 'ADMIN') {
+                                        } else if (currentUser.role === 'ADMIN') {
+                                            toast("Abriendo formulario de reseteo de contraseña", { icon: <RefreshCw className="h-5 w-5" /> });
                                             setResetTarget({ id: usuario.id, username: usuario.username });
                                             setOpenAdminReset(true);
                                         } else {
@@ -546,22 +547,28 @@ export default function UsuarioDetallePage() {
                                     style={{ backgroundColor: '#24356B', color: 'white' }}
                                     disabled={isChangingPassword || isResettingPassword}
                                 >
-                                    {usuario.username === usuario.username ? 'Cambiar contraseña' : 'No permitido'}
+                                    {currentUser.username === usuario.username ? 'Cambiar contraseña' : 'Resetear contraseña'}
                                 </Button>
                             </div>
-
-                            <h3 className="text-lg font-medium mb-4">Asignación</h3>
-                            <div className="flex flex-col gap-3">
-                                <Button
-                                    onClick={handleAddCargo}
-                                    className='mt-3'
-                                >Asignar Cargo</Button>
-                            </div>
-
-                            {/* Modal components */}
-                            <ResetPasswordModal open={openSelfChange} onOpenChange={setOpenSelfChange} userId={usuario.id} username={usuario.username} mode="self" onSuccess={() => { /* no-op, handled inside modal */ }} />
-                            <ResetPasswordModal open={openAdminReset} onOpenChange={(v) => { setOpenAdminReset(v); if (!v) setResetTarget(null); }} userId={resetTarget?.id ?? null} username={resetTarget?.username ?? null} mode="admin" onSuccess={() => { fetchUsuario(); setOpenAdminReset(false); }} />
                         </div>
+
+                        {currentUser.role === 'ADMIN' && (
+                            <div className="py-6">
+                                <h3 className="text-lg font-medium mb-4">Asignación</h3>
+                                <div className="flex flex-col gap-3">
+                                    <Button
+                                        onClick={handleAddCargo}
+                                        className='mt-3'
+                                    >Asignar Cargo</Button>
+                                </div>
+                            </div>
+                        )}
+
+
+
+                        {/* Modal components */}
+                        <ResetPasswordModal open={openSelfChange} onOpenChange={setOpenSelfChange} userId={usuario.id} username={usuario.username} mode="self" onSuccess={() => { /* no-op, handled inside modal */ }} />
+                        <ResetPasswordModal open={openAdminReset} onOpenChange={(v) => { setOpenAdminReset(v); if (!v) setResetTarget(null); }} userId={resetTarget?.id ?? null} username={resetTarget?.username ?? null} mode="admin" onSuccess={() => { fetchUsuario(); setOpenAdminReset(false); }} />
                     </CardContent>
                 </Card>
 
