@@ -1100,6 +1100,46 @@ export const CategoriaLabels: Record<string, string> = {
 
 // campos de la tabla editable
 const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: string; obligatorio?: boolean; Descripcion?: string }>> = {
+  // Marco Jurídico (MJ01)
+  MJ01: [
+    { campo : "Ordenamiento", tipo: "string", obligatorio: true, Descripcion: "Ordenamiento Jurídico Aplicable" },
+    {campo:"Titulo", tipo: "string", obligatorio: true, Descripcion: "Título del Asunto Relevante"},
+    {campo:"Fecha de emision", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante"},
+  ]
+  ,
+  // Planeacion (PP01)
+  PP01: [
+    { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Nombre del programa" },
+    {campo:"Nombre ", tipo: "string", obligatorio: true, Descripcion: "Descripción del programa"},
+    {campo:"Fecha", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del programa"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el programa"},
+  ],
+
+  //Derechos y Obligaciones (DO01-DO04)
+  DO01: [
+    {campo:"Nombre y puesto del servidor que otirga el poder", tipo: "string", obligatorio: true, Descripcion: "Nombre y puesto del servidor que otorga el poder"},
+    {campo:"Tipo de poder otorgado", tipo: "string", obligatorio: true, Descripcion: "Tipo de poder otorgado"},
+    {campo:"Especificar", tipo: "string", obligatorio: true, Descripcion: "Fecha de otorgamiento del poder"},
+    {campo:"Fecha de Expediciónn", tipo: "string", obligatorio: true, Descripcion: "Fecha de expedición del poder"},
+    {campo:"Notario Público que autoriza el poder", tipo: "string", obligatorio: true, Descripcion: "Notario Público que autoriza el poder"},
+    {campo:"Inscrito en el Registro Público de la Propiedad y del Comercio", tipo: "string", obligatorio: true, Descripcion: "Número de inscripción en el Registro Público de la Propiedad y del Comercio"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el poder otorgado"},
+  ],
+
+  DO02: [
+    {campo:"Numero de sesion", tipo: "string", obligatorio: true, Descripcion: "Número de sesión"},
+    {campo:"Fecha de sesion", tipo: "string", obligatorio: true, Descripcion: "Fecha de la sesión"},
+    {campo:"Ordinaria o Extraordinaria", tipo: "string", obligatorio: true, Descripcion: "Tipo de sesión (Ordinaria o Extraordinaria)"},
+    {campo:"Acuerdos tomados", tipo: "string", obligatorio: true, Descripcion: "Descripción de los acuerdos tomados en la sesión"},
+    {campo:"Descripcion de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Descripción detallada de los acuerdos tomados en la sesión"},
+    {campo:"Responsable de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Nombre del responsable de dar seguimiento a los acuerdos"},
+    {campo:"Áreas involucradas", tipo: "string", obligatorio: true, Descripcion: "Áreas involucradas en el seguimiento de los acuerdos"},
+    {campo:"Porcentaje de avance", tipo: "number", obligatorio: true, Descripcion: "Porcentaje de avance en el seguimiento de los acuerdos"},
+    {campo:"Comentarios", tipo: "string", obligatorio: false, Descripcion: "Comentarios adicionales sobre el seguimiento de los acuerdos"},
+  ],
+  DO03: [],
+  DO04: [],
+  
   RF01: [
     { campo: "partida", tipo: "string", obligatorio: true, Descripcion: "Partida Presupuestal" },
     { campo: "Denominacion", tipo: "string", obligatorio: true, Descripcion: "Denominación de la partida" },
@@ -2374,6 +2414,7 @@ export default function AnexosPage() {
                                     Este anexo requiere un archivo excel o carga manual.
                                   </p>
                                   <div>
+
                                     {/* Botón para agregar fila */}
                                     <div className="flex justify-between items-center mb-2">
                                       <span>Tabla de datos</span>
@@ -2397,6 +2438,7 @@ export default function AnexosPage() {
                                       >
                                         + Agregar fila
                                       </Button>
+
                                     </div>
 
                                     {/* Mensaje si no hay datos */}
