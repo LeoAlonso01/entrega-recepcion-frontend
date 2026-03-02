@@ -74,7 +74,7 @@ export default function ResetPasswordModal({ open, onOpenChange, userId, usernam
               try {
                 const payload = token.split('.')[1];
                 const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-                const json = decodeURIComponent(atob(base64).split('').map(function(c) {
+                const json = decodeURIComponent(atob(base64).split('').map(function (c) {
                   return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
                 }).join(''));
                 const decoded = JSON.parse(json);
@@ -160,15 +160,17 @@ export default function ResetPasswordModal({ open, onOpenChange, userId, usernam
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
       });
-
       if (res.ok) {
         toast.success("Contraseña cambiada. Se cerrará la sesión.");
         // clear token and redirect to login
         localStorage.removeItem("token");
         // small delay to allow toast to show
-        setTimeout(() => router.push("/auth/login"), 700);
+        setTimeout(() => router.push("/"), 700);
         onOpenChange(false);
         onSuccess?.();
       } else {
@@ -209,7 +211,7 @@ export default function ResetPasswordModal({ open, onOpenChange, userId, usernam
         const payload = tokenForRole.split('.')[1];
         // fix padding and base64 url -> base64
         const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-        const json = decodeURIComponent(atob(base64).split('').map(function(c) {
+        const json = decodeURIComponent(atob(base64).split('').map(function (c) {
           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         const decoded = JSON.parse(json);
@@ -343,8 +345,8 @@ export default function ResetPasswordModal({ open, onOpenChange, userId, usernam
               <Button onClick={handleSelfChange} disabled={loading}>{loading ? "Guardando..." : "Cambiar y cerrar sesión"}</Button>
             ) : (
               <Button style={{ backgroundColor: "#24356B", color: "white" }} onClick={handleAdminReset} disabled={loading || checkingUser}>{
-              checkingUser ? 'Verificando...' : (loading ? 'Restableciendo...' : 'Resetear')
-            }</Button>
+                checkingUser ? 'Verificando...' : (loading ? 'Restableciendo...' : 'Resetear')
+              }</Button>
             )}
           </div>
         </DialogFooter>

@@ -82,7 +82,7 @@ export default function UsuarioDetallePage() {
     const [usuario, setUsuario] = useState<Usuario | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
+    const [user, setUser] = useState<{ id?: number; username: string; role: string }>({ id: undefined, username: "", role: "" })
 
     // Password change/reset states
     const [currentPasswordInput, setCurrentPasswordInput] = useState("");
@@ -167,12 +167,12 @@ export default function UsuarioDetallePage() {
             return;
         }
         // leer usuario actual almacenado (si existe) para decisiones de UI (si es admin o el mismo usuario)
-        const stored = localStorage.getItem('currentUser');
+        const stored = localStorage.getItem('user');
         if (stored) {
             try {
-                setCurrentUser(JSON.parse(stored));
+                setUser(JSON.parse(stored));
             } catch (e) {
-                console.warn('No se pudo parsear currentUser', e);
+                console.warn('No se pudo parsear user', e);
             }
         }
         fetchUsuario();
@@ -386,8 +386,8 @@ export default function UsuarioDetallePage() {
             <div className="min-h-screen bg-gray-50">
                 {/* Breadcrumbs */}
                 <NavbarWithBreadcrumb
-                    user={currentUser?.username || null}
-                    role={currentUser?.role || ""}
+                    user={user?.username || null}
+                    role={user?.role || ""}
                 />
                 <div className="max-w-4xl mx-auto p-4">
                     <div className="flex justify-center items-center h-64">
@@ -402,8 +402,8 @@ export default function UsuarioDetallePage() {
         <div className="min-h-screen bg-gray-50">
             {/* Breadcrumbs */}
             <NavbarWithBreadcrumb
-                user={currentUser?.username || null}
-                role={currentUser?.role || ""}
+                user={user?.username || null}
+                role={user ?.role || ""}
             />
             <div className="max-w-4xl mx-auto p-4">
                 <div className="flex justify-between items-center mb-6">
@@ -533,11 +533,23 @@ export default function UsuarioDetallePage() {
                                 {/* Botón único: abre el flujo correspondiente según permisos (self -> cambiar, admin -> resetear) */}
                                 <Button
                                     onClick={() => {
-                                        if (currentUser.username === usuario.username) {
-                                            toast("Abriendo formulario de cambio de contraseña", { icon: <Lock className="h-5 w-5" /> });
+
+                                        console.log("CURRENT USER:", user);
+                                        console.log("USUARIO TARGET:", usuario);
+                                        console.log("ID compare:", user?.id, usuario?.id);
+                                        console.log("ROLE:", user?.role);
+
+                                        if (!user?.id) {
+                                            toast.error("Usuario aún no cargado");
+                                            return;
+                                        }
+
+                                        const isSelf = String(user.id) === String(usuario.id);
+                                        const isAdmin = user.role?.trim().toUpperCase() === 'ADMIN';
+
+                                        if (isSelf) {
                                             setOpenSelfChange(true);
-                                        } else if (currentUser.role === 'ADMIN') {
-                                            toast("Abriendo formulario de reseteo de contraseña", { icon: <RefreshCw className="h-5 w-5" /> });
+                                        } else if (!isSelf && isAdmin) {
                                             setResetTarget({ id: usuario.id, username: usuario.username });
                                             setOpenAdminReset(true);
                                         } else {
@@ -545,14 +557,20 @@ export default function UsuarioDetallePage() {
                                         }
                                     }}
                                     style={{ backgroundColor: '#24356B', color: 'white' }}
-                                    disabled={isChangingPassword || isResettingPassword}
+                                    disabled={
+                                        isChangingPassword ||
+                                        isResettingPassword ||
+                                        !user?.id
+                                    }
                                 >
-                                    {currentUser.username === usuario.username ? 'Cambiar contraseña' : 'Resetear contraseña'}
+                                    {user.id === usuario.id
+                                        ? 'Cambiar contraseña'
+                                        : 'Resetear contraseña'}
                                 </Button>
                             </div>
                         </div>
 
-                        {currentUser.role === 'ADMIN' && (
+                        {user.role === 'ADMIN' && (
                             <div className="py-6">
                                 <h3 className="text-lg font-medium mb-4">Asignación</h3>
                                 <div className="flex flex-col gap-3">
