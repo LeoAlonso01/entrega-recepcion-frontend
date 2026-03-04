@@ -11,7 +11,9 @@ import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Trash2, Download, ArrowLeft, Eye, Trash, Check } from "lucide-react"
+// import { Plus, Edit, Trash2, Download, ArrowLeft, Eye, Trash, Check } from "lucide-react"
+// Nota: `Trash2`, `ArrowLeft` y `Trash` quedaron fuera por no uso actual en esta pantalla.
+import { Plus, Edit, Download, Eye, Check } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
@@ -20,12 +22,12 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
-import { z } from "zod";
-import { EstructuraDatosPorClave, CALVES_CON_PDF } from "@/lib/estructuraPorClave"
+// import { z } from "zod";
+import { EstructuraDatosPorClave } from "@/lib/estructuraPorClave"
 import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
 import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
-import { SubcategoriaEnum } from "../../../components/json/categorias";
-import { SubcategoriaClaves } from "@/components/json/categorias";
+// import { SubcategoriaEnum } from "../../../components/json/categorias";
+// import { SubcategoriaClaves } from "@/components/json/categorias";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +39,9 @@ import {
 } from "@/components/ui/dialog";
 
 
-// Simple ExcelPreview component definition
+/*
+  Código en pausa (sin uso actual): `ExcelPreview`.
+  Se conserva comentado para valoración funcional antes de eliminarlo.
 interface ExcelPreviewProps {
   data: Array<Record<string, any>>;
   onClose: () => void;
@@ -46,6 +50,10 @@ interface ExcelPreviewProps {
 
 const ExcelPreview: React.FC<ExcelPreviewProps> = ({ data, onClose, onConfirm }) => {
   if (!data || data.length === 0) return null;
+  // Render principal:
+  // - Tab de listado (estadísticas + tabla de anexos)
+  // - Tab de captura/edición
+  // - Tab administrativo (solo ADMIN)
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-96 overflow-hidden">
@@ -92,9 +100,13 @@ const ExcelPreview: React.FC<ExcelPreviewProps> = ({ data, onClose, onConfirm })
     </div>
   );
 };
+*/
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
+/*
+  Código en pausa (sin uso actual): tipos legacy de esta pantalla.
+  Se mantienen comentados para evaluar limpieza final.
 interface Usuario {
   id: number
   username: string
@@ -119,9 +131,8 @@ interface AnexosPageProps {
 interface EditableTableProps {
   data: any[],
   onChange: (data: any[]) => void;
-
-
 }
+*/
 
 interface IFormInput {
   clave: string;
@@ -144,8 +155,10 @@ export interface Anexo {
   unidad_responsable_id: number
 }
 
-// funcion para validar clave
-// Debe estar dentro del componente o recibir anexos y userid como argumentos
+// =====================================================
+// Helpers de dominio (validación/consultas/exportación)
+// =====================================================
+// Valida si el usuario ya tiene un anexo con la misma clave.
 function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number, editingId?: number): boolean {
   if (!clave || !anexos || !userid) return false;
 
@@ -165,7 +178,7 @@ const getAnexos = async () => {
     }
 
     const data = await response.json();
-    console.log("Anexos obtenidos:", data);
+    // console.log("Anexos obtenidos:", data); // Debug: comentar para valorar eliminación definitiva
     return data;
   } catch (error) {
     console.error("Error al obtener anexos:", error);
@@ -247,7 +260,10 @@ const exportAnexosToPDF = (anexos: Anexo[], title = "Reporte de Anexos") => {
   doc.save(`anexos_reporte_${new Date().toISOString().split("T")[0]}.pdf`)
 }
 
-// validacion con zod
+/*
+  Código en pausa (sin uso actual): validación Zod local.
+  Se comenta para revisar posteriormente si se integra en `onSubmit`
+  o se elimina definitivamente.
 const anexosSchema = z.object({
   clave: z.string().min(1, "La clave es obligatoria"),
   categoria: z.string(),
@@ -257,6 +273,7 @@ const anexosSchema = z.object({
 })
 
 type IFormInputz = z.infer<typeof anexosSchema>;
+*/
 
 const exportAnexosToExcel = (anexos: Anexo[], title = "Reporte de Anexos") => {
   const worksheet = XLSX.utils.json_to_sheet(
@@ -1137,9 +1154,94 @@ const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: st
     {campo:"Porcentaje de avance", tipo: "number", obligatorio: true, Descripcion: "Porcentaje de avance en el seguimiento de los acuerdos"},
     {campo:"Comentarios", tipo: "string", obligatorio: false, Descripcion: "Comentarios adicionales sobre el seguimiento de los acuerdos"},
   ],
-  DO03: [],
-  DO04: [],
-  
+  DO03: [
+    {campo: "Auditoria realizada por", tipo: "string", obligatorio: true, Descripcion: "Nombre del ente auditor que realizó la auditoría"},
+    {campo: "Periodo auditado: desde", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del periodo auditado"},
+    {campo: "Periodo auditado: hasta", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del periodo auditado"},
+    {campo:"Tipo de auditoría", tipo: "string", obligatorio: true, Descripcion: "Tipo de auditoría realizada (financiera, de cumplimiento, etc.)"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre la auditoría realizada"},
+    {campo:"Observaciones atendidas", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que han sido atendidas"},
+    {campo:"Observaciones pendientes", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que aún están pendientes de atender"},
+    {campo:"Situación actual", tipo: "string", obligatorio: false, Descripcion: "Situación actual de las observaciones de auditoría (atendidas, pendientes, etc.)"},
+  ],
+  DO04: [
+    {campo:"Cargo", tipo: "string", obligatorio: true, Descripcion: "Cargo del responsable"},
+    {campo:"Con derecho a ", tipo: "string", obligatorio: true, Descripcion: "Derechos asociados al cargo"},
+    {campo:"Fecha de inicio del cargo", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del cargo"},
+    {campo:"Periodicidad con que se reúnen", tipo: "string", obligatorio: true, Descripcion: "Periodicidad con que se reúnen los responsables"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre las representaciones y cargos honoríficos"},
+  ],
+
+  // EO - Organizacion
+  EO02:[
+    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de reglamento o manual"},
+    {campo:"Fecha de Actualización, Autorización ó Publicación", tipo: "string", obligatorio: true, Descripcion: "Fecha de actualización, autorización o publicación del reglamento o manual"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el reglamento o manual"},
+  ],
+
+  // RH - Recursos Humanos
+  RH01:[
+    {campo:"Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de base"},
+    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de base"},
+    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de base"},
+    {campo:"Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de base"},
+    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)"},
+    {campo:"Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia"},
+    {campo:"Fecha de Ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia"},
+    {campo:"Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de base"},
+    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de base"},
+    {campo:"Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de base"},
+    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de base"},
+    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de base"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de base"},
+  ],
+  RH02:[
+    {campo:"Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de apoyo"},
+    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de apoyo"},
+    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de apoyo"},
+    {campo:"Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de apoyo"},
+    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)"},
+    {campo:"Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia"},
+    {campo:"Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de apoyo"},
+    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de apoyo"},
+    {campo:"Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de apoyo"},
+    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de apoyo"},
+    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de apoyo"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de apoyo"},
+  ],
+  RH03:[
+    {campo:"Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal comisionado"},
+    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal comisionado"},
+    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal comisionado"},
+    {campo:"Categoría: Denominación", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal comisionado"},
+    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)"}, 
+    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal comisionado"},
+    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal comisionado"},
+    {campo:"Comisionado a", tipo: "string", obligatorio: true, Descripcion: "Dependencia o entidad a la que el personal comisionado está asignado"},
+    {campo:"Referencia Documental", tipo: "string", obligatorio: true, Descripcion: "Referencia documental que sustenta la comisión del personal"},
+    {campo:"Inicio de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio de la comisión del personal"},
+    {campo:"Fin de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin de la comisión del personal"},
+    {campo:"Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal comisionado"},
+    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal comisionado"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal comisionado"},
+  ]
+  ,
+  RH04:[
+    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de honorarios"},
+    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de honorarios"},
+    {campo:"Fecha de Inicio de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del contrato del personal de honorarios"},
+    {campo:"Fecha de fin de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del contrato del personal de honorarios"},
+    {campo:"Fuente de Recurso", tipo: "string", obligatorio: true, Descripcion: "Fuente de recursos para el pago del personal de honorarios"},
+    {campo:"Actividades a Desarrollar", tipo: "string", obligatorio: true, Descripcion: "Descripción de las actividades a desarrollar por el personal de honorarios"},
+    {campo:"Salario", tipo: "number", obligatorio: true, Descripcion: "Salario del personal de honorarios"},
+    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de honorarios"},
+    {campo:"Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de honorarios"},
+    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de honorarios"},
+    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de honorarios"},
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de honorarios"},
+  ]
+
+,
   RF01: [
     { campo: "partida", tipo: "string", obligatorio: true, Descripcion: "Partida Presupuestal" },
     { campo: "Denominacion", tipo: "string", obligatorio: true, Descripcion: "Denominación de la partida" },
@@ -1194,12 +1296,15 @@ export function validarDatosAnexo(
       // Caso 1: campo faltante
       if (!(campo in fila)) {
         errores.push(`Fila ${i + 1}: Falta el campo "${campo}" (${Descripcion})`);
+        toast.error(`Fila ${i + 1}: Falta el campo "${campo}" (${Descripcion})`);
+
         continue;
       }
 
       // Caso 2: campo obligatorio y vacío
       if (obligatorio && (valor === "" || valor == null)) {
         errores.push(`Fila ${i + 1}: El campo "${campo}" (${Descripcion}) es obligatorio`);
+        toast.error(`Fila ${i + 1}: El campo "${campo}" (${Descripcion}) es obligatorio`);  
         continue;
       }
 
@@ -1235,6 +1340,9 @@ export function validarDatosAnexo(
 }
 
 
+/*
+  Código en pausa (sin uso actual): tabla editable genérica.
+  Actualmente la edición se realiza directamente en la tabla principal del formulario.
 const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
   const handleEdit = (rowIndex: number, field: string, value: string) => {
     const updated = [...data];
@@ -1291,10 +1399,16 @@ const EditableTable: React.FC<EditableTableProps> = ({ data, onChange }) => {
       </tbody>
     </table>
   );
-
 }
+*/
 
 export default function AnexosPage() {
+  // =====================================================
+  // Estado principal del componente
+  // - Sesión/usuario
+  // - Datos de anexos
+  // - Estado de UI (tabs, diálogo, paginación, etc.)
+  // =====================================================
   const [userName, setUserName] = useState<string>("");
   const [user, setUser] = useState<{ username: string; role?: string } | null>({ username: "", role: "" });
   const [anexos, setAnexos] = useState<Anexo[]>([])
@@ -1334,7 +1448,10 @@ export default function AnexosPage() {
       datos: [], // inicializa como array vacío
     }
   });
-
+  // //////////////////////////////////////////////////////////////////////////////////////////
+  // Estado para control de UI
+  // (tabs, selección de categoría, archivo cargado, vista previa, filtrado, paginación, diálogo, etc.)
+  ///////////////////////////////////////////////////////////////////////////////////////////
   const [activeTab, setActiveTab] = useState<string>("anexos")
   const router = useRouter()
   const [selectedCategory, setSelectedCategory] = useState<string>("__all__")
@@ -1371,12 +1488,14 @@ export default function AnexosPage() {
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
 
-  // Primer UseEffect
+  // Reinicia la paginación cuando cambia la cantidad de filas en la tabla de captura.
   useEffect(() => {
     setCurrentPage(1); // Reiniciar a la primera página al cambiar los datos
   }, [datos]);
 
-
+  /*
+    Código en pausa (sin uso actual): guardado por helper dedicado.
+    Se conserva porque la lógica sí se usa en el botón "Guardar Borrador" (inline).
   const guardarBorrador = () => {
     const draft = {
       clave: watch("clave"),
@@ -1390,8 +1509,13 @@ export default function AnexosPage() {
     localStorage.setItem(`draft_anexo_${userid}`, JSON.stringify(draft));
     toast.success("✅ Borrador guardado");
   };
+  */
 
-  // useEffect para manejar el guardado del borrador y la restauración
+  // Carga inicial de la pantalla:
+  // 1) valida token/sesión
+  // 2) hidrata datos de usuario y borrador
+  // 3) consulta unidad responsable
+  // 4) carga anexos del backend
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userString = localStorage.getItem("user");
@@ -1449,7 +1573,7 @@ export default function AnexosPage() {
     const obtenerUnidad = async () => {
       try {
         const unidad = await UnidadesPorUsuario(currentUserId!);
-        console.log("Unidad responsable:", unidad.id_unidad, "Nombre:", unidad.nombre);
+        // console.log("Unidad responsable:", unidad.id_unidad, "Nombre:", unidad.nombre); // Debug: comentar para valorar eliminación definitiva
         setUnidadResponsable(unidad.id_unidad);
         setUnidadToShow(unidad.nombre);
         setCreatorToShow(unidad.responsable.nombre);
@@ -1486,12 +1610,13 @@ export default function AnexosPage() {
 
 
 
-  // Manejador de items
+  /*
+    Código en pausa (sin uso actual): helpers para carga/validación alternativa.
+    Se mantienen comentados para decidir si se reincorporan o se eliminan.
   const handleFMJChange = (jsonDataArray: Array<Record<string, any>>) => {
-    setDatos(jsonDataArray); // Aquí guardas el array de marcos
+    setDatos(jsonDataArray);
   };
 
-  // validar el nombre del archivo excel
   const validarNombreArchivo = (file: File, clave: string) => {
     const nombre = file.name.toLocaleLowerCase();
     const regex = new RegExp(`^${clave.toLocaleLowerCase()}_.*\\.xlsx$`);
@@ -1502,6 +1627,7 @@ export default function AnexosPage() {
     }
     return true;
   };
+  */
 
 
 
@@ -1559,7 +1685,11 @@ export default function AnexosPage() {
         });
     }; */
 
-  // handlesubmit modificado 
+  // Envío principal del formulario (creación/edición de anexo):
+  // - valida datos mínimos
+  // - evita duplicados por usuario+clave
+  // - decide POST o PUT según modo edición
+  // - sincroniza estado local con la respuesta
   const onSubmit: SubmitHandler<IFormInput> = (data) => {
     // Aseguramos que `datos` sea un array válido
     const datosArray = Array.isArray(data.datos) ? data.datos : [data.datos];
@@ -1582,7 +1712,7 @@ export default function AnexosPage() {
       datos: datosArray,
     };
 
-    console.log("✅ Payload final a enviar:", payload);
+    // console.log("✅ Payload final a enviar:", payload); // Debug: comentar para valorar eliminación definitiva
 
     // Si NO estamos editando → validamos duplicados
     if (!editingAnexo && yaTieneAnexoConClave(data.clave, anexos, userid)) {
@@ -1686,7 +1816,8 @@ export default function AnexosPage() {
    };
   */
 
-  // manejar el cambio de archivo
+  /*
+    Código en pausa (sin uso actual): manejo de archivo local y reset alterno.
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0] || null
     setFile(selected)
@@ -1704,8 +1835,9 @@ export default function AnexosPage() {
       unidad_responsable_id: 0,
     })
     setEditingAnexo(null)
-    setShowForm(false) // Ocultar el formulario al resetear
+    setShowForm(false)
   }
+  */
 
   // manejar la edicion de anexos ----------------------------------------------------------------------------------------------------------------------
   const handleEdit = async (anexo: Anexo) => {
@@ -1740,6 +1872,8 @@ export default function AnexosPage() {
 
   }
 
+  /*
+    Código en pausa (sin uso actual): funciones placeholder sin integración UI.
   const checkedOutAnexo = () => {
     toast("Función de check-out aún no implementada", {
       description: "Próximamente podrás hacer check-out de anexos.",
@@ -1756,6 +1890,7 @@ export default function AnexosPage() {
       }
     )
   }
+  */
 
   const handleDownload = (id: number) => {
     toast(
@@ -1780,6 +1915,8 @@ export default function AnexosPage() {
     }
   }
 
+  /*
+    Código en pausa (sin uso actual): limpieza de archivo local.
   const removeFile = () => {
     setPreviewUrl(null)
     setSelectedFile(null)
@@ -1790,6 +1927,7 @@ export default function AnexosPage() {
     }))
     setIsInvalidFileType(false)
   }
+  */
 
   const requierePDF = (clave: string): boolean => {
     return ["PP01", "SGC01", "EO01", "PPA01"].includes(clave.toUpperCase().trim());
@@ -1800,9 +1938,12 @@ export default function AnexosPage() {
     return requierePDF(clave);
   }
 
+  /*
+    Código en pausa (sin uso actual): helper explícito para Excel.
   function claveRequiereExcel(clave?: string): boolean {
-    return !claveRequierePDF(clave); // Todos los demás son Excel
+    return !claveRequierePDF(clave);
   }
+  */
 
   // manejar el cambio de pestaña Tab
   const handleTabChange = (value: string) => {
@@ -1894,11 +2035,11 @@ export default function AnexosPage() {
   };
 
   // Filtrar las claves basadas en la categoría seleccionada
-  const selectedCategoryId = categoria_anexos.find(cat => cat.nombre_categoria === selectedCategory)?.id;
-
-  const filteredKeys = selectedCategoryId
-    ? claves_anexos.filter(key => key.id_categoria === selectedCategoryId)
-    : [];
+  // Código en pausa (sin uso actual): pre-cálculo de claves filtradas.
+  // const selectedCategoryId = categoria_anexos.find(cat => cat.nombre_categoria === selectedCategory)?.id;
+  // const filteredKeys = selectedCategoryId
+  //   ? claves_anexos.filter(key => key.id_categoria === selectedCategoryId)
+  //   : [];
 
   return (
     <>
@@ -2539,18 +2680,42 @@ export default function AnexosPage() {
                                             toast.error("Por favor, proporciona una clave válida.");
                                             return;
                                           }
-
+    
                                           if (yaTieneAnexoConClave(clave, anexos, userid, editingAnexo ? editingAnexo.id : undefined)) {
                                             toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
                                             return;
                                           }
-
-                                          const estructura = EstructuraDatosPorClave[clave];
+    
+                                          const estructura = ESTRUCTURA_DATOS_POR_CLAVE[clave];
                                           if (!estructura) {
                                             toast.error("Estructura no definida para esta clave");
                                             return;
                                           }
-
+    
+                                          // Validar campos requeridos
+                                          const camposRequeridos = estructura
+                                            .filter(campo => campo.obligatorio)
+                                            .map(campo => campo.campo);
+                                          
+                                          const camposFaltantes = camposRequeridos.filter(
+                                            campo => !excelData[0] || !(campo in excelData[0])
+                                          );
+    
+                                          if (camposFaltantes.length > 0) {
+                                            toast.error(
+                                              <div>
+                                                <p>Campos obligatorios faltantes:</p>
+                                                <ul className="list-disc list-inside text-sm">
+                                                  {camposFaltantes.map((campo, i) => (
+                                                    <li key={i}>{campo}</li>
+                                                  ))}
+                                                </ul>
+                                              </div>,
+                                              { duration: 5000 }
+                                            );
+                                            return;
+                                          }
+    
                                           const { valido, errores } = validarEstructuraExcel(excelData, clave);
                                           if (!valido) {
                                             toast.error(
