@@ -14,8 +14,6 @@ function getNombreCategoria(clave: string): string {
 }
 
 
-
-
 /**
  * Resuelve el nombre de rubro/categoría desde:
  * - meta.categoriaId (id num/string)
@@ -36,6 +34,13 @@ function resolveCategoriaNombre(meta: PdfMeta): string {
     return "Categoría desconocida";
 }
 
+// Modal para datos Intermedios (ej. "Generando PDF...")
+export const showIntermedioModal = (message: string) => {
+    // Aquí podrías usar tu sistema de modales, o simplemente alert() para pruebas
+
+    alert(message);
+}
+
 
 export interface PdfMeta {
     // 👇 categoría/rubro (lo correcto)
@@ -54,7 +59,7 @@ export interface PdfMeta {
     fechaElaboracion: string;
     elaboro?: string;
     superviso?: string;
-    entrega?: string;
+    entrego?: string;
 }
 
 function fmtDate(d?: string) {
@@ -169,6 +174,14 @@ export async function generarAnexoPdf(
         });
     }
 
+    const col = {
+        fecha: marginX,
+        elaboro: pageW * 0.32,
+        superviso: pageW * 0.55,
+        entrega: pageW * 0.75,
+        hoja: pageW - marginX
+    };
+
     function drawFooter(pageNumber: number) {
         const y = pageH - footerH;
 
@@ -177,30 +190,30 @@ export async function generarAnexoPdf(
 
         doc.setFontSize(7);
         doc.setFont("helvetica", "bold");
-        doc.text("FECHA DE", marginX, y + 6);
+        doc.text("FECHA DE", col.fecha, y + 6);
         doc.text("ELABORACIÓN", marginX, y + 10);
 
         doc.setFont("helvetica", "normal");
-        doc.text(fmtDate(meta.fechaElaboracion), marginX + 2, y + 16);
+        doc.text(fmtDate(meta.fechaElaboracion), col.fecha + 2, y + 16);
 
         // elaboró / supervisó / entrega
         doc.setFont("helvetica", "bold");
-        doc.text("ELABORÓ", pageW * 0.35, y + 6, { align: "center" });
-        doc.text("SUPERVISÓ", pageW * 0.62, y + 6, { align: "center" });
-        doc.text("ENTREGA", pageW * 0.86, y + 6, { align: "center" });
+        doc.text("ELABORÓ", col.elaboro, y + 6, { align: "center" });
+        doc.text("SUPERVISÓ", col.superviso, y + 6, { align: "center" });
+        doc.text("ENTREGA", col.entrega, y + 6, { align: "center" });
 
         doc.setFont("helvetica", "normal");
-        doc.text(meta.elaboro ?? "", pageW * 0.35, y + 16, { align: "center" });
-        doc.text(meta.superviso ?? "", pageW * 0.62, y + 16, { align: "center" });
-        doc.text(meta.entrega ?? "", pageW * 0.86, y + 16, { align: "center" });
+        doc.text(meta.elaboro ?? "", col.elaboro , y + 16, { align: "center" });
+        doc.text(meta.superviso ?? "", col.superviso , y + 16, { align: "center" });
+        doc.text(meta.entrego ?? "", col.entrega , y + 16, { align: "center" });
 
         // hoja X de Y
         doc.setFont("helvetica", "bold");
-        doc.text("HOJA", pageW - marginX, y + 6, { align: "right" });
+        doc.text("HOJA", col.hoja, y + 6, { align: "right" });
 
         doc.setFont("helvetica", "normal");
-        doc.text(`${pageNumber} de ${TOTAL_PAGES_PLACEHOLDER}`, pageW - marginX, y + 16, {
-            align: "right",
+        doc.text(`${pageNumber} de ${TOTAL_PAGES_PLACEHOLDER}`, col.hoja, y + 16, {
+            align: "center",
         });
     }
 

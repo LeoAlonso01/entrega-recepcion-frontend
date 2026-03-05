@@ -178,7 +178,7 @@ const getAnexos = async () => {
     }
 
     const data = await response.json();
-    // console.log("Anexos obtenidos:", data); // Debug: comentar para valorar eliminación definitiva
+    console.log("Anexos obtenidos:", data); // Debug: comentar para valorar eliminación definitiva
     return data;
   } catch (error) {
     console.error("Error al obtener anexos:", error);

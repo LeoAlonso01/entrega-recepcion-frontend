@@ -10,6 +10,11 @@ import { FileText, Download, Trash2 } from 'lucide-react';
 import VisualizadorDatos from '@/components/visualizadorDatos'; // Lo crearemos
 import { exportAnexoToExcel, exportAnexoToPDF } from '@/lib/exports';
 import { generarAnexoPdf, type PdfMeta } from '@/lib/exports/pdf';
+import { showIntermedioModal } from '@/lib/exports/pdf';
+import { set } from 'date-fns';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -33,11 +38,18 @@ const AnexoDetail: React.FC = () => {
   const params = useParams();
   const { id } = params as { id: string };
   const router = useRouter();
-
   const [anexo, setAnexo] = useState<Anexo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; username: string; role: string } | null>(null);
+  const [modalPdf, setModalPdf] = useState(false);
+
+  const [pdfFooter, setPdfFooter] = useState({
+    fechaElaboracion: new Date().toISOString(),
+    elaboro: "Desconocido",
+    superviso: "Desconocido",
+    entrego: "Desconocido",
+  });
 
   // Obtener usuario desde localStorage
   useEffect(() => {
@@ -121,19 +133,25 @@ const AnexoDetail: React.FC = () => {
     );
   }
 
+  // Asegurarnos de que filas sea un array para el PDF
+  const filas = Array.isArray(anexo?.datos) ? anexo.datos : [];
+
+
+  // Función para manejar la descarga del PDF
   const onDownloadPdf = async () => {
-    const filas = Array.isArray(anexo?.datos) ? anexo.datos : [];
+    setModalPdf(true);
 
-    const meta: PdfMeta = {
-      fechaElaboracion: anexo.fecha_creacion,
-      categoriaId: anexo.categoria,
-      dependenciaClave: anexo.unidad_responsable_id.toString(),
-    };
-    await generarAnexoPdf(anexo.clave, meta, filas);
-    console.log("Categoria desde BD:", anexo.categoria);
-
-    toast.success("PDF generado correctamente");
   };
+
+  // Preparar los metadatos para el PDF
+  const meta: PdfMeta = {
+    fechaElaboracion: pdfFooter.fechaElaboracion,
+    elaboro: pdfFooter.elaboro,
+    superviso: pdfFooter.superviso,
+    entrego: pdfFooter.entrego,
+  };
+
+
 
 
   return (
@@ -151,7 +169,9 @@ const AnexoDetail: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={onDownloadPdf}
+              onClick={
+                onDownloadPdf
+              }
               className="gap-2"
             >
               <FileText className="h-4 w-4" />
@@ -166,8 +186,76 @@ const AnexoDetail: React.FC = () => {
               <Download className="h-4 w-4" />
               Exportar Excel
             </Button>
+
+
           </div>
         </div>
+        <Dialog open={modalPdf} onOpenChange={setModalPdf}>
+          <DialogContent>
+
+            <DialogTitle>Datos Importantes</DialogTitle>
+
+            <div className="my-4 p-4 bg-yellow-100 text-yellow-800 rounded grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Elaboró</Label>
+                <Input
+                  placeholder="Elaboró"
+                  value={pdfFooter.elaboro}
+                  onChange={(e) =>
+                    setPdfFooter({ ...pdfFooter, elaboro: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label>Supervisó</Label>
+                <Input
+                  placeholder="Supervisó"
+                  value={pdfFooter.superviso}
+                  onChange={(e) =>
+                    setPdfFooter({ ...pdfFooter, superviso: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label>Entregó</Label>
+                <Input
+                  placeholder="Entregó"
+                  value={pdfFooter.entrego}
+                  onChange={(e) =>
+                    setPdfFooter({ ...pdfFooter, entrego: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setModalPdf(false)}>
+                Cancelar
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  const metaFinal: PdfMeta = {
+                    fechaElaboracion: pdfFooter.fechaElaboracion,
+                    elaboro: pdfFooter.elaboro,
+                    superviso: pdfFooter.superviso,
+                    entrego: pdfFooter.entrego,
+                  };
+
+                  await generarAnexoPdf(anexo.clave, metaFinal, filas);
+
+                  showIntermedioModal("Generando PDF...");
+                  setModalPdf(false);
+                }}
+              >
+                Generar PDF
+              </Button>
+            </div>
+
+          </DialogContent>
+        </Dialog>
 
         {/* Información general */}
         <Card>
