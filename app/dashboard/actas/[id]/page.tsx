@@ -22,6 +22,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { generarActa } from "@/lib/generarActa";
+import { generarActaDocx } from "@/lib/generarActaDocx";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -188,11 +189,12 @@ export default function ViewActaPage() {
         }
     };
 
-    const handleCreateActa = () => {
+    const handleCreateActa = async () => {
         
         // Aquí podrías implementar la lógica para generar el PDF del acta
         // o redirigir a otra página que maneje esa funcionalidad.
-        // generarActa(acta);
+        generarActa(acta);
+        // await generarActaDocx(acta);
         toast.success("Generando PDF del acta...");
 
         const unidad = unidades.find(u => u.id_unidad === acta?.unidad_responsable);
@@ -357,6 +359,10 @@ export default function ViewActaPage() {
                         <Download className="h-4 w-4 ml-2" />
                         Generar PDF
                     </Button>
+                    {/* <Button onClick={() => generarActaDocx} >
+                            <Download className="h-4 w-4 ml-2" />
+                            Generar Doc
+                    </Button> */}
                 </div>
 
                 {/* Sección: Información General */}

@@ -1,22 +1,22 @@
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } from "docx";
 import { saveAs } from "file-saver";
 
-export async function generarActaDocx(acta:any){
+export async function generarActaDocx(acta: any) {
 
-    const rows = acta.anexos.map((anexo:any) => {
+    const rows = (acta.anexos || []).map((anexo: any) => {
 
         const fojas = anexo.datos ? anexo.datos.length : 0
 
         return new TableRow({
-            children:[
+            children: [
                 new TableCell({
-                    children:[new Paragraph(anexo.clave)]
+                    children: [new Paragraph(anexo.clave)]
                 }),
                 new TableCell({
-                    children:[new Paragraph(String(fojas))]
+                    children: [new Paragraph(String(fojas))]
                 }),
                 new TableCell({
-                    children:[new Paragraph(anexo.estado)]
+                    children: [new Paragraph(anexo.estado)]
                 })
             ]
         })
@@ -24,18 +24,20 @@ export async function generarActaDocx(acta:any){
     })
 
     const doc = new Document({
-        sections:[
+        sections: [
             {
-                children:[
+                children: [
 
                     new Paragraph({
-                        text:"UNIVERSIDAD MICHOACANA DE SAN NICOLÁS DE HIDALGO",
-                        heading:"Heading1"
+                        text: "UNIVERSIDAD MICHOACANA DE SAN NICOLÁS DE HIDALGO",
+                        heading: "Heading1",
+                        alignment: "center"
                     }),
 
                     new Paragraph({
-                        text:"ACTA ADMINISTRATIVA DE ENTREGA RECEPCIÓN",
-                        heading:"Heading2"
+                        text: "ACTA ADMINISTRATIVA DE ENTREGA RECEPCIÓN",
+                        heading: "Heading2",
+                        alignment: "center"
                     }),
 
                     new Paragraph(""),
@@ -52,12 +54,12 @@ el proceso de entrega recepción.`
                     new Paragraph(""),
 
                     new Table({
-                        rows:[
+                        rows: [
                             new TableRow({
-                                children:[
-                                    new TableCell({children:[new Paragraph("CLAVE")]}),
-                                    new TableCell({children:[new Paragraph("NO FOJAS")]}),
-                                    new TableCell({children:[new Paragraph("ESTADO")]})
+                                children: [
+                                    new TableCell({ children: [new Paragraph("CLAVE")] }),
+                                    new TableCell({ children: [new Paragraph("NO FOJAS")] }),
+                                    new TableCell({ children: [new Paragraph("ESTADO")] })
                                 ]
                             }),
                             ...rows
@@ -67,9 +69,9 @@ el proceso de entrega recepción.`
                     new Paragraph(""),
                     new Paragraph(""),
 
-                    new Paragraph("ENTREGA: " + acta.saliente),
-                    new Paragraph("RECIBE: " + acta.entrante),
-                    new Paragraph("AUDITOR: " + acta.comisionado)
+                    new Paragraph("ENTREGA: _________________________ " + acta.saliente),
+                    new Paragraph("RECIBE:  _________________________" + acta.entrante),
+                    new Paragraph("AUDITOR: _________________________" + acta.comisionado)
 
                 ]
             }
