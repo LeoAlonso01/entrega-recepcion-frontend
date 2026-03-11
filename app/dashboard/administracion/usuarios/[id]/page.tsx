@@ -104,6 +104,7 @@ export default function UsuarioDetallePage() {
     const [motivoCargo, setMotivoCargo] = useState("Asignación desde panel de administración");
     const [assigningCargo, setAssigningCargo] = useState(false);
 
+
     // cargo mas actual
     const cargoActual = (usuario?.cargos_actuales ?? [])
         .filter((c) => !c.fecha_fin && !c.is_deleted)
@@ -329,13 +330,37 @@ export default function UsuarioDetallePage() {
 
         setAssigningCargo(true);
         try {
+
             const token = localStorage.getItem("token");
+
             if (!token) {
                 toast.error("Token no encontrado. Inicia sesión de nuevo.");
                 router.push("/");
                 return;
             }
 
+            // 1 cerrar cargo actual si existe
+            if (cargoActual) {
+
+                const cerrar = await fetch(`${API_URL}/cargos/desasignar`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        hist_id: cargoActual.id
+                    }),
+                });
+
+                if (!cerrar.ok) {
+                    toast.error("No se pudo cerrar el cargo actual");
+                    return;
+                }
+
+            }
+
+            // 2 asignar nuevo cargo
             const res = await fetch(`${API_URL}/cargos/asignar`, {
                 method: "POST",
                 headers: {
@@ -362,6 +387,13 @@ export default function UsuarioDetallePage() {
                 return;
             }
 
+            if (cargoActual?.cargo_id === cargoIdNum) {
+
+                toast.error("El usuario ya tiene asignado ese cargo");
+                return;
+
+            }
+
             toast.success("Cargo asignado correctamente");
             setOpenCargoModal(false);
             setSelectedCargoId("");
@@ -374,6 +406,72 @@ export default function UsuarioDetallePage() {
             setAssigningCargo(false);
         }
     };
+
+
+
+    // Reasignar cargo 
+    const cambiarCargo = async () => {
+
+        if (!selectedCargoId) {
+            toast.error("Selecciona un cargo");
+            return;
+        }
+
+        if (!usuario?.id) {
+            toast.error("Usuario inválido");
+            return;
+        }
+
+        try {
+
+            // cerrar cargo actual
+            if (cargoActual) {
+
+                const cerrar = await fetch(`${API_URL}/cargos/desasignar`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                    body: JSON.stringify({
+                        hist_id: cargoActual.id
+                    })
+                });
+
+                if (!cerrar.ok) {
+                    throw new Error("No se pudo cerrar el cargo actual");
+                }
+            }
+
+            // asignar nuevo
+            const res = await fetch(`${API_URL}/cargos/asignar`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({
+                    cargo_id: Number(selectedCargoId),
+                    user_id: usuario.id,
+                    unidad_responsable_id: usuario?.unidad_responsable?.id_unidad,
+                    motivo: motivoCargo
+                })
+            });
+
+            if (!res.ok) throw new Error("No se pudo asignar el nuevo cargo");
+
+            toast.success("Cargo actualizado");
+            setOpenCargoModal(false);
+
+            await fetchUsuario();
+
+        } catch (error) {
+
+            toast.error((error as Error).message);
+
+        }
+    };
+
 
 
 
@@ -403,7 +501,7 @@ export default function UsuarioDetallePage() {
             {/* Breadcrumbs */}
             <NavbarWithBreadcrumb
                 user={user?.username || null}
-                role={user ?.role || ""}
+                role={user?.role || ""}
             />
             <div className="max-w-4xl mx-auto p-4">
                 <div className="flex justify-between items-center mb-6">
