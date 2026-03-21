@@ -1,4 +1,4 @@
-import { EstructuraDatosPorClave } from "./estructuraPorClave";
+import { ESTRUCTURA_DATOS_POR_CLAVE } from "./estructuraPorClave";
 import { inferirTipo } from "./inferirTipo";
 import { ReglasValidacion } from "./estructurasValidacion";
 import { normalizar } from "./inferirTipo";
@@ -156,7 +156,7 @@ export function detectarFusiones(
   }
 
   // Usar una lista de estructuras conocidas para esta clave
-  const estructuraEsperada: (string | { campo: string })[] = EstructuraDatosPorClave[clave] || [];
+  const estructuraEsperada: (string | { campo: string })[] = ESTRUCTURA_DATOS_POR_CLAVE[clave] || [];
   const nombresEsperados = estructuraEsperada.map(c => typeof c === "string" ? c : c.campo);
 
   // Mapear nombres esperados a índices

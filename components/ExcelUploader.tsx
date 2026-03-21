@@ -25,16 +25,37 @@ const ExcelUploader = ({ onUploadSuccess, onUploadError, clave }: ExcelUploaderP
       return;
     }
 
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(worksheet);
+        const json = XLSX.utils.sheet_to_json(worksheet,{
+          defval:"", 
+          raw: false,
+          dateNF: "yyyy-mm-dd"
+        });
 
         if (Array.isArray(json) && json.length > 0) {
-          onUploadSuccess(json);
+          const normalizar = (str: string) => str
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
+
+        const jsonNomalizado = json.map((fila:any)=>{
+          const nuevaFila: Record<string, any> = {};
+
+          Object.entries(fila).forEach(([key, value])=>{
+            nuevaFila[normalizar(key)] = value;
+          });
+          return nuevaFila;
+        });
+
+
+          onUploadSuccess(jsonNomalizado);
           toast.success(`✅ Excel cargado: ${json.length} filas`);
         } else {
           const errorMsg = "El archivo está vacío o no tiene datos válidos.";
@@ -106,9 +127,8 @@ const ExcelUploader = ({ onUploadSuccess, onUploadError, clave }: ExcelUploaderP
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={() => inputRef.current?.click()}
-      className={`flex items-center space-x-2 bg-green-600 text-white py-2 px-4 rounded-md cursor-pointer w-fit hover:bg-green-700 transition ${
-        isDragging ? "bg-green-800" : ""
-      }`}
+      className={`flex items-center space-x-2 bg-green-600 text-white py-2 px-4 rounded-md cursor-pointer w-fit hover:bg-green-700 transition ${isDragging ? "bg-green-800" : ""
+        }`}
     >
       <FileSpreadsheet className="w-5 h-5" />
       <span>Subir Excel</span>

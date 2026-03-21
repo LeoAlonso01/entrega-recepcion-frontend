@@ -23,7 +23,7 @@ import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
 // import { z } from "zod";
-import { EstructuraDatosPorClave } from "@/lib/estructuraPorClave"
+import { ESTRUCTURA_DATOS_POR_CLAVE } from "../../../lib/estructuraPorClave";
 import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
 import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
 // import { SubcategoriaEnum } from "../../../components/json/categorias";
@@ -154,6 +154,17 @@ export interface Anexo {
   estado: string
   unidad_responsable_id: number
 }
+
+type CampoEstructura = {
+  campo: string;
+  tipo: string | number | boolean | null;
+  obligatorio?: boolean;
+  Descripcion?: string;
+};
+
+type Estructura = Record<string, CampoEstructura[]>; // clave -> array de campos
+
+
 
 // =====================================================
 // Helpers de dominio (validación/consultas/exportación)
@@ -1116,132 +1127,132 @@ export const CategoriaLabels: Record<string, string> = {
 };
 
 // campos de la tabla editable
-const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: string; obligatorio?: boolean; Descripcion?: string }>> = {
+/* const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: string; obligatorio?: boolean; Descripcion?: string }>> = {
   // Marco Jurídico (MJ01)
   MJ01: [
-    { campo : "Ordenamiento", tipo: "string", obligatorio: true, Descripcion: "Ordenamiento Jurídico Aplicable" },
-    {campo:"Titulo", tipo: "string", obligatorio: true, Descripcion: "Título del Asunto Relevante"},
-    {campo:"Fecha de emision", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante"},
+    { campo: "Ordenamiento", tipo: "string", obligatorio: true, Descripcion: "Ordenamiento Jurídico Aplicable" },
+    { campo: "Titulo", tipo: "string", obligatorio: true, Descripcion: "Título del Asunto Relevante" },
+    { campo: "Fecha de emision", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante" },
   ]
   ,
   // Planeacion (PP01)
   PP01: [
     { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Nombre del programa" },
-    {campo:"Nombre ", tipo: "string", obligatorio: true, Descripcion: "Descripción del programa"},
-    {campo:"Fecha", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del programa"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el programa"},
+    { campo: "Nombre ", tipo: "string", obligatorio: true, Descripcion: "Descripción del programa" },
+    { campo: "Fecha", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del programa" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el programa" },
   ],
 
   //Derechos y Obligaciones (DO01-DO04)
   DO01: [
-    {campo:"Nombre y puesto del servidor que otirga el poder", tipo: "string", obligatorio: true, Descripcion: "Nombre y puesto del servidor que otorga el poder"},
-    {campo:"Tipo de poder otorgado", tipo: "string", obligatorio: true, Descripcion: "Tipo de poder otorgado"},
-    {campo:"Especificar", tipo: "string", obligatorio: true, Descripcion: "Fecha de otorgamiento del poder"},
-    {campo:"Fecha de Expediciónn", tipo: "string", obligatorio: true, Descripcion: "Fecha de expedición del poder"},
-    {campo:"Notario Público que autoriza el poder", tipo: "string", obligatorio: true, Descripcion: "Notario Público que autoriza el poder"},
-    {campo:"Inscrito en el Registro Público de la Propiedad y del Comercio", tipo: "string", obligatorio: true, Descripcion: "Número de inscripción en el Registro Público de la Propiedad y del Comercio"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el poder otorgado"},
+    { campo: "Nombre y puesto del servidor que otirga el poder", tipo: "string", obligatorio: true, Descripcion: "Nombre y puesto del servidor que otorga el poder" },
+    { campo: "Tipo de poder otorgado", tipo: "string", obligatorio: true, Descripcion: "Tipo de poder otorgado" },
+    { campo: "Especificar", tipo: "string", obligatorio: true, Descripcion: "Fecha de otorgamiento del poder" },
+    { campo: "Fecha de Expediciónn", tipo: "string", obligatorio: true, Descripcion: "Fecha de expedición del poder" },
+    { campo: "Notario Público que autoriza el poder", tipo: "string", obligatorio: true, Descripcion: "Notario Público que autoriza el poder" },
+    { campo: "Inscrito en el Registro Público de la Propiedad y del Comercio", tipo: "string", obligatorio: true, Descripcion: "Número de inscripción en el Registro Público de la Propiedad y del Comercio" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el poder otorgado" },
   ],
 
   DO02: [
-    {campo:"Numero de sesion", tipo: "string", obligatorio: true, Descripcion: "Número de sesión"},
-    {campo:"Fecha de sesion", tipo: "string", obligatorio: true, Descripcion: "Fecha de la sesión"},
-    {campo:"Ordinaria o Extraordinaria", tipo: "string", obligatorio: true, Descripcion: "Tipo de sesión (Ordinaria o Extraordinaria)"},
-    {campo:"Acuerdos tomados", tipo: "string", obligatorio: true, Descripcion: "Descripción de los acuerdos tomados en la sesión"},
-    {campo:"Descripcion de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Descripción detallada de los acuerdos tomados en la sesión"},
-    {campo:"Responsable de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Nombre del responsable de dar seguimiento a los acuerdos"},
-    {campo:"Áreas involucradas", tipo: "string", obligatorio: true, Descripcion: "Áreas involucradas en el seguimiento de los acuerdos"},
-    {campo:"Porcentaje de avance", tipo: "number", obligatorio: true, Descripcion: "Porcentaje de avance en el seguimiento de los acuerdos"},
-    {campo:"Comentarios", tipo: "string", obligatorio: false, Descripcion: "Comentarios adicionales sobre el seguimiento de los acuerdos"},
+    { campo: "Numero de sesion", tipo: "string", obligatorio: true, Descripcion: "Número de sesión" },
+    { campo: "Fecha de sesion", tipo: "string", obligatorio: true, Descripcion: "Fecha de la sesión" },
+    { campo: "Ordinaria o Extraordinaria", tipo: "string", obligatorio: true, Descripcion: "Tipo de sesión (Ordinaria o Extraordinaria)" },
+    { campo: "Acuerdos tomados", tipo: "string", obligatorio: true, Descripcion: "Descripción de los acuerdos tomados en la sesión" },
+    { campo: "Descripcion de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Descripción detallada de los acuerdos tomados en la sesión" },
+    { campo: "Responsable de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Nombre del responsable de dar seguimiento a los acuerdos" },
+    { campo: "Áreas involucradas", tipo: "string", obligatorio: true, Descripcion: "Áreas involucradas en el seguimiento de los acuerdos" },
+    { campo: "Porcentaje de avance", tipo: "number", obligatorio: true, Descripcion: "Porcentaje de avance en el seguimiento de los acuerdos" },
+    { campo: "Comentarios", tipo: "string", obligatorio: false, Descripcion: "Comentarios adicionales sobre el seguimiento de los acuerdos" },
   ],
   DO03: [
-    {campo: "Auditoria realizada por", tipo: "string", obligatorio: true, Descripcion: "Nombre del ente auditor que realizó la auditoría"},
-    {campo: "Periodo auditado: desde", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del periodo auditado"},
-    {campo: "Periodo auditado: hasta", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del periodo auditado"},
-    {campo:"Tipo de auditoría", tipo: "string", obligatorio: true, Descripcion: "Tipo de auditoría realizada (financiera, de cumplimiento, etc.)"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre la auditoría realizada"},
-    {campo:"Observaciones atendidas", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que han sido atendidas"},
-    {campo:"Observaciones pendientes", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que aún están pendientes de atender"},
-    {campo:"Situación actual", tipo: "string", obligatorio: false, Descripcion: "Situación actual de las observaciones de auditoría (atendidas, pendientes, etc.)"},
+    { campo: "Auditoria realizada por", tipo: "string", obligatorio: true, Descripcion: "Nombre del ente auditor que realizó la auditoría" },
+    { campo: "Periodo auditado: desde", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del periodo auditado" },
+    { campo: "Periodo auditado: hasta", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del periodo auditado" },
+    { campo: "Tipo de auditoría", tipo: "string", obligatorio: true, Descripcion: "Tipo de auditoría realizada (financiera, de cumplimiento, etc.)" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre la auditoría realizada" },
+    { campo: "Observaciones atendidas", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que han sido atendidas" },
+    { campo: "Observaciones pendientes", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que aún están pendientes de atender" },
+    { campo: "Situación actual", tipo: "string", obligatorio: false, Descripcion: "Situación actual de las observaciones de auditoría (atendidas, pendientes, etc.)" },
   ],
   DO04: [
-    {campo:"Cargo", tipo: "string", obligatorio: true, Descripcion: "Cargo del responsable"},
-    {campo:"Con derecho a ", tipo: "string", obligatorio: true, Descripcion: "Derechos asociados al cargo"},
-    {campo:"Fecha de inicio del cargo", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del cargo"},
-    {campo:"Periodicidad con que se reúnen", tipo: "string", obligatorio: true, Descripcion: "Periodicidad con que se reúnen los responsables"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre las representaciones y cargos honoríficos"},
+    { campo: "Cargo", tipo: "string", obligatorio: true, Descripcion: "Cargo del responsable" },
+    { campo: "Con derecho a ", tipo: "string", obligatorio: true, Descripcion: "Derechos asociados al cargo" },
+    { campo: "Fecha de inicio del cargo", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del cargo" },
+    { campo: "Periodicidad con que se reúnen", tipo: "string", obligatorio: true, Descripcion: "Periodicidad con que se reúnen los responsables" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre las representaciones y cargos honoríficos" },
   ],
 
   // EO - Organizacion
-  EO02:[
-    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de reglamento o manual"},
-    {campo:"Fecha de Actualización, Autorización ó Publicación", tipo: "string", obligatorio: true, Descripcion: "Fecha de actualización, autorización o publicación del reglamento o manual"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el reglamento o manual"},
+  EO02: [
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de reglamento o manual" },
+    { campo: "Fecha de Actualización, Autorización ó Publicación", tipo: "string", obligatorio: true, Descripcion: "Fecha de actualización, autorización o publicación del reglamento o manual" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el reglamento o manual" },
   ],
 
   // RH - Recursos Humanos
-  RH01:[
-    {campo:"Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de base"},
-    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de base"},
-    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de base"},
-    {campo:"Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de base"},
-    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)"},
-    {campo:"Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia"},
-    {campo:"Fecha de Ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia"},
-    {campo:"Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de base"},
-    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de base"},
-    {campo:"Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de base"},
-    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de base"},
-    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de base"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de base"},
+  RH01: [
+    { campo: "Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de base" },
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de base" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de base" },
+    { campo: "Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de base" },
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
+    { campo: "Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Fecha de Ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de base" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de base" },
+    { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de base" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de base" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de base" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de base" },
   ],
-  RH02:[
-    {campo:"Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de apoyo"},
-    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de apoyo"},
-    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de apoyo"},
-    {campo:"Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de apoyo"},
-    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)"},
-    {campo:"Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia"},
-    {campo:"Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de apoyo"},
-    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de apoyo"},
-    {campo:"Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de apoyo"},
-    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de apoyo"},
-    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de apoyo"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de apoyo"},
+  RH02: [
+    { campo: "Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de apoyo" },
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de apoyo" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de apoyo" },
+    { campo: "Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de apoyo" },
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
+    { campo: "Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de apoyo" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de apoyo" },
+    { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de apoyo" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de apoyo" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de apoyo" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de apoyo" },
   ],
-  RH03:[
-    {campo:"Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal comisionado"},
-    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal comisionado"},
-    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal comisionado"},
-    {campo:"Categoría: Denominación", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal comisionado"},
-    {campo:"Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)"}, 
-    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal comisionado"},
-    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal comisionado"},
-    {campo:"Comisionado a", tipo: "string", obligatorio: true, Descripcion: "Dependencia o entidad a la que el personal comisionado está asignado"},
-    {campo:"Referencia Documental", tipo: "string", obligatorio: true, Descripcion: "Referencia documental que sustenta la comisión del personal"},
-    {campo:"Inicio de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio de la comisión del personal"},
-    {campo:"Fin de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin de la comisión del personal"},
-    {campo:"Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal comisionado"},
-    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal comisionado"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal comisionado"},
+  RH03: [
+    { campo: "Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal comisionado" },
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal comisionado" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal comisionado" },
+    { campo: "Categoría: Denominación", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal comisionado" },
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal comisionado" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal comisionado" },
+    { campo: "Comisionado a", tipo: "string", obligatorio: true, Descripcion: "Dependencia o entidad a la que el personal comisionado está asignado" },
+    { campo: "Referencia Documental", tipo: "string", obligatorio: true, Descripcion: "Referencia documental que sustenta la comisión del personal" },
+    { campo: "Inicio de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio de la comisión del personal" },
+    { campo: "Fin de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin de la comisión del personal" },
+    { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal comisionado" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal comisionado" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal comisionado" },
   ]
   ,
-  RH04:[
-    {campo:"Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de honorarios"},
-    {campo:"RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de honorarios"},
-    {campo:"Fecha de Inicio de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del contrato del personal de honorarios"},
-    {campo:"Fecha de fin de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del contrato del personal de honorarios"},
-    {campo:"Fuente de Recurso", tipo: "string", obligatorio: true, Descripcion: "Fuente de recursos para el pago del personal de honorarios"},
-    {campo:"Actividades a Desarrollar", tipo: "string", obligatorio: true, Descripcion: "Descripción de las actividades a desarrollar por el personal de honorarios"},
-    {campo:"Salario", tipo: "number", obligatorio: true, Descripcion: "Salario del personal de honorarios"},
-    {campo:"Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de honorarios"},
-    {campo:"Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de honorarios"},
-    {campo:"Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de honorarios"},
-    {campo:"Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de honorarios"},
-    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de honorarios"},
+  RH04: [
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de honorarios" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de honorarios" },
+    { campo: "Fecha de Inicio de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del contrato del personal de honorarios" },
+    { campo: "Fecha de fin de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del contrato del personal de honorarios" },
+    { campo: "Fuente de Recurso", tipo: "string", obligatorio: true, Descripcion: "Fuente de recursos para el pago del personal de honorarios" },
+    { campo: "Actividades a Desarrollar", tipo: "string", obligatorio: true, Descripcion: "Descripción de las actividades a desarrollar por el personal de honorarios" },
+    { campo: "Salario", tipo: "number", obligatorio: true, Descripcion: "Salario del personal de honorarios" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de honorarios" },
+    { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de honorarios" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de honorarios" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de honorarios" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de honorarios" },
   ]
 
-,
+  ,
   RF01: [
     { campo: "partida", tipo: "string", obligatorio: true, Descripcion: "Partida Presupuestal" },
     { campo: "Denominacion", tipo: "string", obligatorio: true, Descripcion: "Denominación de la partida" },
@@ -1250,7 +1261,7 @@ const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: st
     { campo: "Presupuesto_Ejercido", tipo: "number", obligatorio: false, Descripcion: "Monto Ejercido" },
     { campo: "Presupuesto_Por_Ejercer", tipo: "number", obligatorio: false, Descripcion: "Monto por Ejercer" },
   ],
-}
+} */
 
 /**
  * 
@@ -1260,20 +1271,21 @@ const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ campo: string; tipo: st
  * @returns - { valido: boolean, errores: string[] } 
  */
 
-export function validarDatosAnexo(
+/* export const validarDatosAnexo = (
   clave: string,
   datos: Record<string, any>[],
-  estructura: Record<string, Array<{
+  ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     campo: string;
-    tipo: 'string' | 'number';
-    obligatorio: boolean;
-    Descripcion: string;
+    tipo: string;
+    obligatorio?: boolean;
+    Descripcion?: string;
   }>>
-): { valido: boolean; errores: string[] } {
+): { valido: boolean; errores: string[] } => {
+
   const errores: string[] = [];
 
   // Verificar que exista la estructura para esa clave
-  const camposEsperados = estructura[clave];
+  const camposEsperados = ESTRUCTURA_DATOS_POR_CLAVE[clave];
   if (!camposEsperados || !Array.isArray(camposEsperados)) {
     return {
       valido: false,
@@ -1304,7 +1316,7 @@ export function validarDatosAnexo(
       // Caso 2: campo obligatorio y vacío
       if (obligatorio && (valor === "" || valor == null)) {
         errores.push(`Fila ${i + 1}: El campo "${campo}" (${Descripcion}) es obligatorio`);
-        toast.error(`Fila ${i + 1}: El campo "${campo}" (${Descripcion}) es obligatorio`);  
+        toast.error(`Fila ${i + 1}: El campo "${campo}" (${Descripcion}) es obligatorio`);
         continue;
       }
 
@@ -1337,8 +1349,156 @@ export function validarDatosAnexo(
     valido: errores.length === 0,
     errores
   };
-}
+} */
 
+
+const normalizar = (str: string) =>
+  str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+export const validarDatosAnexo = (
+  clave: string,
+  date: Date,
+  datos: Array<Record<string, any>>,
+  estructura: Estructura,
+): { valid: boolean; errores: string[] } => {
+
+  const errores: string[] = [];
+  const estructuraEsperada = estructura[clave];
+
+  if (!estructuraEsperada) {
+    errores.push(`No se encontró una estructura definida para la clave "${clave}".`);
+    return { valid: false, errores };
+  }
+
+  datos.forEach((fila, index) => {
+
+    // 🔥 Mapa de columnas normalizadas → nombre real
+    const mapaColumnas: Record<string, string> = {};
+    Object.keys(fila).forEach(key => {
+      mapaColumnas[normalizar(key)] = key;
+    });
+
+    estructuraEsperada.forEach((campo) => {
+
+      const campoNormalizado = normalizar(campo.campo);
+      const keyReal = mapaColumnas[campoNormalizado];
+
+
+      // ❌ Campo no existe
+      if (!keyReal) {
+        if (campo.obligatorio) {
+          errores.push(`Fila ${index + 1}: Falta el campo "${campo.campo}"`);
+        }
+        return;
+      }
+
+      const valor = fila[keyReal];
+
+      // ❌ Campo obligatorio vacío
+      if (campo.obligatorio && (valor === undefined || valor === null || valor === "")) {
+        errores.push(`Fila ${index + 1}: El campo "${campo.campo}" es obligatorio.`);
+        return;
+      }
+
+
+
+
+      const convertirFecha = (valor: any): Date | null => {
+        if (valor instanceof Date) return valor;
+
+        if (typeof valor === "number") {
+          return new Date((valor - 25569) * 86400 * 1000);
+        }
+
+        if (typeof valor === "string") {
+          const parsed = Date.parse(valor);
+          if (!isNaN(parsed)) return new Date(parsed);
+        }
+
+        return null;
+      };
+
+      fila[keyReal] = convertirFecha(valor) ?? valor;
+
+
+      if (campo.tipo === "date") {
+        let fechaValida = false;
+
+        // Caso 1: ya es Date
+        if (valor instanceof Date && !isNaN(valor.getTime())) {
+          fechaValida = true;
+        }
+
+        // Caso 2: número (Excel serial)
+        else if (typeof valor === "number") {
+          const fecha = new Date((valor - 25569) * 86400 * 1000);
+          if (!isNaN(fecha.getTime())) {
+            fechaValida = true;
+          }
+        }
+
+        // Caso 3: string (dd/mm/yyyy o similar)
+        else if (typeof valor === "string") {
+          const parsed = Date.parse(valor);
+          if (!isNaN(parsed)) {
+            fechaValida = true;
+          }
+        }
+
+        if (!fechaValida) {
+          errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser una fecha válida.`);
+        }
+      }
+
+      // ✅ Si está vacío y NO es obligatorio → ok
+      if (valor === undefined || valor === null || valor === "") return;
+
+      // 🔍 Validación de tipos
+      if (campo.tipo === "string") {
+        if (typeof valor !== "string") {
+          errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser texto.`);
+        }
+      }
+
+      if (campo.tipo === "number") {
+        const num = Number(valor);
+        if (isNaN(num)) {
+          errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser un número válido.`);
+        }
+      }
+
+      if (campo.tipo === "boolean") {
+        if (!(valor === true || valor === false)) {
+          errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser true/false.`);
+        }
+      }
+
+      const fecha = convertirFecha(valor);
+      if (campo.tipo === "date" && !fecha) {
+        errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser una fecha válida.`);
+      }
+
+    });
+
+
+
+    // 🚨 Detectar columnas extra (opcional pero PRO)
+    const camposEsperadosNormalizados = estructuraEsperada.map(c => normalizar(c.campo));
+
+    Object.keys(fila).forEach(key => {
+      if (!camposEsperadosNormalizados.includes(normalizar(key))) {
+        errores.push(`Fila ${index + 1}: Campo no esperado "${key}"`);
+      }
+    });
+
+  });
+
+  return { valid: errores.length === 0, errores };
+};
 
 /*
   Código en pausa (sin uso actual): tabla editable genérica.
@@ -2055,7 +2215,7 @@ export default function AnexosPage() {
             <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
               <TabsTrigger value="nuevoAnexo">Nuevo Anexo</TabsTrigger>
-              {userrole === "ADMIN" &&(
+              {userrole === "ADMIN" && (
                 <TabsTrigger value="anexosPorUsuario">Anexos por usuario</TabsTrigger>
               )}
             </TabsList>
@@ -2171,111 +2331,111 @@ export default function AnexosPage() {
                   </div>
                 </div>
                 <br />
-                
-                  <Card className="w-full">
-                    <CardHeader className="p-3 sm:p-6 flex justify-between items-center">
-                      <div>
-                        <CardTitle>Lista de Anexos</CardTitle>
-                      </div>
-                    </CardHeader>
 
-                    <CardContent className="p-0 sm:p-4">
-                      <div className="overflow-x-auto rounded-lg border border-gray-200">
-                        <Table className="min-w-full text-sm divide-y divide-gray-200">
-                          {/* Encabezado: visible solo en pantallas md+ */}
-                          <TableHeader className="bg-gray-50 hidden md:table-header-group">
-                            <TableRow>
-                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
-                                Clave
-                              </TableHead>
-                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
-                                Estado
-                              </TableHead>
-                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
-                                Fecha
-                              </TableHead>
-                              <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
-                                Acciones
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
+                <Card className="w-full">
+                  <CardHeader className="p-3 sm:p-6 flex justify-between items-center">
+                    <div>
+                      <CardTitle>Lista de Anexos</CardTitle>
+                    </div>
+                  </CardHeader>
 
-                          {/* Cuerpo de tabla / tarjetas responsivas */}
-                          <TableBody className="divide-y divide-gray-200">
-                            {(selectedCategory && selectedCategory !== "__all__" ? anexos.filter(a => a.categoria === selectedCategory) : anexos).map((anexo) => (
-                              <TableRow
-                                key={anexo.id}
-                                className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
-                              >
-                                {/* Clave */}
-                                <TableCell className="px-4 py-4 md:table-cell">
-                                  <div className="md:hidden font-semibold text-gray-500">Clave</div>
-                                  <div className="font-medium text-gray-900">{anexo.clave}</div>
-                                </TableCell>
+                  <CardContent className="p-0 sm:p-4">
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                      <Table className="min-w-full text-sm divide-y divide-gray-200">
+                        {/* Encabezado: visible solo en pantallas md+ */}
+                        <TableHeader className="bg-gray-50 hidden md:table-header-group">
+                          <TableRow>
+                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                              Clave
+                            </TableHead>
+                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                              Estado
+                            </TableHead>
+                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                              Fecha
+                            </TableHead>
+                            <TableHead className="px-4 py-3 text-left uppercase tracking-wider">
+                              Acciones
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
 
-                                {/* Estado */}
-                                <TableCell className="px-4 py-4 md:table-cell">
-                                  <div className="md:hidden font-semibold text-gray-500">Estado</div>
-                                  <span
-                                    className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(
-                                      anexo.estado
-                                    )}`}
-                                  >
-                                    {anexo.estado}
-                                  </span>
-                                </TableCell>
+                        {/* Cuerpo de tabla / tarjetas responsivas */}
+                        <TableBody className="divide-y divide-gray-200">
+                          {(selectedCategory && selectedCategory !== "__all__" ? anexos.filter(a => a.categoria === selectedCategory) : anexos).map((anexo) => (
+                            <TableRow
+                              key={anexo.id}
+                              className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
+                            >
+                              {/* Clave */}
+                              <TableCell className="px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500">Clave</div>
+                                <div className="font-medium text-gray-900">{anexo.clave}</div>
+                              </TableCell>
 
-                                {/* Fecha */}
-                                <TableCell className="px-4 py-4 md:table-cell">
-                                  <div className="md:hidden font-semibold text-gray-500">Fecha</div>
-                                  <div className="text-gray-800">
-                                    {new Date(anexo.fecha_creacion).toLocaleDateString('es-MX', {
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      hour12: true
-                                    })}
-                                  </div>
-                                </TableCell>
+                              {/* Estado */}
+                              <TableCell className="px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500">Estado</div>
+                                <span
+                                  className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(
+                                    anexo.estado
+                                  )}`}
+                                >
+                                  {anexo.estado}
+                                </span>
+                              </TableCell>
 
-                                {/* Acciones */}
-                                <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
-                                  <div className="md:hidden font-semibold text-gray-500 mb-1">
-                                    Acciones
-                                  </div>
+                              {/* Fecha */}
+                              <TableCell className="px-4 py-4 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500">Fecha</div>
+                                <div className="text-gray-800">
+                                  {new Date(anexo.fecha_creacion).toLocaleDateString('es-MX', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  })}
+                                </div>
+                              </TableCell>
+
+                              {/* Acciones */}
+                              <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
+                                <div className="md:hidden font-semibold text-gray-500 mb-1">
+                                  Acciones
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownload(anexo.id)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                {canEdit(anexo) && (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleDownload(anexo.id)}
+                                    onClick={() => handleEdit(anexo)}
                                     className="text-blue-600 hover:text-blue-800"
                                   >
-                                    <Download className="h-4 w-4" />
+                                    <Edit className="h-4 w-4" />
                                   </Button>
-                                  {canEdit(anexo) && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleEdit(anexo)}
-                                      className="text-blue-600 hover:text-blue-800"
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
+                                )}
 
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
-                                    className="text-blue-600 hover:text-blue-800"
-                                  >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
 
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
 
 
-                                  {/* <Button
+                                {/* <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => toggleAnexoEstado(anexo)}
@@ -2295,70 +2455,71 @@ export default function AnexosPage() {
                                     <Check className="h-4 w-4" />
                                   </Button> */}
 
-                                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                                    <DialogTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleAbrirDialogo(anexo)}
-                                        className={
-                                          anexo.estado === "Completado"
-                                            ? "text-green-600 hover:text-green-800"
-                                            : "text-gray-600 hover:text-gray-800"
-                                        }
-                                        title={
-                                          anexo.estado === "Borrador"
-                                            ? "Enviar a revisión"
-                                            : anexo.estado === "Revisión"
-                                              ? "Marcar como completado"
-                                              : "Anexo cerrado"
-                                        }
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </Button>
-                                    </DialogTrigger>
-                                    {anexoParaActualizar && (
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>
-                                            {anexoParaActualizar.estado === "Borrador"
-                                              ? "¿Enviar a revisión?"
-                                              : "¿Marcar como completado?"}
-                                          </DialogTitle>
-                                          <DialogDescription>
-                                            {anexoParaActualizar.estado === "Borrador"
-                                              ? "El anexo será enviado a revisión y ya no podrás editarlo libremente."
-                                              : "Esta acción es irreversible. El anexo quedará cerrado y no podrá modificarse sin justificación."}
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        <DialogFooter>
-                                          <Button
-                                            variant="outline"
-                                            onClick={() => setDialogOpen(false)}
-                                          >
-                                            Cancelar
-                                          </Button>
-                                          <Button
-                                            style={{ backgroundColor: "#24356B", color: "white" }}
-                                            onClick={handleConfirmCambioEstado}
-                                          >
-                                            Confirmar
-                                          </Button>
-                                        </DialogFooter>
-                                      </DialogContent>
-                                    )}
-                                  </Dialog>
+                                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleAbrirDialogo(anexo)}
+                                      className={
+                                        anexo.estado === "Completado"
+                                          ? "text-green-600 hover:text-green-800"
+                                          : "text-gray-600 hover:text-gray-800"
+                                      }
+                                      title={
+                                        anexo.estado === "Borrador"
+                                          ? "Enviar a revisión"
+                                          : anexo.estado === "Revisión"
+                                            ? "Marcar como completado"
+                                            : "Anexo cerrado"
+                                      }
+                                    >
+
+                                      <Check className="h-4 w-4" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  {anexoParaActualizar && (
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>
+                                          {anexoParaActualizar.estado === "Borrador"
+                                            ? "¿Enviar a revisión?"
+                                            : "¿Marcar como completado?"}
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                          {anexoParaActualizar.estado === "Borrador"
+                                            ? "El anexo será enviado a revisión y ya no podrás editarlo libremente."
+                                            : "Esta acción es irreversible. El anexo quedará cerrado y no podrá modificarse sin justificación."}
+                                        </DialogDescription>
+                                      </DialogHeader>
+                                      <DialogFooter>
+                                        <Button
+                                          variant="outline"
+                                          onClick={() => setDialogOpen(false)}
+                                        >
+                                          Cancelar
+                                        </Button>
+                                        <Button
+                                          style={{ backgroundColor: "#24356B", color: "white" }}
+                                          onClick={handleConfirmCambioEstado}
+                                        >
+                                          Confirmar
+                                        </Button>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                  )}
+                                </Dialog>
 
 
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-              
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+
               </main>
 
             </TabsContent>
@@ -2564,9 +2725,9 @@ export default function AnexosPage() {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                          const estructura = EstructuraDatosPorClave[watch("clave")] || [];
+                                          const estructura = ESTRUCTURA_DATOS_POR_CLAVE[watch("clave")] || [];
                                           const nuevaFila: Record<string, any> = {};
-                                          estructura.forEach((campo) => (nuevaFila[campo] = ""));
+                                          estructura.forEach((campo) => (nuevaFila[campo.campo] = ""));
                                           const nuevas = [...datos, nuevaFila];
                                           setDatos(nuevas);
                                           setValue("datos", nuevas);
@@ -2680,27 +2841,27 @@ export default function AnexosPage() {
                                             toast.error("Por favor, proporciona una clave válida.");
                                             return;
                                           }
-    
+
                                           if (yaTieneAnexoConClave(clave, anexos, userid, editingAnexo ? editingAnexo.id : undefined)) {
                                             toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
                                             return;
                                           }
-    
+
                                           const estructura = ESTRUCTURA_DATOS_POR_CLAVE[clave];
                                           if (!estructura) {
                                             toast.error("Estructura no definida para esta clave");
                                             return;
                                           }
-    
+
                                           // Validar campos requeridos
                                           const camposRequeridos = estructura
                                             .filter(campo => campo.obligatorio)
                                             .map(campo => campo.campo);
-                                          
+
                                           const camposFaltantes = camposRequeridos.filter(
                                             campo => !excelData[0] || !(campo in excelData[0])
                                           );
-    
+
                                           if (camposFaltantes.length > 0) {
                                             toast.error(
                                               <div>
@@ -2715,7 +2876,7 @@ export default function AnexosPage() {
                                             );
                                             return;
                                           }
-    
+
                                           const { valido, errores } = validarEstructuraExcel(excelData, clave);
                                           if (!valido) {
                                             toast.error(

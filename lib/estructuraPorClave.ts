@@ -1,232 +1,140 @@
-// lib/estructuras.ts por ahora en el mismo archivo
-export const EstructuraDatosPorClave: Record<string, string[]> = {
-  // Marco Jurídico
-  MJ01: ["ORDENAMIENTO", "TITULO", "FECHA DE EMISION"], // CHECKED
-  AR01: ["ASUNTO", "DESCRIPCION", "FECHA INICIO", "RESPONSABLE", "ESTATUS"],
+// campos de la tabla editable
+export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{ 
+  campo: string; 
+  tipo: string; 
+  obligatorio?: boolean; 
+  Descripcion?: string }>> = {
+  // Marco Jurídico (MJ01)
+  MJ01: [
+    { campo: "Ordenamiento", tipo: "string", obligatorio: true, Descripcion: "Ordenamiento Jurídico Aplicable" },
+    { campo: "Titulo", tipo: "string", obligatorio: true, Descripcion: "Título del Asunto Relevante" },
+    { campo: "Fecha de emision", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante" },
+  ]
+  ,
+  // Planeacion (PP01)
+  PP01: [
+    { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Nombre del programa" },
+    { campo: "Nombre ", tipo: "string", obligatorio: true, Descripcion: "Descripción del programa" },
+    { campo: "Fecha", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del programa" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el programa" },
+  ],
 
-  // planeacion 
-  PP02: ["Tipo de Documento", "Nombre", "Fecha", "Observaciones"],
+  //Derechos y Obligaciones (DO01-DO04)
+  DO01: [
+    { campo: "Nombre y puesto del servidor que otorga el poder", tipo: "string", obligatorio: true, Descripcion: "Nombre y puesto del servidor que otorga el poder" },
+    { campo: "Tipo de poder otorgado", tipo: "string", obligatorio: true, Descripcion: "Tipo de poder otorgado" },
+    { campo: "Especificar", tipo: "string", obligatorio: true, Descripcion: "Fecha de otorgamiento del poder" },
+    { campo: "Fecha de Expedición", tipo: "date", obligatorio: true, Descripcion: "Fecha de expedición del poder" },
+    { campo: "Notario Público que autoriza el poder", tipo: "string", obligatorio: true, Descripcion: "Notario Público que autoriza el poder" },
+    { campo: "Inscrito en el Registro Público de la Propiedad y del Comercio", tipo: "string", obligatorio: true, Descripcion: "Número de inscripción en el Registro Público de la Propiedad y del Comercio" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el poder otorgado" },
+  ],
 
-  // organizacion
-  EO02: ["Tipo", "Fecha Actualización, Autorización ó Publicación", "Observaciones"],
+  DO02: [
+    { campo: "Numero de sesion", tipo: "string", obligatorio: true, Descripcion: "Número de sesión" },
+    { campo: "Fecha de sesion", tipo: "string", obligatorio: true, Descripcion: "Fecha de la sesión" },
+    { campo: "Ordinaria o Extraordinaria", tipo: "string", obligatorio: true, Descripcion: "Tipo de sesión (Ordinaria o Extraordinaria)" },
+    { campo: "Acuerdos tomados", tipo: "string", obligatorio: true, Descripcion: "Descripción de los acuerdos tomados en la sesión" },
+    { campo: "Descripcion de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Descripción detallada de los acuerdos tomados en la sesión" },
+    { campo: "Responsable de los acuerdos", tipo: "string", obligatorio: true, Descripcion: "Nombre del responsable de dar seguimiento a los acuerdos" },
+    { campo: "Áreas involucradas", tipo: "string", obligatorio: true, Descripcion: "Áreas involucradas en el seguimiento de los acuerdos" },
+    { campo: "Porcentaje de avance", tipo: "number", obligatorio: true, Descripcion: "Porcentaje de avance en el seguimiento de los acuerdos" },
+    { campo: "Comentarios", tipo: "string", obligatorio: false, Descripcion: "Comentarios adicionales sobre el seguimiento de los acuerdos" },
+  ],
+  DO03: [
+    { campo: "Auditoria realizada por", tipo: "string", obligatorio: true, Descripcion: "Nombre del ente auditor que realizó la auditoría" },
+    { campo: "Periodo auditado: desde", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del periodo auditado" },
+    { campo: "Periodo auditado: hasta", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del periodo auditado" },
+    { campo: "Tipo de auditoría", tipo: "string", obligatorio: true, Descripcion: "Tipo de auditoría realizada (financiera, de cumplimiento, etc.)" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre la auditoría realizada" },
+    { campo: "Observaciones atendidas", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que han sido atendidas" },
+    { campo: "Observaciones pendientes", tipo: "string", obligatorio: false, Descripcion: "Observaciones de auditoría que aún están pendientes de atender" },
+    { campo: "Situación actual", tipo: "string", obligatorio: false, Descripcion: "Situación actual de las observaciones de auditoría (atendidas, pendientes, etc.)" },
+  ],
+  DO04: [
+    { campo: "Cargo", tipo: "string", obligatorio: true, Descripcion: "Cargo del responsable" },
+    { campo: "Con derecho a ", tipo: "string", obligatorio: true, Descripcion: "Derechos asociados al cargo" },
+    { campo: "Fecha de inicio del cargo", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del cargo" },
+    { campo: "Periodicidad con que se reúnen", tipo: "string", obligatorio: true, Descripcion: "Periodicidad con que se reúnen los responsables" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre las representaciones y cargos honoríficos" },
+  ],
 
-  // Recursos Humanos
-  RH01: ["NUMERO DE EMPLEADO", "NOMBRE", "R.F.C.", "PLAZA (CATEGORÍA)", "TIPO", "FECHA DE INGRESO", "SUELDO", "OTRAS PERCEPCIONES", "TOTAL", "UNIDAD DE ADSCRIPCIÓN (UPP)", "ÁREA LABORAL (UR)", "ESTATUS", "OBSERVACIONES"],
-  RH02: ["NOMBRE", "RFC", "FECHA DE INICIO DE CONTRATO", "FECHA FIN DE CONTRATO", "FUENTE DE RECURSO", "ACTIVIDADES A DESARROLLAR", "FECHA DE INGRESO", "SUELDO", "OTRAS PERCEPCIONES", "TOTAL", "UNIDAD DE ADSCRIPCIÓN (UPP)", "ÁREA LABORAL (UR)", "OBSERVACIONES"],
-  RH03: ["NUMERO DE EMPLEADO", "NOMBRE", "R.F.C.", "CATEGORÍA: DENOMINACIÓN", "TIPO", "UNIDAD DE ADSCRIPCIÓN (UPP)", "COMISIONADO A: UR", "REFERENCIA DOCUMENTAL (OFICIO)", "FOLIO DE OFICIO DE COMISIÓN", "INICIO DE COMISIÓN", "FIN DE COMISIÓN", "SUELDO", "OTRAS PERCEPCIONES", "OBSERVACIONES"],
-  RH04: ["NOMBRE", "R.F.C.", "FECHA INICIO DE CONTRATO", "FECHA FIN DE CONTRATO", "FUENTE DEL RECURSO", "ACTIVIDADES A DESARROLLAR", "SALARIO", "OTRA PERCEPCIÓN", "TOTAL", "UNIDAD DE ADSCRIPCION (UPP)", "ÁREA LABORAL(UR)", "OBSERVACIONES"],
+  // EO - Organizacion
+  EO02: [
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de reglamento o manual" },
+    { campo: "Fecha de Actualización, Autorización ó Publicación", tipo: "string", obligatorio: true, Descripcion: "Fecha de actualización, autorización o publicación del reglamento o manual" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el reglamento o manual" },
+  ],
 
+  // RH - Recursos Humanos
+  RH01: [
+    { campo: "Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de base" },
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de base" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de base" },
+    { campo: "Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de base" },
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
+    { campo: "Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Fecha de Ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de base" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de base" },
+    { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de base" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de base" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de base" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de base" },
+  ],
+  RH02: [
+    { campo: "Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal de apoyo" },
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de apoyo" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de apoyo" },
+    { campo: "Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de apoyo" },
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
+    { campo: "Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de apoyo" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de apoyo" },
+    { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de apoyo" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de apoyo" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de apoyo" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de apoyo" },
+  ],
+  RH03: [
+    { campo: "Número de empleado", tipo: "string", obligatorio: true, Descripcion: "Número de empleado del personal comisionado" },
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal comisionado" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal comisionado" },
+    { campo: "Categoría: Denominación", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal comisionado" },
+    { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal comisionado" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal comisionado" },
+    { campo: "Comisionado a", tipo: "string", obligatorio: true, Descripcion: "Dependencia o entidad a la que el personal comisionado está asignado" },
+    { campo: "Referencia Documental", tipo: "string", obligatorio: true, Descripcion: "Referencia documental que sustenta la comisión del personal" },
+    { campo: "Inicio de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio de la comisión del personal" },
+    { campo: "Fin de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin de la comisión del personal" },
+    { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal comisionado" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal comisionado" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal comisionado" },
+  ]
+  ,
+  RH04: [
+    { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de honorarios" },
+    { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de honorarios" },
+    { campo: "Fecha de Inicio de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del contrato del personal de honorarios" },
+    { campo: "Fecha de fin de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del contrato del personal de honorarios" },
+    { campo: "Fuente de Recurso", tipo: "string", obligatorio: true, Descripcion: "Fuente de recursos para el pago del personal de honorarios" },
+    { campo: "Actividades a Desarrollar", tipo: "string", obligatorio: true, Descripcion: "Descripción de las actividades a desarrollar por el personal de honorarios" },
+    { campo: "Salario", tipo: "number", obligatorio: true, Descripcion: "Salario del personal de honorarios" },
+    { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de honorarios" },
+    { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de honorarios" },
+    { campo: "Unidad de Adscripción", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal de honorarios" },
+    { campo: "Área Laboral", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de honorarios" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de honorarios" },
+  ]
 
-  
-  // Derechos y Obligaciones
-  DO01: ["NOMBRE Y PUESTO DEL SERVIDOR QUE OTORGA EL PODER", "TIPO DE PODER OTORGADO", "ESPECIFICAR", "FECHA DE EXPEDICIÓN", "NOTARIO No.", "INSCRITO EN EL REGISTRO PÚBLICO DE LA PROPIEDAD Y COMERCIO", "OBSERVACIONES"],
-  DO02: ["DATOS DE LA SESIÓN: No. DE SESIÓN", "DATOS DE LA SESIÓN: FECHA", "DATOS DE LA SESIÓN: ORD/EXT", "DATOS DEL ACUERDO: NÚMERO", "DATOS DEL ACUERDO: DESCRIPCIÓN BREVE", "DATOS DEL ACUERDO: RESPONSABLE", "DATOS DEL ACUERDO: ÁREAS INVOLUCRADAS", "ESTATUS DEL ACUERDO: % DE AVANCE", "ESTATUS DEL ACUERDO: COMENTARIOS"],
-  DO03: ["AUDITORÍA REALIZADA POR:", "PERIODO AUDITADO DE:", "PERIODO AUDITADO A:", "TIPO DE AUDITORIA", "OBSERVACIONES: No.", "OBSERVACIONES: ATENDIDAS", "OBSERVACIONES: PENDIENTES", "SITUACIÓN ACTUAL"],
-  DO04: ["CARGO", "CON DERECHO A:", "FECHA DE INICIO DEL CARGO", "PERIODICIDAD CON QUE SE REÚNEN", "OBSERVACIONES"],
-
-
-  // Recursos Presupuestales
-  RF01: ["PARTIDA", "DENOMINACION","PRESUPUESTO: AUTORIZADO","PRESUPUESTO: AMPLIACIONES Y/O REDUCCIONES", "PRESUPUESTO: MODIFICADO", "PRESUPUESTO: EJERCIDO", "PRESUPUESTO: POR EJERCER"],
-  RF02: ["PARTIDA", "DESCRIPCION", "PRESUPUESTO: AUTORIZADO", "PRESUPUESTO: AMPLIACIONES Y/O REDUCCIONES", "MODIFICADO", "EJERCIDO", "POR EJERCER"],
-  RF03: ["RAMO", "PROGRAMA", "DEPENDENCIA EJECUTORA", "NÚMERO DEL CONVENIO O REFERENCIA DE LA AUTORIZACIÓN", "IMPORTE: APROBADO", "IMPORTE: MODIFICADO", "IMPORTE: EJERCIDO", "IMPORTE: POR EJERCER", "IMPORTE: NUMERO DE ACCIONES", "ACCIONES: APROBADAS","ACCIONES: EJECUTADAS", "ACCIONES: PENDENTES","OBSERVACIONES"],
-  RF04: ["NOMBRE DEL PROGRAMA", "NUMERO DEL CAPITULO", "NOMBRE DEL CAPITULO", "PRESUPUESTO", "AUTORIZADO", "AMPLIACIONES Y/O REDUCCIONES", "MODIFICADO", "EJERCIDO", "POR EJERCER"],
-  RF05: ["INSTITUCION BANCARIA", "CLAVE DE SUCURSAL", "TIPO DE CUENTA", "NUMERO DE CUENTA", "FIRMAS REGISTRADAS", "NOMBRE", "CARGO", "FOLIO DEL ULTIMO CHEQUE EXPEDIDO","SALDO SEGUN BANCO","CARGOS NO CORRESPONDIDOS", "ABONOS NO CORRESPONDIDOS", "SALDO SEGUN REGISTROS", "RESPONSABLE DEL MANEJO"],
-  RF06: ["OFICIO DE AUTORIZACION NUM.", "DE FECHA", "NOMBRE DEL RESPONSABLE", "CARGO DEL RESPONSABLE", "IMPORTE AL VERIFICAR","DESTINO DEL FONDO ASIGNADO", "RESULTADO DEL ULTIMO ARQUEO PRACTICADO","SALDO EN CUENTA DE CHEQUES", "NO. DE CUENTA", "BANCO", "BANCO", "FECHA", "SALDO", "MONTO DISPONIBLE EN EFECTIVO", "COMPROBANTES", "ACREEDORES DIVERSOS", "DEUDORES DIVERSOS", "DOCUMENTOS POR RECUPERAR"],
-  RF07: ["NUMERO DE FOLIO DEL CONTRARECIBO", "NOMBRE DEL BENEFICIARIO", "FECHA DE RECEPCION", "NUMERO DE ESTIMACION O FACTURA", "IMPORTE TOTAL", "OBSERVACIONES"],
-  RF08: ["FECHA", "NUMERO DE CHEQUE", "CUENTA", "BANCO", "MONTO", "BENEFICIARIO", "CONCEPTO"],
-  RF09: ["ÁREA GENERADORA DEL INGRESO", "CONCEPTO QUE DA ORIGEN AL INGRESO", "FECHA DEL INGRESO", "DOCUMENTO QUE IDENTIFICA AL INGRESO", "IMPORTE DEL INGRESO: MONTO", "IMPORTE DEL INGRESO: CUENTA BANCARIA DONDE SE DEPOSITARA", ""],
-  RF11: ["NOMBRE DEL DEUDOR", "CONCEPTO", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: FECHA", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: TIPO", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: FOLIO", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: IMPORTE", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: FECHA DE VENCIMIENTO", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: NUMERO CONTABLE", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: TITULO", "DOCUMENTO QUE ACREDITA LA CUENTA POR COBRAR: SALDO VENCIDO", "OBSERVACIONES"],
-  RF12: ["CONCEPTO", "DOCUMENTO QUE ACREDITA LA CUENTA POR PAGAR: FECHA", "DOCUMENTO QUE ACREDITA LA CUENTA POR PAGAR: TIPO", "DOCUMENTO QUE ACREDITA LA CUENTA POR PAGAR: FOLIO", "DOCUMENTO QUE ACREDITA LA CUENTA POR PAGAR: DEPENDENCIA", "DOCUMENTO QUE ACREDITA LA CUENTA POR PAGAR: PARTIDA", "DOCUMENTO QUE ACREDITA LA CUENTA POR PAGAR: FECHA DE VENCIMIENTO", "DATOS DE LA CUENTA POR PAGAR: NÚMERO", "DATOS DE LA CUENTA POR PAGAR: TÍTULO", "DATOS DE LA CUENTA POR PAGAR: SALDO VENCIDO", "OBSERVACIONES"],
-  RF13: ["CONCEPTO DEL IMPUESTO", "ENTEROS PROVISIONALES: PERIODO; POR PAGAR", "ENTEROS PROVISIONALES: PERIODO; T/D", "ENTEROS PROVISIONALES: IMPORTE; CLAVE", "ENTEROS PROVISIONALES: MULTAS Y RECARGOS", "DECLARACIONES ANUALES: PRESENTADAS", "DECLARACIONES ANUALES: POR PRESENTAR", "DECLARACIONES ANUALES: AÑO"],
-  RF14: ["TIPO DE POLIZA", "COMPAÑIA", "MONTO", "COBERTURA", "VIGENCIA","DEL","HASTA", "OBSERVACIONES"],
-  RF15: ["COMPAÑIA ASEGURADORA", "TIPO DE FIANZA O GARANTIA", "CONCEPTO U OBRA DE LA FIANZA O GARANTÍA", "COBERTURA DE LA FIANZA O GARANTÍA", "MONTO DE LA FIANZA O GARANTÍA", "VIGENCIA DE LA FIANZA O GARANTÍA","VIGENCIA","DEL","AL","OBSERVACIONES"],
-  RF16: ["DESCRIPCION DEL CONVENIO O CONTRATO", "NOMBRE QUIEN CONVIENE O CONTRATA POR LA UNIDA RESPONSABLE", "IMPORTE", "PERIODO"],
-  RF17: ["TIPO DE DOCUMENTO", "FOLIO", "DEL", "AL", "FECHA DE ULTIMO REGISTRO", "OBSERVACIONES"],
-
-
-  // Contratos y Convenios
-  CCL01: ["TIPO DE INSTRUMENTO", "OBJETIVO", "PARTES INVOLUCRADAS", "VIGENCIA", "IMPORTE CONVENIDO", "OBSERVACIONES"],
-  CCL02: ["NOMBRE", "DESCRIPCION", "ORIGEN", "RECUPERACION PRESUPUESTAL", "VIGENCIA", "ACCIONES RELEVANTES POR CONCLUIR"],
-  CCL03: ["DATOS DEL CONTRATO"  , "MONTO", "OBJETIVO", "FECHA INICIO", "FECHA FIN"],
-
-  // Estructura Interna
-  
-
-  // Recursos Materiales
-  RM01: ["Descripción", "Marca", "Modelo", "No. de serie", "No. de patrimonio", "No. de resguardo interno", "Estado de uso", "UR", "Número de Empleado", "Responsable", "Puesto del usuario resguardante"],
-  RM02: ["Marca", "Modelo", "Color", "Placas / Matrícula / Registro", "No. de serie", "No. de motor", "Estado físico", "UR", "Clave Patrimonial", "Número de resguardo interno", "Número de Empleado del resguardante", "Responsable del uso del vehiculo", "Cargo de usuario resguardante"],
-  RM03: ["Descripción", "Marca", "Modelo", "Serie", "Clave patrimonial", "No. de resguardo interno", "Número de Empleado", "Responsable", "Estado físico", "UR", "Ubicación actual", "Observaciones"],
-  RM04: ["Clave patrimonial", "Descripción", "Marca", "Modelo", "No. Serie", "CANTIDAD", "PRECIO UNITARIO", "PRECIO TOTAL", "LOCALIZACIÓN", "UR"],
-  RM05: ["Tipo de bien", "Descripción del bien", "Marca", "Modelo", "No. de serie", "Estado físico", "Ubicación", "Nombre del otorgante", "Fecha de firma del comodato", "Período"],
-  RM06: ["Descripción", "Tipo de predio", "Superficie m2", "Calle y número", "Localidad", "Estatus legal", "Descripción de la situación jurídica y/o administrativa"],
-  RM07: ["No. DE INVENTARIO", "No. CTA. PREDIAL", "UBICACIÓN", "SUPERFICIE TERRENO MTS2", "ZONA", "DOCT. QUE ACREDITA LA POSESION", "FECHA DE ADQUISICIÓN", "COSTO DE ADQUISICIÓN", "USO O DESTINO", "COMENTARIOS"],
-  RM08: ["Número de registro y/o inventario", "Título de la obra / artículo", "Descripción", "Ubicación", "Certificado de autenticidad", "Estado físico", "Datos del resguardante Nombre", "Datos del resguardante Puesto", "Datos del resguardante Núm. de resguardo", "Observaciones"],
-  RM09: ["Especie", "Cantidad de planta en existencia", "Tipo de producción", "Fecha de siembra", "Talla", "Observaciones"],
-  RM10: ["Nombre común", "Nombre científico", "Clave", "Origen", "Familia", "Sexo", "Marcaje", "Fecha Alta", "Observaciones"],
-  RM11: ["Nombre común del animal", "Ubicación física", "No. de resguardo", "Observaciones"],
-  RM12: ["Descripción", "Tipo y calibre", "Marca y modelo", "Matrícula", "No. de serie", "No. de registro", "UR", "Estado", "No. de inventario", "No. de resguardo", "Número de empleado del responsable", "Nombre del responsable", "Puesto del responsable", "Observaciones"],
-  RM13: ["Nombre del paquete", "Licencia", "Versión", "No. de serie", "Origen", "Fecha de adquisición", "Equipo en que opera", "Usuario", "Medio de almacenamiento", "No. de manuales"],
-  RM14: ["Nombre del sistema / subsistema", "Fase de", "Fecha de liberación", "Origen", "Equipo en que opera", "Medio de distribución", "Documentación", "UR", "código fuente"],
-  RM15: ["Descripción del equipo", "Especificaciones", "Marca", "Modelo", "No. de serie", "Estado", "Área de asignación", "Ubicación física del equipo", "Número de Empleado del responsable", "Nombre del usuario responsable", "Puesto del usuario responsable", "No. de resguardo"],
-  RM16: ["Área", "Descripción", "Responsable", "Número de Empleado", "Fecha de Entrega", "URE", "Descripción.1", "Observaciones"],
-  
-
-  // Obra Publica
-  OP01: ["No. de Expediente", "Clave de contrato o Acuerdo", "Nombre de Obra y Ubicación", "Fecha de contrato o acuerdo", "Estado de la Obra", "Fuente de Financiamiento", "Origen de Recurso", "Suficiencia Presupuestal", "Monto Contratado", "Monto ejercido", "Avance Físico (%)", "Avance Financiero (%)", "Modalidad de Contratación"],
-  OP02: ["No. de Expediente", "Tipo de Obra", "Programa de Inversión", "Nombre de la Obra", "Municipio", "Localidad", "Dependencia Beneficiada", "Ejercicio Presupuestal", "Ejecutora", "Documentación contenida en el expediente unitario de las obras", "Observaciones"],
-  OP03: ["No. de Expediente", "Tipo de Obra", "Programa de Inversión", "Nombre de la Obra", "Municipio", "Localidad", "Dependencia Beneficiada", "Ejercicio Presupuestal", "Ejecutora", "Documentación contenida en el expediente unitario de las obras", "Observaciones"],
-  OP04: ["LICITACIÓN", "OBRA", "LOCALIDAD", "MUNICIPIO", "ÁREA OPERATIVA", "TRÁMITE ACTUAL", "OBSERVACIONES"],
-
-  // Documentación y Archivo
-  DA01: ["SISTEMA", "FRECUENCIA", "ULTIMO_RESPALDO", "RESPONSABLE"],
-  DA02: ["TITULO", "AUTOR", "TIPO", "UBICACION"],
-  DA03: ["TIPO", "DESCRIPCION", "FECHA_INICIO", "FECHA_FIN", "RESPONSABLE"],
-  DA04: ["TIPO", "DESCRIPCION", "FECHA_INICIO", "FECHA_FIN", "RESPONSABLE"],
-  DA05: ["TIPO", "DESCRIPCION", "FECHA_INICIO", "FECHA_FIN", "RESPONSABLE"],
-  DA07: ["EXPEDIENTE", "PROYECTO", "UBICACION", "RESPONSABLE"],
-
-  // archivos documegntales e Informaticos
-  ADI01: ["Nombre del sistema, programa o archivo", "Descripción", "Tipo de respaldo", "Periodicidad del respaldo", "Medio", "Fecha", "Nombre del responsable", "Puesto del responsable", "Observaciones"],
-  ADI02: ["No. de clasificación", "Título", "Acervo bibliográfico Autor", "Acervo bibliográfico Editorial", "Acervo bibliográfico Fecha de publicación", "Acervo bibliográfico No. de tomos", "Acervo hemerográfico Fecha del", "Acervo hemerográfico Fecha hasta", "Acervo hemerográfico No. de ejemplares", "Estado físico"],
-
-  //Control y Fiscalizacion
-  CF01: ["Unidad Responsable Solicitante", "Adquisición", "Pedido", "Trámite Actual"],
-  CF02: ["Asunto", "Fecha de Inicio", "Situación actual", "Observaciones"],
-
-  // Informe de Gestion
-  IG01: ["Clave documento o expediente", "Contenido del acrhivo o expediente", "Unidad De concentración"],
-  IG02: ["Tipo de Acta", "Número de Acta", "Fecha de Acta", "Descripción", "Observaciones"],
-
-  //Transparencia y acceso a la información
-  TAI01: ["Fecha de Solicitud", "Área que atiende", "No. De Expediente o Solicitud", "Estado de Solicitud", "Fecha Límite de Respuesta", "Recurso de Revisión", "Status Actual"],
-
-  // Convenios y Contratos
-  CC01: ["Tipo de Instrumento", "Objetivo", "Partes Involucradas", "Vigencia", "Importe Convenido", "Observaciones"],
-  CC02: ["Nombre", "Descripción", "Origen", "Repercución Presupuestal", "Vigencia", "Acciones Relevantes por Concluir"],
-
-
-  // Por defecto
-  default: ["*"]
-};
-
-export const CALVES_CON_PDF: Record<string, string[]> = {
-  PP01: ["url", "blob"],
-  ENI01: ["url", "blob"]
+  ,
+  RF01: [
+    { campo: "partida", tipo: "string", obligatorio: true, Descripcion: "Partida Presupuestal" },
+    { campo: "Denominacion", tipo: "string", obligatorio: true, Descripcion: "Denominación de la partida" },
+    { campo: "Presupuesto_Autorizado", tipo: "number", obligatorio: true, Descripcion: "Monto Aprobado" },
+    { campo: "Presupuesto_Modificado", tipo: "number", obligatorio: false, Descripcion: "Monto Modificado" },
+    { campo: "Presupuesto_Ejercido", tipo: "number", obligatorio: false, Descripcion: "Monto Ejercido" },
+    { campo: "Presupuesto_Por_Ejercer", tipo: "number", obligatorio: false, Descripcion: "Monto por Ejercer" },
+  ],
 }
-
-// categhorias o Rubros 
-export const categoria_anexos = [
-  { id: "1",  nombre_categoria: "ARCHIVOS DOCUMENTALES E INFORMATICOS" },
-  { id: "2",  nombre_categoria: "ASUNTOS GENERALES" },
-  { id: "3",  nombre_categoria: "ASUNTOS RELEVANTES EN TRAMITE DE ATENCION" },
-  { id: "4",  nombre_categoria: "CONVENIOS Y CONTRATOS" },
-  { id: "5",  nombre_categoria: "CONTROL Y FISCALIZACION" },
-  { id: "6",  nombre_categoria: "DERECHOS Y OBLIGACIONES" },
-  { id: "7",  nombre_categoria: "ORGANIZACION" },
-  { id: "8",  nombre_categoria: "MARCO JURIDICO" },
-  { id: "9",  nombre_categoria: "OBRAS PUBLICAS" },
-  { id: "10", nombre_categoria: "RECURSOS MATERIALES" },
-  { id: "11", nombre_categoria: "PLANEACION" },
-  { id: "12", nombre_categoria: "RECURSOS PRESUPUESTALES Y FINANCIEROS" },
-  { id: "13", nombre_categoria: "RECURSOS HUMANOS" },
-  { id: "14", nombre_categoria: "TRANSPARENCIA Y ACCESO A LA INFORMACION" },
-  { id: "15", nombre_categoria: "SISTEMA DE GESTION DE CALIDAD" }
-] as const;
-
-// ✅ Mapa: CLAVE de anexo -> id de categoría (rubro)
-// (no modifica EstructuraDatosPorClave; solo agrega metadata)
-export const CATEGORIA_ID_POR_CLAVE: Record<string, (typeof categoria_anexos)[number]["id"]> = {
-  // Marco Jurídico
-  MJ01: "8",
-  AR01: "8",
-
-  // Planeación
-  PP02: "11",
-
-  // Organización
-  EO02: "7",
-
-  // Recursos Humanos
-  RH01: "13",
-  RH02: "13",
-  RH03: "13",
-  RH04: "13",
-
-  // Derechos y Obligaciones
-  DO01: "6",
-  DO02: "6",
-  DO03: "6",
-  DO04: "6",
-
-  // Recursos Presupuestales y Financieros
-  RF01: "12",
-  RF02: "12",
-  RF03: "12",
-  RF04: "12",
-  RF05: "12",
-  RF06: "12",
-  RF07: "12",
-  RF08: "12",
-  RF09: "12",
-  RF11: "12",
-  RF12: "12",
-  RF13: "12",
-  RF14: "12",
-  RF15: "12",
-  RF16: "12",
-  RF17: "12",
-
-  // Convenios y Contratos
-  CCL01: "4",
-  CCL02: "4",
-  CCL03: "4",
-  CC01: "4",
-  CC02: "4",
-
-  // Recursos Materiales
-  RM01: "10",
-  RM02: "10",
-  RM03: "10",
-  RM04: "10",
-  RM05: "10",
-  RM06: "10",
-  RM07: "10",
-  RM08: "10",
-  RM09: "10",
-  RM10: "10",
-  RM11: "10",
-  RM12: "10",
-  RM13: "10",
-  RM14: "10",
-  RM15: "10",
-  RM16: "10",
-
-  // Obra Pública
-  OP01: "9",
-  OP02: "9",
-  OP03: "9",
-  OP04: "9",
-
-  // Documentación y Archivo
-  DA01: "1",
-  DA02: "1",
-  DA03: "1",
-  DA04: "1",
-  DA05: "1",
-  DA07: "1",
-
-  // Archivos documentales e informáticos
-  ADI01: "1",
-  ADI02: "1",
-
-  // Control y fiscalización
-  CF01: "5",
-  CF02: "5",
-
-  // Asuntos generales
-  IG01: "2",
-  IG02: "2",
-
-  // Transparencia
-  TAI01: "14",
-};
