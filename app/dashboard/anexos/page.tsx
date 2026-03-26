@@ -176,6 +176,115 @@ function yaTieneAnexoConClave(clave: string, anexos: Anexo[], userid: number, ed
   return anexos.some(anexo => anexo.clave === clave && anexo.creador_id === userid && anexo.id !== editingId);
 }
 
+type ValidacionCampo = {
+  nivel: "error" | "warning";
+  mensaje: string;
+};
+
+const validarCampoEstructura = (clave: string, campo: string, valor: any): ValidacionCampo | null => {
+  const estructura = ESTRUCTURA_DATOS_POR_CLAVE[clave] || [];
+  if (estructura.length === 0) return null;
+
+  const campoDef = estructura.find((def) => normalizarDatos(def.campo) === normalizarDatos(campo));
+  if (!campoDef) return null;
+
+  if (campoDef.obligatorio && (valor === undefined || valor === null || String(valor).trim() === "")) {
+    return { nivel: "error", mensaje: `Fila: Campo "${campoDef.campo}" es obligatorio.` };
+  }
+
+  if (campoDef.tipo === "number" && valor !== "" && valor !== null && valor !== undefined) {
+    const convertido = Number(String(valor).trim().replace(/[^0-9.-]/g, ""));
+    if (isNaN(convertido)) {
+      return {
+        nivel: campoDef.obligatorio ? "error" : "warning",
+        mensaje: `Fila: Campo "${campoDef.campo}" debe ser un número válido.`,
+      };
+    }
+  }
+
+  if (campoDef.tipo === "date" && valor !== "" && valor !== null && valor !== undefined) {
+    const fecha = new Date(String(valor).trim());
+    if (isNaN(fecha.getTime())) {
+      return {
+        nivel: campoDef.obligatorio ? "error" : "warning",
+        mensaje: `Fila: Campo "${campoDef.campo}" debe ser una fecha válida.`,
+      };
+    }
+  }
+
+  return null;
+};
+
+const validarFilasObligatorias = (datosValidar: Array<Record<string, any>>, clave: string): string[] => {
+  const errores: string[] = [];
+  const estructura = ESTRUCTURA_DATOS_POR_CLAVE[clave] || [];
+
+  datosValidar.forEach((fila, idx) => {
+    estructura.forEach((def) => {
+      if (!def.obligatorio) return;
+
+      const valor = fila[def.campo];
+      if (valor === undefined || valor === null || String(valor).trim() === "") {
+        errores.push(`Fila ${idx + 1}: Campo "${def.campo}" es obligatorio.`);
+      }
+      // Validar tipo specifically for required
+      if (def.tipo === "number" && valor !== "" && valor !== null && valor !== undefined) {
+        if (isNaN(Number(String(valor).trim().replace(/[^0-9.-]/g, "")))) {
+          errores.push(`Fila ${idx + 1}: Campo "${def.campo}" debe ser número válido.`);
+        }
+      }
+      if (def.tipo === "date" && valor !== "" && valor !== null && valor !== undefined) {
+        if (isNaN(new Date(String(valor).trim()).getTime())) {
+          errores.push(`Fila ${idx + 1}: Campo "${def.campo}" debe ser fecha válida.`);
+        }
+      }
+    });
+  });
+
+  return errores;
+};
+
+const registrarEventoAuditoria = async ({
+  actor_id,
+  action,
+  object_type,
+  object_id,
+  success,
+  metadata = null,
+}: {
+  actor_id: number;
+  action: string;
+  object_type: string;
+  object_id: string;
+  success: boolean;
+  metadata?: Record<string, any> | null;
+}) => {
+  try {
+    if (!API_URL) {
+      console.warn("API_URL no configurada para auditoría");
+      return;
+    }
+
+    await fetch(`${API_URL}/admin/audit_logs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+      body: JSON.stringify({
+        actor_id,
+        action,
+        object_type,
+        object_id,
+        success,
+        metadata,
+      }),
+    });
+  } catch (err) {
+    console.error("Error al registrar evento de auditoría:", err);
+  }
+};
+
 const getAnexos = async () => {
   try {
     const response = await fetch(`${API_URL}/anexos`, {
@@ -1352,7 +1461,7 @@ export const CategoriaLabels: Record<string, string> = {
 } */
 
 
-const normalizar = (str: string) =>
+const normalizarDatos = (str: string) =>
   str
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -1379,12 +1488,12 @@ export const validarDatosAnexo = (
     // 🔥 Mapa de columnas normalizadas → nombre real
     const mapaColumnas: Record<string, string> = {};
     Object.keys(fila).forEach(key => {
-      mapaColumnas[normalizar(key)] = key;
+      mapaColumnas[normalizarDatos(key)] = key;
     });
 
     estructuraEsperada.forEach((campo) => {
 
-      const campoNormalizado = normalizar(campo.campo);
+      const campoNormalizado = normalizarDatos(campo.campo);
       const keyReal = mapaColumnas[campoNormalizado];
 
 
@@ -1487,10 +1596,10 @@ export const validarDatosAnexo = (
 
 
     // 🚨 Detectar columnas extra (opcional pero PRO)
-    const camposEsperadosNormalizados = estructuraEsperada.map(c => normalizar(c.campo));
+    const camposEsperadosNormalizados = estructuraEsperada.map(c => normalizarDatos(c.campo));
 
     Object.keys(fila).forEach(key => {
-      if (!camposEsperadosNormalizados.includes(normalizar(key))) {
+      if (!camposEsperadosNormalizados.includes(normalizarDatos(key))) {
         errores.push(`Fila ${index + 1}: Campo no esperado "${key}"`);
       }
     });
@@ -1850,7 +1959,7 @@ export default function AnexosPage() {
   // - evita duplicados por usuario+clave
   // - decide POST o PUT según modo edición
   // - sincroniza estado local con la respuesta
-  const onSubmit: SubmitHandler<IFormInput> = (data) => {
+  const onSubmit: SubmitHandler<IFormInput> = async (data) => {
     // Aseguramos que `datos` sea un array válido
     const datosArray = Array.isArray(data.datos) ? data.datos : [data.datos];
     const datosValidos = datosArray.length > 0 && (
@@ -1858,7 +1967,35 @@ export default function AnexosPage() {
     );
 
     if (!datosValidos) {
+      await registrarEventoAuditoria({
+        actor_id: userid,
+        action: "submit_anexo",
+        object_type: "anexo",
+        object_id: data.clave,
+        success: false,
+        metadata: {
+          motivo: "datos_vacios",
+        },
+      });
       toast.error("El campo 'datos' no puede estar vacío.");
+      return;
+    }
+
+    // Validacion obligatoria: si hay cualquiera, bloquea submit
+    const erroresObligatorios = validarFilasObligatorias(datosArray, data.clave);
+    if (erroresObligatorios.length > 0) {
+      await registrarEventoAuditoria({
+        actor_id: userid,
+        action: "submit_anexo",
+        object_type: "anexo",
+        object_id: data.clave,
+        success: false,
+        metadata: {
+          motivo: "errores_obligatorios",
+          detalles: erroresObligatorios,
+        },
+      });
+      erroresObligatorios.forEach((error) => toast.error(error));
       return;
     }
 
@@ -1901,9 +2038,22 @@ export default function AnexosPage() {
         }
         return res.json();
       })
-      .then((result) => {
+      .then(async (result) => {
         const message = editingAnexo ? "Anexo actualizado" : "Anexo creado";
         toast.success(message, { description: `Clave: ${result.clave}` });
+
+        // Registrar auditoría exitosa de submit
+        await registrarEventoAuditoria({
+          actor_id: userid,
+          action: "submit_anexo",
+          object_type: "anexo",
+          object_id: result.clave,
+          success: true,
+          metadata: {
+            modo: editingAnexo ? "actualizacion" : "creacion",
+            filas: datosArray.length,
+          },
+        });
 
         // Actualizar lista local
         if (editingAnexo) {
@@ -2783,6 +2933,33 @@ export default function AnexosPage() {
                                                               setDatos(nuevas);
                                                               setValue("datos", nuevas);
                                                             }}
+                                                            onBlur={async (e) => {
+                                                              const clave = watch("clave");
+                                                              if (!clave) return;
+
+                                                              const validacion = validarCampoEstructura(clave, campo, e.target.value);
+                                                              if (validacion) {
+                                                                if (validacion.nivel === "error") {
+                                                                  toast.error(validacion.mensaje);
+                                                                } else {
+                                                                  toast.warning(validacion.mensaje);
+                                                                }
+
+                                                                await registrarEventoAuditoria({
+                                                                  actor_id: userid,
+                                                                  action: "validar_campo_dinamico",
+                                                                  object_type: "anexo",
+                                                                  object_id: clave,
+                                                                  success: validacion.nivel === "warning",
+                                                                  metadata: {
+                                                                    campo,
+                                                                    nivel: validacion.nivel,
+                                                                    mensaje: validacion.mensaje,
+                                                                    fila: rowIndex + 1,
+                                                                  },
+                                                                });
+                                                              }
+                                                            }}
                                                             className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                             disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                                                           />
@@ -2858,11 +3035,29 @@ export default function AnexosPage() {
                                             .filter(campo => campo.obligatorio)
                                             .map(campo => campo.campo);
 
-                                          const camposFaltantes = camposRequeridos.filter(
-                                            campo => !excelData[0] || !(campo in excelData[0])
-                                          );
+                                          const columnasExcelNormalizadas = excelData[0]
+                                            ? Object.keys(excelData[0]).map(col => normalizarDatos(col))
+                                            : [];
+
+                                          const camposFaltantes = camposRequeridos.filter(campo => {
+                                            const campoNormalizado = normalizarDatos(campo);
+                                            return !columnasExcelNormalizadas.includes(campoNormalizado);
+                                          });
 
                                           if (camposFaltantes.length > 0) {
+                                            await registrarEventoAuditoria({
+                                              actor_id: userid,
+                                              action: "upload_excel",
+                                              object_type: "anexo",
+                                              object_id: clave,
+                                              success: false,
+                                              metadata: {
+                                                motivo: "campos_obligatorios_faltantes",
+                                                campos_faltantes: camposFaltantes,
+                                                filas: excelData.length,
+                                              },
+                                            });
+
                                             toast.error(
                                               <div>
                                                 <p>Campos obligatorios faltantes:</p>
@@ -2879,6 +3074,19 @@ export default function AnexosPage() {
 
                                           const { valido, errores } = validarEstructuraExcel(excelData, clave);
                                           if (!valido) {
+                                            await registrarEventoAuditoria({
+                                              actor_id: userid,
+                                              action: "upload_excel",
+                                              object_type: "anexo",
+                                              object_id: clave,
+                                              success: false,
+                                              metadata: {
+                                                motivo: "estructura_invalida",
+                                                errores,
+                                                filas: excelData.length,
+                                              },
+                                            });
+
                                             toast.error(
                                               <div>
                                                 <p>Errores en el archivo:</p>
@@ -2895,6 +3103,19 @@ export default function AnexosPage() {
 
                                           const { advertencias } = validarTiposExcel(excelData, clave);
                                           if (advertencias.length > 0) {
+                                            await registrarEventoAuditoria({
+                                              actor_id: userid,
+                                              action: "upload_excel",
+                                              object_type: "anexo",
+                                              object_id: clave,
+                                              success: true,
+                                              metadata: {
+                                                motivo: "advertencias_tipos",
+                                                advertencias: advertencias.slice(0, 5),
+                                                total_advertencias: advertencias.length,
+                                              },
+                                            });
+
                                             toast.warning(
                                               <div>
                                                 <p>Advertencias de tipos de datos:</p>
@@ -2913,9 +3134,35 @@ export default function AnexosPage() {
 
                                           setDatos(excelData);
                                           setValue("datos", excelData);
+
+                                          await registrarEventoAuditoria({
+                                            actor_id: userid,
+                                            action: "upload_excel",
+                                            object_type: "anexo",
+                                            object_id: clave,
+                                            success: true,
+                                            metadata: {
+                                              motivo: "carga_exitosa",
+                                              filas: excelData.length,
+                                              advertencias: advertencias.length,
+                                            },
+                                          });
+
                                           toast.success(`✅ Excel cargado: ${excelData.length} filas`);
                                         }}
-                                        onUploadError={(error: string) => {
+                                        onUploadError={async (error: string) => {
+                                          await registrarEventoAuditoria({
+                                            actor_id: userid,
+                                            action: "upload_excel",
+                                            object_type: "anexo",
+                                            object_id: watch("clave") || "",
+                                            success: false,
+                                            metadata: {
+                                              motivo: "error_subida",
+                                              mensaje: error,
+                                            },
+                                          });
+
                                           toast.error(`Error al subir el archivo: ${error}`);
                                         }}
                                       />
@@ -2929,6 +3176,8 @@ export default function AnexosPage() {
                             </div>
                           )}
                         </div>
+
+
 
 
                         {/* Botones */}
@@ -2954,6 +3203,7 @@ export default function AnexosPage() {
                               || !watch("fecha_creacion")
                               || !watch("estado")
                               || !datos.length
+                              || validarFilasObligatorias(datos, watch("clave")).length > 0
                               || yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
                           >
                             {yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)

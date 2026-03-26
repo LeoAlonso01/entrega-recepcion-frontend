@@ -99,12 +99,38 @@ export function validarTiposExcel(
     return { advertencias }; // Son PDFs, no validamos tipos
   }
 
+  const tiposEsperados = new Map<string, "string" | "number" | "date" | "unknown">();
+
+  // Prioriza los tipos definidos en la estructura de datos por clave
+  if (clave && ESTRUCTURA_DATOS_POR_CLAVE[clave]) {
+    ESTRUCTURA_DATOS_POR_CLAVE[clave].forEach((item) => {
+      tiposEsperados.set(normalizar(item.campo), item.tipo as any);
+    });
+  }
+
+  // Si hay reglas explícitas para la clave, usa también esos tipos (sobreescribe si existe)
+  const reglas = clave && clave in ReglasValidacion ? ReglasValidacion[clave] : undefined;
+  if (reglas) {
+    reglas.requeridos.forEach((item) => {
+      if (!item.tipo) return;
+
+      tiposEsperados.set(normalizar(item.nombre), item.tipo);
+
+      if (!item.alias || item.alias.length === 0) return;
+
+      for (const aliasItem of item.alias) {
+        tiposEsperados.set(normalizar(aliasItem), item.tipo);
+      }
+    });
+  }
+
   datos.forEach((fila, idx) => {
     Object.keys(fila).forEach((columna) => {
       const valor = fila[columna];
       if (valor == null || valor === "") return; // Celda vacía → no valida
 
-      const tipoEsperado = inferirTipo(columna);
+      const nombreNormalizado = normalizar(columna);
+      const tipoEsperado = tiposEsperados.get(nombreNormalizado) || inferirTipo(columna);
 
       if (tipoEsperado === "date") {
         const fecha = new Date(valor);
@@ -113,6 +139,7 @@ export function validarTiposExcel(
             `Fila ${idx + 1}: "${columna}" ('${valor}') no es una fecha válida`
           );
         }
+        return;
       }
 
       if (tipoEsperado === "number") {
@@ -124,14 +151,10 @@ export function validarTiposExcel(
             `Fila ${idx + 1}: "${columna}" ('${valor}') no es un número válido`
           );
         }
+        return;
       }
 
-      // "unknown" → advertencia opcional
-      if (tipoEsperado === "unknown") {
-        advertencias.push(
-          `Fila ${idx + 1}: Columna desconocida "${columna}". Verifica su nombre`
-        );
-      }
+      // Si no se infiere tipo explícito y no está en estructura/reglas, no se alerta para evitar falsos positivos
     });
   });
 
