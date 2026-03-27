@@ -22,9 +22,7 @@ import { Trash2, Pencil, Eye } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
-// Definición del tipo Unidad
-// Este tipo representa la estructura de una unidad responsable
-// Incluye campos como id_unidad, nombre, responsable, unidad_padre_id y nivel para jerarquía
+// Definición del tipo Unidad (de lectura desde backend)
 type Unidad = {
     id_unidad: number;
     nombre: string;
@@ -33,11 +31,30 @@ type Unidad = {
         id: number;
     };
     unidad_padre_id?: number | null;
-    nivel?: number; // Añadido para jerarquía
-    codigo_postal?: string; // Añadido para evitar error de propiedad faltante
-    tipo_unidad?: string; // Añadido para evitar error de propiedad faltante
-    rfc?: string; // Añadido para evitar error de propiedad faltante
-    estado?: string; // Añadido para evitar error de propiedad faltante
+    nivel?: number;
+    codigo_postal?: string;
+    tipo_unidad?: string;
+    rfc?: string;
+    estado?: string;
+    telefono?: string;
+    domicilio?: string;
+    municipio?: string;
+    localidad?: string;
+    correo_electronico?: string;
+};
+
+// Tipo para crear/editar unidad
+type UnidadFormData = {
+    nombre: string;
+    tipo_unidad: string;
+    unidad_padre_id: number | null;
+    telefono?: string;
+    domicilio?: string;
+    municipio?: string;
+    localidad?: string;
+    codigo_postal?: string;
+    rfc?: string;
+    correo_electronico?: string;
 };
 
 type responsable = {
@@ -66,41 +83,30 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
     const [loadingJerarquia, setLoadingJerarquia] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
-    const [formData, setFormData] = useState<Unidad>({
-        id_unidad: 0,
-        nombre: "",
-        responsable: {
-            username: "",
-            id: 0
-        },
-        unidad_padre_id: null,
-        nivel: 0,
-        codigo_postal: "",
-        tipo_unidad: "",
-        rfc: "",
-        estado: "activo", // Por defecto, las unidades son activas
-    }
-
-    );
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [editingUnidad, setEditingUnidad] = useState<Unidad | null>(null);
+    const [editingUnidadOriginal, setEditingUnidadOriginal] = useState<UnidadFormData | null>(null);
+    const [isLoadingEdit, setIsLoadingEdit] = useState(false);
+    const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
-    const [newUnidad, setNewUnidad] = useState<Unidad>({
-        id_unidad: 0,
+    const [isViewingDetails, setIsViewingDetails] = useState(false);
+    const [viewingUnidad, setViewingUnidad] = useState<Unidad | null>(null);
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+    const [newUnidad, setNewUnidad] = useState<UnidadFormData>({
         nombre: "",
-        responsable: {
-            username: "",
-            id: 0
-        },
-        unidad_padre_id: null,
-        nivel: 0,
-        codigo_postal: "",
         tipo_unidad: "",
+        unidad_padre_id: null,
+        telefono: "",
+        domicilio: "",
+        municipio: "",
+        localidad: "",
+        codigo_postal: "",
         rfc: "",
-        estado: "activo", // Por defecto, las unidades son activas
+        correo_electronico: "",
     });
+    const [isSubmittingForm, setIsSubmittingForm] = useState(false);
     const router = useRouter();
 
     // ########### Estados para la paginación ###########
@@ -124,11 +130,241 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         }
     }, [router])
 
+    // Effect para cargar los datos de la unidad cuando se abre el modal de edición
+    useEffect(() => {
+        if (isEditing && editingUnidad) {
+            loadUnidadForEdit(editingUnidad.id_unidad);
+        }
+    }, [isEditing]);
+
+    // Effect para cargar los detalles cuando se abre el modal de visualización
+    useEffect(() => {
+        if (isViewingDetails && viewingUnidad) {
+            loadUnidadDetails(viewingUnidad.id_unidad);
+        }
+    }, [isViewingDetails]);
+
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        toast.success("Unidad editada correctamente.");
-        setIsDialogOpen(false);
+        if (!editingUnidad) {
+            toast.error("Error: Unidad no cargada");
+            return;
+        }
+
+        // Validar campos obligatorios
+        if (!editingUnidad.nombre?.trim()) {
+            toast.error("El nombre de la unidad es obligatorio");
+            return;
+        }
+        if (!editingUnidad.tipo_unidad) {
+            toast.error("El tipo de unidad es obligatorio");
+            return;
+        }
+        if (!editingUnidad.unidad_padre_id) {
+            toast.error("La unidad padre es obligatoria");
+            return;
+        }
+
+        // Obtener token
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Token de autenticación no encontrado");
+            router.push("/");
+            return;
+        }
+
+        setIsSubmittingEdit(true);
+
+        try {
+            // Construir payload solo con campos cambiados
+            const payload: any = {};
+            
+            if (editingUnidadOriginal?.nombre !== editingUnidad.nombre) {
+                payload.nombre = editingUnidad.nombre.trim();
+            }
+            if (editingUnidadOriginal?.tipo_unidad !== editingUnidad.tipo_unidad) {
+                payload.tipo_unidad = editingUnidad.tipo_unidad;
+            }
+            if (editingUnidadOriginal?.unidad_padre_id !== editingUnidad.unidad_padre_id) {
+                payload.unidad_padre_id = editingUnidad.unidad_padre_id;
+            }
+            if (editingUnidadOriginal?.telefono !== editingUnidad.telefono) {
+                payload.telefono = editingUnidad.telefono?.trim() || null;
+            }
+            if (editingUnidadOriginal?.domicilio !== editingUnidad.domicilio) {
+                payload.domicilio = editingUnidad.domicilio?.trim() || null;
+            }
+            if (editingUnidadOriginal?.municipio !== editingUnidad.municipio) {
+                payload.municipio = editingUnidad.municipio?.trim() || null;
+            }
+            if (editingUnidadOriginal?.localidad !== editingUnidad.localidad) {
+                payload.localidad = editingUnidad.localidad?.trim() || null;
+            }
+            if (editingUnidadOriginal?.codigo_postal !== editingUnidad.codigo_postal) {
+                payload.codigo_postal = editingUnidad.codigo_postal?.trim() || null;
+            }
+            if (editingUnidadOriginal?.rfc !== editingUnidad.rfc) {
+                payload.rfc = editingUnidad.rfc?.trim().toUpperCase() || null;
+            }
+            if (editingUnidadOriginal?.correo_electronico !== editingUnidad.correo_electronico) {
+                payload.correo_electronico = editingUnidad.correo_electronico?.trim() || null;
+            }
+
+            // Si no hay cambios, simplemente cerrar
+            if (Object.keys(payload).length === 0) {
+                toast.info("No hay cambios para guardar");
+                setIsEditing(false);
+                return;
+            }
+
+            console.log("Enviando cambios:", payload);
+
+            const response = await fetch(`${API_URL}/unidades_responsables/${editingUnidad.id_unidad}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            // Manejar respuestas por status
+            if (response.status === 200) {
+                const unidadActualizada = await response.json();
+                toast.success("Unidad actualizada correctamente.");
+                
+                // Actualizar lista localmente
+                setUnidades(unidades.map(u => u.id_unidad === unidadActualizada.id_unidad ? unidadActualizada : u));
+                setUnidadesOriginales(unidadesOriginales.map(u => u.id_unidad === unidadActualizada.id_unidad ? unidadActualizada : u));
+                
+                // Cerrar dialog
+                setIsEditing(false);
+                setEditingUnidad(null);
+                setEditingUnidadOriginal(null);
+            } else if (response.status === 400) {
+                const error = await response.json();
+                toast.error(`Error de validación: ${error.detail || "Datos inválidos"}`);
+            } else if (response.status === 403) {
+                toast.error("No tienes permisos para editar unidades (se requiere rol ADMIN)");
+            } else if (response.status === 404) {
+                toast.error("La unidad o la unidad padre seleccionada no existe");
+            } else if (response.status === 500) {
+                toast.error("Error del servidor al actualizar la unidad");
+            } else {
+                toast.error(`Error inesperado: ${response.status}`);
+            }
+        } catch (error) {
+            console.error("Error al actualizar unidad:", error);
+            toast.error("Error de conexión al actualizar la unidad");
+        } finally {
+            setIsSubmittingEdit(false);
+        }
+    }
+
+    // Cargar unidad para editar
+    const loadUnidadForEdit = async (unidadId: number) => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Token de autenticación no encontrado");
+            return;
+        }
+
+        setIsLoadingEdit(true);
+
+        try {
+            const response = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al cargar la unidad');
+            }
+
+            const unidadData = await response.json();
+            console.log("Unidad cargada para edición:", unidadData);
+
+            // Actualizar el estado editingUnidad con todos los datos
+            setEditingUnidad({
+                ...unidadData,
+                telefono: unidadData.telefono || "",
+                domicilio: unidadData.domicilio || "",
+                municipio: unidadData.municipio || "",
+                localidad: unidadData.localidad || "",
+                codigo_postal: unidadData.codigo_postal || "",
+                rfc: unidadData.rfc || "",
+                correo_electronico: unidadData.correo_electronico || "",
+            });
+
+            // Guardar el estado original para detectar cambios
+            setEditingUnidadOriginal({
+                nombre: unidadData.nombre,
+                tipo_unidad: unidadData.tipo_unidad,
+                unidad_padre_id: unidadData.unidad_padre_id,
+                telefono: unidadData.telefono,
+                domicilio: unidadData.domicilio,
+                municipio: unidadData.municipio,
+                localidad: unidadData.localidad,
+                codigo_postal: unidadData.codigo_postal,
+                rfc: unidadData.rfc,
+                correo_electronico: unidadData.correo_electronico,
+            });
+        } catch (error) {
+            console.error("Error al cargar la unidad:", error);
+            toast.error("Error al cargar los datos de la unidad");
+            setIsEditing(false);
+        } finally {
+            setIsLoadingEdit(false);
+        }
+    }
+
+    // Cargar detalles de la unidad para visualización
+    const loadUnidadDetails = async (unidadId: number) => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Token de autenticación no encontrado");
+            return;
+        }
+
+        setIsLoadingDetails(true);
+
+        try {
+            const response = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al cargar la unidad');
+            }
+
+            const unidadData = await response.json();
+            console.log("Detalles de unidad cargados:", unidadData);
+
+            setViewingUnidad({
+                ...unidadData,
+                telefono: unidadData.telefono || "",
+                domicilio: unidadData.domicilio || "",
+                municipio: unidadData.municipio || "",
+                localidad: unidadData.localidad || "",
+                codigo_postal: unidadData.codigo_postal || "",
+                rfc: unidadData.rfc || "",
+                correo_electronico: unidadData.correo_electronico || "",
+            });
+        } catch (error) {
+            console.error("Error al cargar detalles de la unidad:", error);
+            toast.error("Error al cargar los detalles de la unidad");
+            setIsViewingDetails(false);
+        } finally {
+            setIsLoadingDetails(false);
+        }
     }
 
     const handleDelete = async (id: number) => {
@@ -161,23 +397,100 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
 
     const handleAddSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Aquí puedes hacer una llamada a la API para agregar la unidad
-        toast.success("Unidad agregada correctamente.");
-        setIsAdding(false);
-        setFormData({
-            id_unidad: 0,
-            nombre: "",
-            responsable: {
-                username: "",
-                id: 0
-            },
-            unidad_padre_id: null,
-            nivel: 0,
-            codigo_postal: "",
-            tipo_unidad: "",
-            rfc: "",
-            estado: "activo", // Por defecto, las unidades son activas
-        });
+        
+        // Validar campos obligatorios
+        if (!newUnidad.nombre.trim()) {
+            toast.error("El nombre de la unidad es obligatorio");
+            return;
+        }
+        if (!newUnidad.tipo_unidad) {
+            toast.error("El tipo de unidad es obligatorio");
+            return;
+        }
+        if (!newUnidad.unidad_padre_id) {
+            toast.error("La unidad padre es obligatoria");
+            return;
+        }
+
+        // Obtener token
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Token de autenticación no encontrado");
+            router.push("/");
+            return;
+        }
+
+        setIsSubmittingForm(true);
+
+        try {
+            // Construir payload - solo incluir campos con valores
+            const payload: any = {
+                nombre: newUnidad.nombre.trim(),
+                tipo_unidad: newUnidad.tipo_unidad,
+                unidad_padre_id: newUnidad.unidad_padre_id,
+            };
+
+            // Agregar campos opcionales si tienen valor
+            if (newUnidad.telefono?.trim()) payload.telefono = newUnidad.telefono.trim();
+            if (newUnidad.domicilio?.trim()) payload.domicilio = newUnidad.domicilio.trim();
+            if (newUnidad.municipio?.trim()) payload.municipio = newUnidad.municipio.trim();
+            if (newUnidad.localidad?.trim()) payload.localidad = newUnidad.localidad.trim();
+            if (newUnidad.codigo_postal?.trim()) payload.codigo_postal = newUnidad.codigo_postal.trim();
+            if (newUnidad.rfc?.trim()) payload.rfc = newUnidad.rfc.trim().toUpperCase();
+            if (newUnidad.correo_electronico?.trim()) payload.correo_electronico = newUnidad.correo_electronico.trim();
+
+            console.log("Enviando payload:", payload);
+
+            const response = await fetch(`${API_URL}/unidades_responsables`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            // Manejar respuestas por status
+            if (response.status === 201) {
+                const nuevaUnidad = await response.json();
+                toast.success("Unidad agregada correctamente.");
+                
+                // Actualizar lista localmente
+                setUnidades([...unidades, nuevaUnidad]);
+                setUnidadesOriginales([...unidadesOriginales, nuevaUnidad]);
+                
+                // Limpiar formulario y cerrar dialog
+                setIsAdding(false);
+                setNewUnidad({
+                    nombre: "",
+                    tipo_unidad: "",
+                    unidad_padre_id: null,
+                    telefono: "",
+                    domicilio: "",
+                    municipio: "",
+                    localidad: "",
+                    codigo_postal: "",
+                    rfc: "",
+                    correo_electronico: "",
+                });
+            } else if (response.status === 400) {
+                const error = await response.json();
+                toast.error(`Error de validación: ${error.detail || "Datos inválidos"}`);
+            } else if (response.status === 403) {
+                toast.error("No tienes permisos para agregar unidades (se requiere rol ADMIN)");
+            } else if (response.status === 404) {
+                toast.error("La unidad padre seleccionada no existe");
+            } else if (response.status === 500) {
+                toast.error("Error del servidor al agregar la unidad");
+            } else {
+                toast.error(`Error inesperado: ${response.status}`);
+            }
+        } catch (error) {
+            console.error("Error al agregar unidad:", error);
+            toast.error("Error de conexión al agregar la unidad");
+        } finally {
+            setIsSubmittingForm(false);
+        }
     }
 
     // Obtener todas las unidades normales
@@ -496,18 +809,16 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                 onClick={() => {
                                                     setIsAdding(true);
                                                     setNewUnidad({
-                                                        id_unidad: 0,
                                                         nombre: "",
-                                                        responsable: {
-                                                            id: 0,
-                                                            username: ""
-                                                        },
-                                                        unidad_padre_id: null,
-                                                        nivel: 0,
-                                                        codigo_postal: "",
                                                         tipo_unidad: "",
+                                                        unidad_padre_id: null,
+                                                        telefono: "",
+                                                        domicilio: "",
+                                                        municipio: "",
+                                                        localidad: "",
+                                                        codigo_postal: "",
                                                         rfc: "",
-                                                        estado: "activo", // Por defecto, las unidades son activas
+                                                        correo_electronico: "",
                                                     });
                                                 }}
                                                 className="bg-[#B59E60] hover:bg-[#a48d54] text-white"
@@ -604,7 +915,10 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
-                                                                        onClick={() => toast.success("Ver detalles de la unidad (funcionalidad en desarrollo)")}
+                                                                        onClick={() => {
+                                                                            setViewingUnidad(unidad);
+                                                                            setIsViewingDetails(true);
+                                                                        }}
                                                                         className="text-blue-600 hover:text-blue-800"
                                                                     >
                                                                         <Eye className="h-4 w-4" />
@@ -753,88 +1067,237 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
 
                 {/* Dialog para editar la unidad responsable */}
                 <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-2xl max-h-screen overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Editar Unidad Responsable</DialogTitle>
                             <DialogDescription>
                                 Modifica los detalles de la unidad responsable seleccionada.
                             </DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={handleEditSubmit}>
-                            <div className="grid gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Nombre de la Unidad</label>
-                                    <input
-                                        type="text"
-                                        value={editingUnidad?.nombre || ''}
-                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, nombre: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Responsable</label>
-                                    <input
-                                        type="text"
-                                        value={typeof editingUnidad?.responsable === 'object' ? editingUnidad.responsable.username : (editingUnidad?.responsable || '')}
-                                        onChange={(e) =>
-                                            setEditingUnidad(
-                                                editingUnidad
-                                                    ? {
-                                                        ...editingUnidad,
-                                                        responsable: {
-                                                            ...editingUnidad.responsable,
-                                                            username: e.target.value,
-                                                            id: editingUnidad.responsable?.id ?? 0
-                                                        },
-                                                        id_unidad: editingUnidad.id_unidad
-                                                    }
-                                                    : null
-                                            )
-                                        }
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Tipo de Unidad</label>
-                                    <select
-                                        value={editingUnidad?.tipo_unidad || ''}
-                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, tipo_unidad: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus
-                                        border-blue-500 focus:ring-blue-500"
-                                    >
-                                        <option value="">Seleccionar tipo</option>
-                                        <option value="departamento">Departamento</option>
-                                        <option value="coordinacion">Coordinación</option>
-                                        <option value="direccion">Dirección</option>
-                                        <option value="otro">Otro</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Estado</label>
-                                    <select
-                                        value={editingUnidad?.estado || ''}
-                                        onChange={(e) => setEditingUnidad(editingUnidad ? { ...editingUnidad, estado: e.target.value, id_unidad: editingUnidad.id_unidad } : null)}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    >
-                                        <option value="activo">Activo</option>
-                                        <option value="inactivo">Inactivo</option>
-                                    </select>
-                                </div>
-                                <div className="flex justify-end">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="mr-2"
-                                        onClick={() => setIsEditing(false)}
-                                    >
-                                        Cancelar
-                                    </Button>
-                                    <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
-                                        Guardar Cambios
-                                    </Button>
-                                </div>
+
+                        {isLoadingEdit ? (
+                            <div className="py-8 text-center">
+                                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+                                <p className="mt-2 text-gray-600">Cargando datos de la unidad...</p>
                             </div>
-                        </form>
+                        ) : editingUnidad ? (
+                            <form onSubmit={handleEditSubmit}>
+                                <div className="grid gap-4">
+                                    {/* Unidad Padre - Campo obligatorio */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Unidad Padre <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={editingUnidad.unidad_padre_id || ''}
+                                            onChange={(e) => setEditingUnidad({ 
+                                                ...editingUnidad, 
+                                                unidad_padre_id: e.target.value ? parseInt(e.target.value) : null 
+                                            })}
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            required
+                                        >
+                                            <option value="">-- Seleccionar unidad padre --</option>
+                                            {unidadesOriginales
+                                                .filter(u => u.id_unidad !== editingUnidad.id_unidad) // No permitir que sea su propia padre
+                                                .map((unidad) => (
+                                                    <option key={unidad.id_unidad} value={unidad.id_unidad}>
+                                                        {unidad.nombre} ({unidad.tipo_unidad || 'sin tipo'})
+                                                    </option>
+                                                ))}
+                                        </select>
+                                        {editingUnidadOriginal?.unidad_padre_id !== editingUnidad.unidad_padre_id && (
+                                            <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                        )}
+                                    </div>
+
+                                    {/* Nombre - Campo obligatorio */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Nombre de la Unidad <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={editingUnidad.nombre || ''}
+                                            onChange={(e) => setEditingUnidad({ ...editingUnidad, nombre: e.target.value })}
+                                            placeholder="Ej: Dirección General"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            required
+                                        />
+                                        {editingUnidadOriginal?.nombre !== editingUnidad.nombre && (
+                                            <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                        )}
+                                    </div>
+
+                                    {/* Tipo de Unidad - Campo obligatorio */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">
+                                            Tipo de Unidad <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={editingUnidad.tipo_unidad || ''}
+                                            onChange={(e) => setEditingUnidad({ ...editingUnidad, tipo_unidad: e.target.value })}
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            required
+                                        >
+                                            <option value="">-- Seleccionar tipo --</option>
+                                            <option value="departamento">Departamento</option>
+                                            <option value="coordinacion">Coordinación</option>
+                                            <option value="direccion">Dirección</option>
+                                            <option value="subdirección">Subdirección</option>
+                                            <option value="jefatura">Jefatura</option>
+                                            <option value="otro">Otro</option>
+                                        </select>
+                                        {editingUnidadOriginal?.tipo_unidad !== editingUnidad.tipo_unidad && (
+                                            <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                        )}
+                                    </div>
+
+                                    {/* Sección de campos opcionales */}
+                                    <div className="border-t pt-4 mt-2">
+                                        <p className="text-sm font-semibold text-gray-600 mb-3">Campos Opcionales</p>
+                                        
+                                        {/* RFC */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">RFC</label>
+                                            <input
+                                                type="text"
+                                                value={editingUnidad.rfc || ''}
+                                                onChange={(e) => setEditingUnidad({ ...editingUnidad, rfc: e.target.value })}
+                                                placeholder="Ej: ABC123456XYZ"
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                            {editingUnidadOriginal?.rfc !== editingUnidad.rfc && (
+                                                <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                            )}
+                                        </div>
+
+                                        {/* Email */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+                                            <input
+                                                type="email"
+                                                value={editingUnidad.correo_electronico || ''}
+                                                onChange={(e) => setEditingUnidad({ ...editingUnidad, correo_electronico: e.target.value })}
+                                                placeholder="Ej: contacto@unidad.com"
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                            {editingUnidadOriginal?.correo_electronico !== editingUnidad.correo_electronico && (
+                                                <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                            )}
+                                        </div>
+
+                                        {/* Teléfono */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+                                            <input
+                                                type="tel"
+                                                value={editingUnidad.telefono || ''}
+                                                onChange={(e) => setEditingUnidad({ ...editingUnidad, telefono: e.target.value })}
+                                                placeholder="Ej: +52 123 456 7890"
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                            {editingUnidadOriginal?.telefono !== editingUnidad.telefono && (
+                                                <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                            )}
+                                        </div>
+
+                                        {/* Código Postal */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Código Postal</label>
+                                            <input
+                                                type="text"
+                                                value={editingUnidad.codigo_postal || ''}
+                                                onChange={(e) => setEditingUnidad({ ...editingUnidad, codigo_postal: e.target.value })}
+                                                placeholder="Ej: 28001"
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                            {editingUnidadOriginal?.codigo_postal !== editingUnidad.codigo_postal && (
+                                                <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                            )}
+                                        </div>
+
+                                        {/* Domicilio */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Domicilio</label>
+                                            <input
+                                                type="text"
+                                                value={editingUnidad.domicilio || ''}
+                                                onChange={(e) => setEditingUnidad({ ...editingUnidad, domicilio: e.target.value })}
+                                                placeholder="Ej: Calle Principal 123"
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                            {editingUnidadOriginal?.domicilio !== editingUnidad.domicilio && (
+                                                <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                            )}
+                                        </div>
+
+                                        {/* Municipio */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Municipio</label>
+                                            <input
+                                                type="text"
+                                                value={editingUnidad.municipio || ''}
+                                                onChange={(e) => setEditingUnidad({ ...editingUnidad, municipio: e.target.value })}
+                                                placeholder="Ej: Madrid"
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                            {editingUnidadOriginal?.municipio !== editingUnidad.municipio && (
+                                                <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                            )}
+                                        </div>
+
+                                        {/* Localidad */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Localidad</label>
+                                            <input
+                                                type="text"
+                                                value={editingUnidad.localidad || ''}
+                                                onChange={(e) => setEditingUnidad({ ...editingUnidad, localidad: e.target.value })}
+                                                placeholder="Ej: Centro"
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                            {editingUnidadOriginal?.localidad !== editingUnidad.localidad && (
+                                                <p className="text-xs text-blue-600 mt-1">Cambio detectado</p>
+                                            )}
+                                        </div>
+
+                                        {/* Información readonly */}
+                                        <div className="border-t pt-3 mt-4">
+                                            <p className="text-xs text-gray-500 mb-2">Información de auditoría</p>
+                                            {editingUnidad.responsable && (
+                                                <p className="text-xs text-gray-500">
+                                                    Responsable: <span className="font-medium">{editingUnidad.responsable?.username || 'Sin asignar'}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Botones de acción */}
+                                    <div className="flex justify-end gap-2 mt-6 border-t pt-4">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setIsEditing(false)}
+                                            disabled={isSubmittingEdit}
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button 
+                                            type="submit" 
+                                            className="bg-blue-600 text-white hover:bg-blue-700"
+                                            disabled={isSubmittingEdit}
+                                        >
+                                            {isSubmittingEdit ? "Guardando..." : "Guardar Cambios"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </form>
+                        ) : (
+                            <div className="p-4 bg-red-50 text-red-700 rounded">
+                                Error al cargar la unidad
+                            </div>
+                        )}
                     </DialogContent>
                 </Dialog>
 
@@ -868,80 +1331,393 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
 
                 {/* dialog para el formulario para agregar unidad resposnable  */}
                 <Dialog open={isAdding} onOpenChange={setIsAdding}>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-2xl max-h-screen overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Agregar Unidad Responsable</DialogTitle>
                             <DialogDescription>
-                                Completa los detalles de la nueva unidad responsable.
+                                Completa los campos obligatorios. Los campos opcionales puedes dejarlos en blanco.
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleAddSubmit}>
                             <div className="grid gap-4">
+                                {/* Unidad Padre - Campo obligatorio */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Nombre de la Unidad</label>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Unidad Padre <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={newUnidad.unidad_padre_id || ''}
+                                        onChange={(e) => setNewUnidad({ 
+                                            ...newUnidad, 
+                                            unidad_padre_id: e.target.value ? parseInt(e.target.value) : null 
+                                        })}
+                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        required
+                                    >
+                                        <option value="">-- Seleccionar unidad padre --</option>
+                                        {unidadesOriginales.map((unidad) => (
+                                            <option key={unidad.id_unidad} value={unidad.id_unidad}>
+                                                {unidad.nombre} ({unidad.tipo_unidad || 'sin tipo'})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Nombre - Campo obligatorio */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Nombre de la Unidad <span className="text-red-500">*</span>
+                                    </label>
                                     <input
                                         type="text"
                                         value={newUnidad.nombre}
                                         onChange={(e) => setNewUnidad({ ...newUnidad, nombre: e.target.value })}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        placeholder="Ej: Dirección General"
+                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        required
                                     />
                                 </div>
+
+                                {/* Tipo de Unidad - Campo obligatorio */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Responsable</label>
-                                    <input
-                                        type="text"
-                                        value={typeof newUnidad.responsable === "object" ? newUnidad.responsable.username : ""}
-                                        onChange={(e) => setNewUnidad({
-                                            ...newUnidad,
-                                            responsable: {
-                                                ...newUnidad.responsable,
-                                                username: e.target.value,
-                                                id: typeof newUnidad.responsable === "object" ? newUnidad.responsable.id : 0
-                                            }
-                                        })}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Tipo de Unidad</label>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Tipo de Unidad <span className="text-red-500">*</span>
+                                    </label>
                                     <select
                                         value={newUnidad.tipo_unidad}
                                         onChange={(e) => setNewUnidad({ ...newUnidad, tipo_unidad: e.target.value })}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        required
                                     >
-                                        <option value="">Seleccionar tipo</option>
+                                        <option value="">-- Seleccionar tipo --</option>
                                         <option value="departamento">Departamento</option>
                                         <option value="coordinacion">Coordinación</option>
                                         <option value="direccion">Dirección</option>
+                                        <option value="subdirección">Subdirección</option>
+                                        <option value="jefatura">Jefatura</option>
                                         <option value="otro">Otro</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Estado</label>
-                                    <select
-                                        value={newUnidad.estado}
-                                        onChange={(e) => setNewUnidad({ ...newUnidad, estado: e.target.value })}
-                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                    >
-                                        <option value="activo">Activo</option>
-                                        <option value="inactivo">Inactivo</option>
-                                    </select>
+
+                                {/* Sección de campos opcionales */}
+                                <div className="border-t pt-4 mt-2">
+                                    <p className="text-sm font-semibold text-gray-600 mb-3">Campos Opcionales</p>
+                                    
+                                    {/* RFC */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">RFC</label>
+                                        <input
+                                            type="text"
+                                            value={newUnidad.rfc || ''}
+                                            onChange={(e) => setNewUnidad({ ...newUnidad, rfc: e.target.value })}
+                                            placeholder="Ej: ABC123456XYZ"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+
+                                    {/* Email */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Correo Electrónico</label>
+                                        <input
+                                            type="email"
+                                            value={newUnidad.correo_electronico || ''}
+                                            onChange={(e) => setNewUnidad({ ...newUnidad, correo_electronico: e.target.value })}
+                                            placeholder="Ej: contacto@unidad.com"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+
+                                    {/* Teléfono */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+                                        <input
+                                            type="tel"
+                                            value={newUnidad.telefono || ''}
+                                            onChange={(e) => setNewUnidad({ ...newUnidad, telefono: e.target.value })}
+                                            placeholder="Ej: +52 123 456 7890"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+
+                                    {/* Código Postal */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Código Postal</label>
+                                        <input
+                                            type="text"
+                                            value={newUnidad.codigo_postal || ''}
+                                            onChange={(e) => setNewUnidad({ ...newUnidad, codigo_postal: e.target.value })}
+                                            placeholder="Ej: 28001"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+
+                                    {/* Domicilio */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Domicilio</label>
+                                        <input
+                                            type="text"
+                                            value={newUnidad.domicilio || ''}
+                                            onChange={(e) => setNewUnidad({ ...newUnidad, domicilio: e.target.value })}
+                                            placeholder="Ej: Calle Principal 123"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+
+                                    {/* Municipio */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Municipio</label>
+                                        <input
+                                            type="text"
+                                            value={newUnidad.municipio || ''}
+                                            onChange={(e) => setNewUnidad({ ...newUnidad, municipio: e.target.value })}
+                                            placeholder="Ej: Madrid"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
+
+                                    {/* Localidad */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Localidad</label>
+                                        <input
+                                            type="text"
+                                            value={newUnidad.localidad || ''}
+                                            onChange={(e) => setNewUnidad({ ...newUnidad, localidad: e.target.value })}
+                                            placeholder="Ej: Centro"
+                                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex justify-end">
+
+                                {/* Botones de acción */}
+                                <div className="flex justify-end gap-2 mt-6 border-t pt-4">
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        className="mr-2"
                                         onClick={() => setIsAdding(false)}
+                                        disabled={isSubmittingForm}
                                     >
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">
-                                        Agregar Unidad
+                                    <Button 
+                                        type="submit" 
+                                        className="bg-blue-600 text-white hover:bg-blue-700"
+                                        disabled={isSubmittingForm}
+                                    >
+                                        {isSubmittingForm ? "Guardando..." : "Agregar Unidad"}
                                     </Button>
                                 </div>
                             </div>
                         </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Dialog para ver detalles de la unidad */}
+                <Dialog open={isViewingDetails} onOpenChange={setIsViewingDetails}>
+                    <DialogContent className="max-w-2xl max-h-screen overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Detalles de Unidad Responsable</DialogTitle>
+                            <DialogDescription>
+                                Información completa de la unidad responsable seleccionada.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {isLoadingDetails ? (
+                            <div className="py-8 text-center">
+                                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+                                <p className="mt-2 text-gray-600">Cargando detalles...</p>
+                            </div>
+                        ) : viewingUnidad ? (
+                            <div className="grid gap-6">
+                                {/* Información Principal */}
+                                <div className="border-b pb-4">
+                                    <h3 className="text-sm font-semibold text-gray-600 mb-3">INFORMACIÓN PRINCIPAL</h3>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">ID Unidad</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{viewingUnidad.id_unidad}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Nombre</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{viewingUnidad.nombre}</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Tipo de Unidad</label>
+                                            <div className="mt-1">
+                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                    {viewingUnidad.tipo_unidad || 'Sin definir'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Unidad Padre ID</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">
+                                                {viewingUnidad.unidad_padre_id ? viewingUnidad.unidad_padre_id : 'No asignada'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Información de Contacto */}
+                                <div className="border-b pb-4">
+                                    <h3 className="text-sm font-semibold text-gray-600 mb-3">INFORMACIÓN DE CONTACTO</h3>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Email</label>
+                                            <p className="text-sm text-gray-900 mt-1">
+                                                {viewingUnidad.correo_electronico ? (
+                                                    <a href={`mailto:${viewingUnidad.correo_electronico}`} className="text-blue-600 hover:underline">
+                                                        {viewingUnidad.correo_electronico}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-gray-500">No especificado</span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Teléfono</label>
+                                            <p className="text-sm text-gray-900 mt-1">
+                                                {viewingUnidad.telefono ? (
+                                                    <a href={`tel:${viewingUnidad.telefono}`} className="text-blue-600 hover:underline">
+                                                        {viewingUnidad.telefono}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-gray-500">No especificado</span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">RFC</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">
+                                                {viewingUnidad.rfc || <span className="text-gray-500">No especificado</span>}
+                                            </p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Código Postal</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">
+                                                {viewingUnidad.codigo_postal || <span className="text-gray-500">No especificado</span>}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Información de Ubicación */}
+                                <div className="border-b pb-4">
+                                    <h3 className="text-sm font-semibold text-gray-600 mb-3">INFORMACIÓN DE UBICACIÓN</h3>
+                                    
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Domicilio</label>
+                                            <p className="text-sm text-gray-900 mt-1">
+                                                {viewingUnidad.domicilio || <span className="text-gray-500">No especificado</span>}
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500">Municipio</label>
+                                                <p className="text-sm text-gray-900 mt-1">
+                                                    {viewingUnidad.municipio || <span className="text-gray-500">No especificado</span>}
+                                                </p>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-500">Localidad</label>
+                                                <p className="text-sm text-gray-900 mt-1">
+                                                    {viewingUnidad.localidad || <span className="text-gray-500">No especificado</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Información de Responsable */}
+                                {viewingUnidad.responsable && (
+                                    <div className="border-b pb-4">
+                                        <h3 className="text-sm font-semibold text-gray-600 mb-3">RESPONSABLE</h3>
+                                        
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-medium text-sm">
+                                                {viewingUnidad.responsable.username?.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900">
+                                                    {viewingUnidad.responsable.username}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    ID: {viewingUnidad.responsable.id}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Información de Estado */}
+                                <div className="border-b pb-4">
+                                    <h3 className="text-sm font-semibold text-gray-600 mb-3">ESTADO</h3>
+                                    
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500">Estado Actual</label>
+                                        <div className="mt-1">
+                                            <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                                                viewingUnidad.estado === 'activo'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : viewingUnidad.estado === 'inactivo'
+                                                    ? 'bg-red-100 text-red-800'
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {viewingUnidad.estado ? viewingUnidad.estado.charAt(0).toUpperCase() + viewingUnidad.estado.slice(1) : 'Desconocido'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Información de Jerarquía */}
+                                {viewingUnidad.nivel !== undefined && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-gray-600 mb-3">JERARQUÍA</h3>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500">Nivel</label>
+                                            <p className="text-sm font-medium text-gray-900 mt-1">{viewingUnidad.nivel}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-red-50 text-red-700 rounded">
+                                Error al cargar los detalles de la unidad
+                            </div>
+                        )}
+
+                        {/* Botones de acción */}
+                        <div className="flex justify-end gap-2 mt-6 border-t pt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsViewingDetails(false)}
+                            >
+                                Cerrar
+                            </Button>
+                            {!isLoadingDetails && viewingUnidad && (
+                                <Button
+                                    className="bg-blue-600 text-white hover:bg-blue-700"
+                                    onClick={() => {
+                                        setIsViewingDetails(false);
+                                        setEditingUnidad(viewingUnidad);
+                                        setIsEditing(true);
+                                    }}
+                                >
+                                    Editar
+                                </Button>
+                            )}
+                        </div>
                     </DialogContent>
                 </Dialog>
 

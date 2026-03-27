@@ -232,7 +232,7 @@ actaData.anexos?.forEach((anexo: any) => {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(11)
 
-    doc.text(anexo.nombre || "ANEXO", marginLeft, y)
+    doc.text(anexo.CATEGORIA || "ANEXO", marginLeft, y)
 
     y += 6
     y = checkPageBreak(doc, y)
