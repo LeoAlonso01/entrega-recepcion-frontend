@@ -22,6 +22,11 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { generarActa } from "@/lib/generarActa";
+
+const generarPDF = async () =>{
+    const {generarActa} = await import('@/lib/generarActa');
+    return generarActa;
+}
 import { generarActaDocx } from "@/lib/generarActaDocx";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;

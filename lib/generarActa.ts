@@ -1,3 +1,5 @@
+"use client";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { imageToDataUrl } from "./helpPngPdf";

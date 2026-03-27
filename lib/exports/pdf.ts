@@ -1,16 +1,14 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { EstructuraDatosPorClave, categoria_anexos, CATEGORIA_ID_POR_CLAVE } from "../estructuraPorClave"; // ajusta ruta si es distinta
+import { ESTRUCTURA_DATOS_POR_CLAVE } from "../estructuraPorClave"; // ajusta ruta si es distinta
 import { imageToDataUrl } from "../helpPngPdf";
 
 const TOTAL_PAGES_PLACEHOLDER = "{total_pages_count_string}";
 
 function getNombreCategoria(clave: string): string {
-    const catId = CATEGORIA_ID_POR_CLAVE[String(clave).toUpperCase()];
-    if (!catId) return "Categoría desconocida";
-
-    const cat = categoria_anexos.find(c => c.id === String(catId));
-    return cat?.nombre_categoria ?? "Categoría desconocida";
+    // Note: The structure doesn't have a 'categoria' property.
+    // Use resolveCategoriaNombre(meta) instead for proper category name resolution.
+    return "Categoría desconocida";
 }
 
 
@@ -87,15 +85,15 @@ export async function generarAnexoPdf(
     ]);
 
     // Columnas/tabla según clave
-    const cols = EstructuraDatosPorClave[clave] ?? EstructuraDatosPorClave.default;
-    const head = [cols];
+    const cols = ESTRUCTURA_DATOS_POR_CLAVE[clave] ?? ESTRUCTURA_DATOS_POR_CLAVE.default;
+    const head = [cols.map((c) => c.campo)];
 
     const body = filas.map((row) =>
         cols.map((c) => {
             const v =
-                row?.[c] ??
-                row?.[c.toLowerCase()] ??
-                row?.[c.replaceAll(" ", "_")] ??
+                row?.[c.campo] ??
+                row?.[c.campo.toLowerCase()] ??
+                row?.[c.campo.replaceAll(" ", "_")] ??
                 "";
             return v === null || v === undefined || v === "" ? "-" : String(v);
         })
@@ -137,7 +135,7 @@ export async function generarAnexoPdf(
         });
 
         // Rubro/Categoría (segunda línea)
-        const categoriaNombre = getNombreCategoria(clave);
+        const categoriaNombre = resolveCategoriaNombre(meta);
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);

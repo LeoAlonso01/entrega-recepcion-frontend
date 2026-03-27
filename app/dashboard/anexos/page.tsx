@@ -11,8 +11,6 @@ import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-// import { Plus, Edit, Trash2, Download, ArrowLeft, Eye, Trash, Check } from "lucide-react"
-// Nota: `Trash2`, `ArrowLeft` y `Trash` quedaron fuera por no uso actual en esta pantalla.
 import { Plus, Edit, Download, Eye, Check } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
@@ -22,12 +20,10 @@ import { FileSpreadsheet, FileText } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
-// import { z } from "zod";
 import { ESTRUCTURA_DATOS_POR_CLAVE } from "../../../lib/estructuraPorClave";
 import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
 import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
-// import { SubcategoriaEnum } from "../../../components/json/categorias";
-// import { SubcategoriaClaves } from "@/components/json/categorias";
+
 import {
   Dialog,
   DialogContent,

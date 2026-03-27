@@ -8,10 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Download, Trash2 } from 'lucide-react';
 import VisualizadorDatos from '@/components/visualizadorDatos'; // Lo crearemos
-import { exportAnexoToExcel, exportAnexoToPDF } from '@/lib/exports';
 import { generarAnexoPdf, type PdfMeta } from '@/lib/exports/pdf';
 import { showIntermedioModal } from '@/lib/exports/pdf';
-import { set } from 'date-fns';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
