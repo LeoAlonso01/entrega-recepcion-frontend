@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Trash2, Pencil, Eye } from "lucide-react";
-
+import { CreateCargoForm } from "@/components/CreateCargoForm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
 
@@ -108,6 +108,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
     });
     const [isSubmittingForm, setIsSubmittingForm] = useState(false);
     const router = useRouter();
+    const [showCargoModal, setShowCargoModal] = useState(false);
 
     // ########### Estados para la paginación ###########
     const [currentPage, setCurrentPage] = useState(1);
@@ -746,7 +747,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                     </div>
 
                                     {/* Botones de acción (Exportar, Agregar) */}
-                                    {/* <div className="flex gap-2">
+                                    <div className="flex gap-2">
                                         <button
                                             className="px-4 py-2 bg-[#24356B] text-white rounded hover:bg-[#1c2a5d] transition-colors"
                                             onClick={() => alert('Exportar PDF')}
@@ -771,7 +772,6 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                             </span>
                                         </button>
                                     </div>
-                                   */}
                                 </div>
                             </div>
 
@@ -804,27 +804,36 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                     <>
                                         <div className="flex justify-between items-center mb-4">
                                             <h2 className="text-xl font-bold text-gray-800">Listado de Unidades</h2>
-                                            <Button
-                                                variant="secondary"
-                                                onClick={() => {
-                                                    setIsAdding(true);
-                                                    setNewUnidad({
-                                                        nombre: "",
-                                                        tipo_unidad: "",
-                                                        unidad_padre_id: null,
-                                                        telefono: "",
-                                                        domicilio: "",
-                                                        municipio: "",
-                                                        localidad: "",
-                                                        codigo_postal: "",
-                                                        rfc: "",
-                                                        correo_electronico: "",
-                                                    });
-                                                }}
-                                                className="bg-[#B59E60] hover:bg-[#a48d54] text-white"
-                                            >
-                                                Agregar Unidad
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="secondary"
+                                                    onClick={() => {
+                                                        setIsAdding(true);
+                                                        setNewUnidad({
+                                                            nombre: "",
+                                                            tipo_unidad: "",
+                                                            unidad_padre_id: null,
+                                                            telefono: "",
+                                                            domicilio: "",
+                                                            municipio: "",
+                                                            localidad: "",
+                                                            codigo_postal: "",
+                                                            rfc: "",
+                                                            correo_electronico: "",
+                                                        });
+                                                    }}
+                                                    className="bg-[#B59E60] hover:bg-[#a48d54] text-white"
+                                                >
+                                                    Agregar Unidad
+                                                </Button>
+                                                <Button
+                                                    variant="secondary"
+                                                    onClick={() => setShowCargoModal(true)}
+                                                    className="bg-blue-700 hover:bg-blue-800 text-white"
+                                                >
+                                                    Agregar Cargo
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         {/* Filtros adicionales */}
@@ -1721,6 +1730,18 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                     </DialogContent>
                 </Dialog>
 
+                {/* Modal para crear cargo */}
+                <Dialog open={showCargoModal} onOpenChange={setShowCargoModal}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Crear Cargo</DialogTitle>
+                            <DialogDescription>
+                                Completa los campos para crear un nuevo cargo.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <CreateCargoForm onClose={() => setShowCargoModal(false)} />
+                    </DialogContent>
+                </Dialog>
             </div>
         </>
     );
