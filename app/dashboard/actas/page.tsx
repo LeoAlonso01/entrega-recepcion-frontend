@@ -135,7 +135,7 @@ export default function ActasPage() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          //'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -158,7 +158,7 @@ export default function ActasPage() {
       }
 
       if (token) {
-        // headers['Authorization'] = `Bearer ${token}`
+        headers['Authorization'] = `Bearer ${token}`
       }
 
       const response = await fetch(`${API_URL}/actas`, {
@@ -223,7 +223,8 @@ export default function ActasPage() {
       const response = await fetch(`${API_URL}/actas/${actaToDelete}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       })
 
@@ -247,6 +248,7 @@ export default function ActasPage() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem("token")}`
         },
         body: JSON.stringify({
           ...actaData,
@@ -282,6 +284,7 @@ export default function ActasPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem("token")}`
         },
         body: JSON.stringify(cleanedData)
       });

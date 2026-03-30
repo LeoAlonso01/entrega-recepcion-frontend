@@ -331,7 +331,7 @@ export default function ViewActaPage() {
                 <div className="flex justify-end gap-3 mb-6">
                     <Button
                         variant="outline"
-                        onClick={() => router.push(`/actas/${acta.id}/edit`)}
+                        onClick={() => toast("Funcionalidad de edición no implementada aún")}
                         className="flex items-center gap-2"
                     >
                         <Edit className="h-4 w-4" />
