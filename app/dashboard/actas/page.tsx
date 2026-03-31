@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import FormActa from "@/components/forms/FormActa"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit, Trash2, Eye, FileSpreadsheet, FileText, Download, RotateCw, Search, Filter } from "lucide-react"
+import { Plus, Edit, Trash2, Eye, FileSpreadsheet, FileText, Download, RotateCw, Search, Filter, Paperclip } from "lucide-react"
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import {
@@ -34,34 +34,50 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export interface ActaForm {
-  id: number
-  unidad_responsable: number
-  folio?: string
-  fecha: string
-  hora: string
-  comisionado?: string
-  oficio_comision?: string
-  fecha_oficio_comision?: string
-  entrante: string
-  ine_entrante?: string
-  fecha_inicio_labores?: string
-  nombramiento?: string
-  fecha_nombramiento?: string
-  asignacion?: string
-  asignado_por?: string
-  domicilio_entrante?: string
-  telefono_entrante?: string
-  saliente: string
-  fecha_fin_labores?: string
-  testigo_entrante?: string
-  ine_testigo_entrante?: string
-  testigo_saliente?: string
-  ine_testigo_saliente?: string
-  fecha_cierre_acta?: string
-  hora_cierre_acta?: string
-  observaciones?: string
-  estado: "Pendiente" | "Completada" | "Revisión"
+interface Anexo {
+    id: number;
+    clave: string;
+    creador_id?: number;
+    datos?: any[];
+    estado?: string;
+    unidad_responsable_id?: number;
+    fecha_creacion?: string;
+    acta_id?: number;
+    creado_en?: string;
+    actualizado_en?: string;
+}
+
+interface ActaForm {
+    id: number;
+    unidad_responsable: number;
+    folio?: string;
+    fecha: string;
+    hora: string;
+    comisionado?: string;
+    oficio_comision?: string;
+    fecha_oficio_comision?: string;
+    entrante: string;
+    ine_entrante?: string;
+    fecha_inicio_labores?: string;
+    nombramiento?: string;
+    fecha_nombramiento?: string;
+    asignacion?: string;
+    asignado_por?: string;
+    domicilio_entrante?: string;
+    telefono_entrante?: string;
+    saliente: string;
+    fecha_fin_labores?: string;
+    testigo_entrante?: string;
+    ine_testigo_entrante?: string;
+    testigo_saliente?: string;
+    ine_testigo_saliente?: string;
+    fecha_cierre_acta?: string;
+    hora_cierre_acta?: string;
+    observaciones?: string;
+    estado: "Pendiente" | "Completada" | "Revisión";
+    creado_en?: string;
+    actualizado_en?: string;
+    anexos?: Anexo[];
 }
 
 interface Unidad {
@@ -186,6 +202,22 @@ export default function ActasPage() {
       setIsRefreshing(false)
     }
   }, [router])
+
+  const getAnexoUrls = (anexo?: Anexo) => {
+      if (!anexo?.datos) return [] as string[];
+      const urls = new Set<string>();
+      try {
+          anexo.datos.forEach(d => {
+              const s = JSON.stringify(d);
+              const matches = s.match(/https?:\/\/[^\s"'}]+/g);
+              if (matches) matches.forEach(m => urls.add(m));
+          });
+      } catch (e) {
+          console.error(e);
+      }
+      return Array.from(urls);
+  };
+
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -395,6 +427,12 @@ export default function ActasPage() {
       </CardContent>
     </Card>
   )
+
+  const handleUploadResume = (actaId: number) => {
+    toast.info("Funcionalidad de adjuntar archivo no implementada aún")
+    // Implementar lógica de adjuntar archivos a actas
+    
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -681,6 +719,10 @@ export default function ActasPage() {
                                     <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                                     <span className="sr-only">Editar</span>
                                   </Button>
+
+
+                                  { /* Mostrar solo el boton en las actas que no tienen anexos **/ }
+                                    {(!acta.anexos || getAnexoUrls(acta.anexos)?.length === 0) && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -691,6 +733,21 @@ export default function ActasPage() {
                                     <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                                     <span className="sr-only">Eliminar</span>
                                   </Button>
+                                  )}
+
+                                  
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleUploadResume(acta.id)} // Implementar lógica de adjuntos
+                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                                    title="Adjuntar archivo"
+                                  >
+                                    <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span className="sr-only">Adjuntar</span>
+                                  </Button>
+                                  
+
                                 </div>
                               </TableCell>
                             </TableRow>
