@@ -161,7 +161,6 @@ type CampoEstructura = {
 type Estructura = Record<string, CampoEstructura[]>; // clave -> array de campos
 
 
-
 // =====================================================
 // Helpers de dominio (validación/consultas/exportación)
 // =====================================================
@@ -1127,7 +1126,7 @@ export const claves_anexos = [
   { id: "21", clave: "MJ01", descripcion: "ADMINISTRATIVO DE ACTUACION", id_categoria: "8" },
 
   // 9) OBRAS PUBLICAS
-  { id: "22", clave: "PO01", descripcion: "PROGRAMA ANUAL DE OBRA PUBLICA", id_categoria: "9" },
+  { id: "22", clave: "OP01", descripcion: "PROGRAMA ANUAL DE OBRA PUBLICA", id_categoria: "9" },
   { id: "23", clave: "OP02", descripcion: "LISTADO GENERAL DE EXPEDIENTES UNITARIOS DE OBRA POR CONTRATO Y SU CONTENIDO", id_categoria: "9" },
   { id: "24", clave: "OP03", descripcion: "LISTADO GENERAL DE EXPEDIENTES UNITARIOS DE OBRA POR ADMINISTRACION DIRECTA Y SU CONTENIDO", id_categoria: "9" },
   { id: "25", clave: "OP04", descripcion: "LICITACIONES DE OBRA EN TRAMITE", id_categoria: "9" },

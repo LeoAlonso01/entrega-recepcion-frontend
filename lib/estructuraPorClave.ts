@@ -138,15 +138,11 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   RF01: [
     { campo: "Partida", tipo: "string", obligatorio: true, Descripcion: "Partida" },
     { campo: "Denominacion", tipo: "string", obligatorio: true, Descripcion: "Denominación" },
-    {
-      campo: "Presupuesto", tipo: "object", obligatorio: true, Descripcion: "Presupuesto", estructura: [
-        { campo: "Autorizado", tipo: "number", obligatorio: true },
-        { campo: "Ampliaciones_reducciones", tipo: "number", obligatorio: true },
-        { campo: "Modificado", tipo: "number", obligatorio: true },
-        { campo: "Ejercido", tipo: "number", obligatorio: true },
-        { campo: "Por_ejercer", tipo: "number", obligatorio: true },
-      ]
-    },
+    { campo: "Autorizado", tipo: "number", obligatorio: true },
+    { campo: "Ampliaciones y/o reducciones", tipo: "number", obligatorio: true },
+    { campo: "Modificado", tipo: "number", obligatorio: true },
+    { campo: "Ejercido", tipo: "number", obligatorio: true },
+    { campo: "Por ejercer", tipo: "number", obligatorio: true },
   ],
 
   RF02: [
@@ -156,10 +152,10 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     {
       campo: "Presupuesto", tipo: "object", obligatorio: true, estructura: [
         { campo: "Autorizado", tipo: "number" },
-        { campo: "Ampliaciones_reducciones", tipo: "number" },
+        { campo: "Ampliaciones y/o reducciones", tipo: "number" },
         { campo: "Modificado", tipo: "number" },
         { campo: "Ejercido", tipo: "number" },
-        { campo: "Por_ejercer", tipo: "number" },
+        { campo: "Por ejercer", tipo: "number" },
       ]
     },
   ],
