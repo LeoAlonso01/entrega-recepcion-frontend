@@ -203,14 +203,18 @@ export default function ActasPage() {
     }
   }, [router])
 
-  const getAnexoUrls = (anexo?: Anexo) => {
-      if (!anexo?.datos) return [] as string[];
+  const getAnexoUrls = (anexo?: Anexo | Anexo[]) => {
+      if (!anexo) return [] as string[];
       const urls = new Set<string>();
+      const anexos = Array.isArray(anexo) ? anexo : [anexo];
       try {
-          anexo.datos.forEach(d => {
-              const s = JSON.stringify(d);
-              const matches = s.match(/https?:\/\/[^\s"'}]+/g);
-              if (matches) matches.forEach(m => urls.add(m));
+          anexos.forEach(a => {
+              if (!a?.datos) return;
+              a.datos.forEach(d => {
+                  const s = JSON.stringify(d);
+                  const matches = s.match(/https?:\/\/[^\s"'}]+/g);
+                  if (matches) matches.forEach(m => urls.add(m));
+              });
           });
       } catch (e) {
           console.error(e);

@@ -4,6 +4,7 @@ import { ESTRUCTURA_DATOS_POR_CLAVE } from "./estructuraPorClave";
 export function generarPlantillaPorClave(clave: string){
     const columnas = ESTRUCTURA_DATOS_POR_CLAVE[clave];
 
+    
     if (!columnas) {
         throw new Error(`No se encontró la estructura de datos para la clave: ${clave}`);
     }
