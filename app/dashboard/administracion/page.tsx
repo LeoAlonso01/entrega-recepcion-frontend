@@ -795,6 +795,18 @@ export default function AdministracionPage(user: { role: string } | null) {
           </div>
         </div>
 
+        {/* Campo de búsqueda principal */}
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="w-full sm:w-1/2">
+            <Input
+              placeholder="Buscar por nombre, unidad o cargo"
+              value={searchUser}
+              onChange={e => setSearchUser(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+        </div>
+
         {/* Users Table */}
         {isLoading ? (
           <Card>
@@ -845,7 +857,22 @@ export default function AdministracionPage(user: { role: string } | null) {
 
                   {/* Cuerpo de tabla / tarjetas responsivas */}
                   <TableBody className="divide-y divide-gray-200">
-                    {usuarios.map((usuario) => (
+                    {usuarios
+                      .filter((usuario) => {
+                        if (!searchUser) return true;
+                        const search = searchUser.toLowerCase();
+                        const nombre = usuario.username.toLowerCase();
+                        const unidad = usuario.unidad_responsable?.nombre?.toLowerCase() || "";
+                        const cargos = (usuario.cargos_actuales && usuario.cargos_actuales.length > 0)
+                          ? usuario.cargos_actuales.map(c => (c.cargo?.nombre || (c as any).nombre || "")).join(", ").toLowerCase()
+                          : "";
+                        return (
+                          nombre.includes(search) ||
+                          unidad.includes(search) ||
+                          cargos.includes(search)
+                        );
+                      })
+                      .map((usuario) => (
                       <TableRow
                         key={usuario.id}
                         className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"

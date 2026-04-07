@@ -1,4 +1,4 @@
-import { EstructuraDatosPorClave, CALVES_CON_PDF, CATEGORIAS } from "../lib/estructuraPorClave";
+import { ESTRUCTURA_DATOS_POR_CLAVE } from "../lib/estructuraPorClave";
 
 type AnyRow = Record<string, any>;
 
@@ -21,10 +21,10 @@ function buildColumnIndex(row: AnyRow) {
 }
 
 export function normalizeRowsByClave(clave: string, raw: AnyRow[] | AnyRow | null) {
-  const isPdfClave = Boolean(CALVES_CON_PDF?.[clave]);
-  if (isPdfClave) return { columns: [], rows: [], isPdfClave: true as const };
+  // const isPdfClave = Boolean(CALVES_CON_PDF?.[clave]);
+  // if (isPdfClave) return { columns: [], rows: [], isPdfClave: true as const };
 
-  const columns = (EstructuraDatosPorClave[clave] || EstructuraDatosPorClave.default).map(canonKey);
+  const columns = (ESTRUCTURA_DATOS_POR_CLAVE[clave] || ESTRUCTURA_DATOS_POR_CLAVE.default).map(clave => clave.campo);
 
   const rowsArray: AnyRow[] = !raw ? [] : Array.isArray(raw) ? raw : [raw];
 

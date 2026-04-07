@@ -329,14 +329,17 @@ export default function ViewActaPage() {
 
                 {/* Acciones */}
                 <div className="flex justify-end gap-3 mb-6">
+
                     <Button
                         variant="outline"
-                        onClick={() => router.push(`/actas/${acta.id}/edit`)}
+                        onClick={() => toast("Funcionalidad de edición no implementada aún")}
                         className="flex items-center gap-2"
                     >
                         <Edit className="h-4 w-4" />
                         Editar
                     </Button>
+
+                    {(!acta.anexos || acta.anexos.length === 0) && (
                     <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" className="flex items-center gap-2">
@@ -360,6 +363,8 @@ export default function ViewActaPage() {
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
+                    )}
+
                     <Button variant="secondary" onClick={() => handleCreateActa()} className="flex items-center">
                         <Download className="h-4 w-4 ml-2" />
                         Generar PDF
