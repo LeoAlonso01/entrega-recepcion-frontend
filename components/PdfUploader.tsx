@@ -13,6 +13,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onUploadSuccess }) => {
   const [error, setError] = useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
