@@ -74,14 +74,20 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/file-saver": "^2.0.7",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "jest-environment-jsdom": "^30.3.0",
     "markdown-it": "^14.1.1",
     "postcss": "^8.5",
     "puppeteer": "^24.38.0",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.9",
     "typescript": "^5"
   }
 }

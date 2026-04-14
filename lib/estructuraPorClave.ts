@@ -4,11 +4,6 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   tipo: string;
   obligatorio?: boolean;
   Descripcion?: string
-  estructura?: Array<{
-    campo: string;
-    tipo: string;
-    obligatorio?: boolean;
-  }>;
 }>> = {
   // Marco Jurídico (MJ01)
   MJ01: [
@@ -149,37 +144,32 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Origen del Recurso", tipo: "string", obligatorio: true, Descripcion: "Origen del Recurso" },
     { campo: "Partida", tipo: "string", obligatorio: true, Descripcion: "Partida" },
     { campo: "Descripción", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
-    {
-      campo: "Presupuesto", tipo: "object", obligatorio: true, estructura: [
-        { campo: "Autorizado", tipo: "number" },
-        { campo: "Ampliaciones y/o reducciones", tipo: "number" },
-        { campo: "Modificado", tipo: "number" },
-        { campo: "Ejercido", tipo: "number" },
-        { campo: "Por ejercer", tipo: "number" },
-      ]
-    },
+    { campo: "Presupuesto", tipo: "object", obligatorio: true },
+    { campo: "Importe Autorizado", tipo: "number" },
+    { campo: "Importe Ampliaciones y/o reducciones", tipo: "number" },
+    { campo: "Importe Modificado", tipo: "number" },
+    { campo: "Importe Ejercido", tipo: "number" },
+    { campo: "Importe Por ejercer", tipo: "number" },
+    { campo: "Acciones", tipo: "object", obligatorio: true, },
+    { campo: "Observaciones ", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el presupuesto por origen de recurso" },
+
   ],
 
   RF03: [
     { campo: "Ramo", tipo: "string", obligatorio: true },
     { campo: "Programa", tipo: "string", obligatorio: true },
-    { campo: "Dependencia_Ejecutora", tipo: "string", obligatorio: true },
-    { campo: "Numero_Convenio", tipo: "string", obligatorio: true },
-    {
-      campo: "Importe", tipo: "object", obligatorio: true, estructura: [
-        { campo: "Aprobado", tipo: "number" },
-        { campo: "Modificado", tipo: "number" },
-        { campo: "Ejercido", tipo: "number" },
-        { campo: "Por ejercer", tipo: "number" },
-      ]
-    },
-    {
-      campo: "Acciones", tipo: "object", obligatorio: true, estructura: [
-        { campo: "Aprobadas", tipo: "number" },
-        { campo: "Ejecutadas", tipo: "number" },
-        { campo: "Pendientes", tipo: "number" },
-      ]
-    },
+    { campo: "Dependencia Ejecutora", tipo: "string", obligatorio: true },
+    { campo: "Numero de Convenio", tipo: "string", obligatorio: true },
+    { campo: "Importe", tipo: "object", obligatorio: true },
+    { campo: "Aprobado", tipo: "number" },
+    { campo: "Modificado", tipo: "number" },
+    { campo: "Ejercido", tipo: "number" },
+    { campo: "Por ejercer", tipo: "number" },
+    { campo: "Acciones", tipo: "object", obligatorio: true, },
+    { campo: "Aprobadas", tipo: "number" },
+    { campo: "Ejecutadas", tipo: "number" },
+    { campo: "Pendientes", tipo: "number" },
+
     { campo: "Observaciones", tipo: "string", obligatorio: false },
   ],
 
@@ -187,15 +177,13 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Nombre del Programa", tipo: "string", obligatorio: true },
     { campo: "Numero del Capitulo", tipo: "number", obligatorio: true },
     { campo: "Nombre del Capitulo", tipo: "string", obligatorio: true },
-    {
-      campo: "Presupuesto", tipo: "object", obligatorio: true, estructura: [
-        { campo: "Autorizado", tipo: "number" },
-        { campo: "Ampliaciones y reducciones", tipo: "number" },
-        { campo: "Modificado", tipo: "number" },
-        { campo: "Ejercido", tipo: "number" },
-        { campo: "Por ejercer", tipo: "number" },
-      ]
-    },
+    { campo: "Presupuesto", tipo: "object", obligatorio: true },
+    { campo: "Presupuesto Autorizado", tipo: "number" },
+    { campo: "Presupuesto Ampliaciones y reducciones", tipo: "number" },
+    { campo: "Presupuesto Modificado", tipo: "number" },
+    { campo: "Presupuesto Ejercido", tipo: "number" },
+    { campo: "Presupuesto Por ejercer", tipo: "number" },
+    {campo:"Observaciones", tipo:"string", obligatorio:false, Descripcion:"Observaciones adicionales sobre el presupuesto por programa"}
   ],
 
   RF05: [

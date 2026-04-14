@@ -1047,9 +1047,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                 ) : (
                                     <div className="border border-gray-200 rounded p-4">
                                         <div className="space-y-1">
-                                            {unidadesJerarquia
-                                                .filter(u => !u.unidad_padre_id)
-                                                .map(unidad => renderTreeNode(unidad))}
+                                           {unidadesJerarquia.map((unidad) => renderTreeNode(unidad))}
                                         </div>
                                     </div>
                                 )}
