@@ -16,11 +16,11 @@ type Props = {
   userId: string | number | null;
   username?: string | null;
   mode: "self" | "admin";
-  defaultNewPassword?: string; // for admin resets, default 'user123'
+  defaultNewPassword?: string; // for admin resets, default 'User1234.'
   onSuccess?: () => void;
 };
 
-export default function ResetPasswordModal({ open, onOpenChange, userId, username, mode, defaultNewPassword = "user123", onSuccess }: Props) {
+export default function ResetPasswordModal({ open, onOpenChange, userId, username, mode, defaultNewPassword = "User1234.", onSuccess }: Props) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState(defaultNewPassword);
   const [loading, setLoading] = useState(false);

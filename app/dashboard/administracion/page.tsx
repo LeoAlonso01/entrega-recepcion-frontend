@@ -223,7 +223,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<Error | null>(null)
-  const [unidadesOriginales, setUnidadesOriginales] = useState<Unidad[]>([]);
+  //const [unidadesCache, setUnidadesCache] = useState<Unidad[]>([]);
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [loadingAsignacion, setLoadingAsignacion] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -238,7 +238,8 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [searchUser, setSearchUser] = useState<string>("")
+  const [searchUser, setSearchUser] = useState<string>("") // Para buscar unidades
+  const [searchUsuario, setSearchUsuario] = useState<string>("") // Para buscar usuarios en el select
   const [isDeleting, setIsDeleting] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
   const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
@@ -408,8 +409,7 @@ export default function AdministracionPage(user: { role: string } | null) {
       }
 
       const url = new URL(`${API_URL}/unidades_responsables`);
-      url.searchParams.set("page", page.toString());
-      url.searchParams.set("limit", unidadesLimit.toString());
+      url.searchParams.set("limit", "500"); // Limitar a 500 unidades máximo por petición
 
       const res = await fetch(url.toString(), {
         method: "GET",
@@ -1039,14 +1039,37 @@ export default function AdministracionPage(user: { role: string } | null) {
             ) : (
               <div className="py-4 flex-1 overflow-y-auto">
                 <div className="mb-4">
-                  <Label className="text-xs">Buscar usuario</Label>
+                  
                   <Input
+                  type="hidden"
                     placeholder="Buscar por username o email"
                     value={searchUser}
                     onChange={(e) => setSearchUser(e.target.value)}
                     className="text-xs"
                   />
                 </div>
+                <div className="mb-4 flex flex-col sm:flex-row gap-2">
+                  <div className="flex-1">
+                    <Label className="text-xs">Buscar Unidad Responsable</Label>
+                    <Input
+                      placeholder="Buscar por nombre de unidad"
+                      value={searchUser}
+                      onChange={(e) => setSearchUser(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    
+                    <Input
+                    type="hidden"
+                      placeholder="Buscar por username o email"
+                      value={searchUsuario}
+                      onChange={(e) => setSearchUsuario(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -1057,7 +1080,12 @@ export default function AdministracionPage(user: { role: string } | null) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {unidades.map((unidad) => (
+                      {unidadesCache
+                        .filter((unidad) =>
+                          searchUser === "" ||
+                          unidad.nombre.toLowerCase().includes(searchUser.toLowerCase())
+                        )
+                        .map((unidad) => (
                         <TableRow key={unidad.id_unidad}>
                           <TableCell className="font-medium text-xs sm:text-sm">
                             {unidad.nombre}
@@ -1098,9 +1126,9 @@ export default function AdministracionPage(user: { role: string } | null) {
                                   <SelectContent>
                                     {usuarios
                                       .filter((u) =>
-                                        searchUser === "" ||
-                                        u.username.toLowerCase().includes(searchUser.toLowerCase()) ||
-                                        u.email.toLowerCase().includes(searchUser.toLowerCase())
+                                        searchUsuario === "" ||
+                                        u.username.toLowerCase().includes(searchUsuario.toLowerCase()) ||
+                                        u.email.toLowerCase().includes(searchUsuario.toLowerCase())
                                       )
                                       .map((usuario) => (
                                         <SelectItem key={usuario.id} value={usuario.id.toString()} className="text-xs sm:text-sm">
@@ -1314,21 +1342,8 @@ export default function AdministracionPage(user: { role: string } | null) {
                       return;
                     }
 
-                    // 4) Refrescar unidad (UI)
-                    try {
-                      const refreshed = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
-                        method: "GET",
-                        headers: {
-                          "Content-Type": "application/json",
-                          Authorization: `Bearer ${token}`,
-                        },
-                      });
-
-                      if (refreshed.ok) {
-                        const unidadActualizada = await refreshed.json();
-                        setUnidades((prev) => prev.map((u) => (u.id_unidad === unidadId ? unidadActualizada : u)));
-                      }
-                    } catch { }
+                    // 4) Refrescar toda la página para limpiar campos de búsqueda y estado
+                    window.location.reload();
 
                     toast.success("Cargo asignado y responsable actualizado correctamente ✅");
                     setIsConfirmOpen(false);

@@ -39,23 +39,8 @@ const ExcelUploader = ({ onUploadSuccess, onUploadError, clave }: ExcelUploaderP
         });
 
         if (Array.isArray(json) && json.length > 0) {
-          const normalizar = (str: string) => str
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-
-        const jsonNomalizado = json.map((fila:any)=>{
-          const nuevaFila: Record<string, any> = {};
-
-          Object.entries(fila).forEach(([key, value])=>{
-            nuevaFila[normalizar(key)] = value;
-          });
-          return nuevaFila;
-        });
-
-
-          onUploadSuccess(jsonNomalizado);
+          // No normalizar nombres de columnas ni valores, pasar tal cual vienen del Excel
+          onUploadSuccess(json);
           toast.success(`✅ Excel cargado: ${json.length} filas`);
         } else {
           const errorMsg = "El archivo está vacío o no tiene datos válidos.";
