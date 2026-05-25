@@ -140,6 +140,7 @@ interface IFormInput {
   unidad_responsable_id: number;
 }
 
+
 export interface Anexo {
   id: number
   clave: string
@@ -149,6 +150,7 @@ export interface Anexo {
   datos: Array<Record<string, any>>   // o simplemente `any` si prefieres
   estado: string
   unidad_responsable_id: number
+  creador: Array<{ id: number; username: string; email: string; role: string }>
 }
 
 type CampoEstructura = {
@@ -2986,7 +2988,7 @@ export default function AnexosPage() {
                                   {/* Creador */}
                                   <TableCell className="px-4 py-4 md:table-cell">
                                     <div className="md:hidden font-semibold text-gray-500">Creador</div>
-                                    <div className="font-medium text-gray-900">{anexo.creador_id}</div>
+                                    <div className="font-medium text-gray-900">{anexo.creador?.username}</div>
                                   </TableCell>
 
                                   {/* Clave */}
