@@ -141,16 +141,13 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   ],
 
   RF02: [
-    { campo: "Origen del Recurso", tipo: "string", obligatorio: true, Descripcion: "Origen del Recurso" },
-    { campo: "Partida", tipo: "string", obligatorio: true, Descripcion: "Partida" },
-    { campo: "Descripción", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
-    { campo: "Presupuesto", tipo: "object", obligatorio: true },
-    { campo: "Importe Autorizado", tipo: "number" },
-    { campo: "Importe Ampliaciones y/o reducciones", tipo: "number" },
-    { campo: "Importe Modificado", tipo: "number" },
-    { campo: "Importe Ejercido", tipo: "number" },
-    { campo: "Importe Por ejercer", tipo: "number" },
-    { campo: "Acciones", tipo: "object", obligatorio: true, },
+    { campo: "Origen del Recurso: Partida", tipo: "string", obligatorio: true, Descripcion: "Partida" },
+    { campo: "Origen del Recurso: Descripción", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
+    { campo: "Presupuesto:Importe Autorizado", tipo: "number" },
+    { campo: "Presupuesto:Importe Ampliaciones y/o reducciones", tipo: "number" },
+    { campo: "Presupuesto:Importe Modificado", tipo: "number" },
+    { campo: "Presupuesto:Importe Ejercido", tipo: "number" },
+    { campo: "Presupuesto:Importe Por ejercer", tipo: "number" },
     { campo: "Observaciones ", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el presupuesto por origen de recurso" },
 
   ],
@@ -158,18 +155,14 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   RF03: [
     { campo: "Ramo", tipo: "string", obligatorio: true },
     { campo: "Programa", tipo: "string", obligatorio: true },
-    { campo: "Dependencia Ejecutora", tipo: "string", obligatorio: true },
-    { campo: "Numero de Convenio", tipo: "string", obligatorio: true },
-    { campo: "Importe", tipo: "object", obligatorio: true },
-    { campo: "Aprobado", tipo: "number" },
-    { campo: "Modificado", tipo: "number" },
-    { campo: "Ejercido", tipo: "number" },
-    { campo: "Por ejercer", tipo: "number" },
-    { campo: "Acciones", tipo: "object", obligatorio: true, },
-    { campo: "Aprobadas", tipo: "number" },
-    { campo: "Ejecutadas", tipo: "number" },
-    { campo: "Pendientes", tipo: "number" },
-
+    { campo: "Número del Convenio o Referencia de la Autorización", tipo: "string", obligatorio: true },
+    { campo: "Importe: Aprobado", tipo: "object", obligatorio: true },
+    { campo: "Importe: Modificado", tipo: "number" },
+    { campo: "Importe: Ejercido", tipo: "number" },
+    { campo: "Importe: Por ejercer", tipo: "number" },
+    { campo: "Número de Acciones: Aprobadas", tipo: "number" },
+    { campo: "Número de Acciones: Ejecutadas", tipo: "number" },
+    { campo: "Número de Acciones: Pendientes", tipo: "number" },
     { campo: "Observaciones", tipo: "string", obligatorio: false },
   ],
 
@@ -178,12 +171,12 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Numero del Capitulo", tipo: "number", obligatorio: true },
     { campo: "Nombre del Capitulo", tipo: "string", obligatorio: true },
     { campo: "Presupuesto", tipo: "object", obligatorio: true },
-    { campo: "Presupuesto Autorizado", tipo: "number" },
-    { campo: "Presupuesto Ampliaciones y reducciones", tipo: "number" },
-    { campo: "Presupuesto Modificado", tipo: "number" },
-    { campo: "Presupuesto Ejercido", tipo: "number" },
-    { campo: "Presupuesto Por ejercer", tipo: "number" },
-    {campo:"Observaciones", tipo:"string", obligatorio:false, Descripcion:"Observaciones adicionales sobre el presupuesto por programa"}
+    { campo: "Presupuesto: Autorizado", tipo: "number" },
+    { campo: "Presupuesto: Ampliaciones y/o reducciones", tipo: "number" },
+    { campo: "Presupuesto: Modificado", tipo: "number" },
+    { campo: "Presupuesto: Ejercido", tipo: "number" },
+    { campo: "Presupuesto: Por ejercer", tipo: "number" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el presupuesto por programa" }
   ],
 
   RF05: [
@@ -191,14 +184,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Clave de Sucursal", tipo: "string", obligatorio: true },
     { campo: "Tipo de Cuenta", tipo: "string", obligatorio: true },
     { campo: "Numero de Cuenta", tipo: "string", obligatorio: true },
-
-    {
-      campo: "Firmas Registradas", tipo: "array", obligatorio: true, estructura: [
-        { campo: "Nombre", tipo: "string" },
-        { campo: "Cargo", tipo: "string" },
-      ]
-    },
-
+    { campo: "Firmas Registradas: Nombre", tipo: "array", obligatorio: true },
+    { campo: "Firmas Registradas: Cargo", tipo: "array", obligatorio: true },
     { campo: "Folio Ultimo Cheque", tipo: "number", obligatorio: true },
     { campo: "Saldo Segun Banco", tipo: "number", obligatorio: true },
     { campo: "Cargos No Correspondidos", tipo: "number", obligatorio: true },
@@ -208,84 +195,77 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   ],
 
   RF06: [
-    { campo: "Oficio Autorizacion", tipo: "string", obligatorio: true },
-    { campo: "Fecha", tipo: "date", obligatorio: true },
+    { campo: "Numero de Oficio Autorizacion", tipo: "string", obligatorio: true },
+    { campo: "Fecha de Oficio", tipo: "date", obligatorio: true },
     { campo: "Nombre del Responsable", tipo: "string", obligatorio: true },
     { campo: "Cargo del Responsable", tipo: "string", obligatorio: true },
     { campo: "Importe a Verificar", tipo: "number", obligatorio: true },
     { campo: "Destino del Fondo", tipo: "string", obligatorio: true },
-    { campo: "Resultados Arqueo", tipo: "string", obligatorio: true },
-
-    {
-      campo: "Saldo en Cuenta", tipo: "array", obligatorio: true, estructura: [
-        { campo: "No de Cuenta", tipo: "string" },
-        { campo: "Banco", tipo: "string" },
-        { campo: "Fecha", tipo: "date" },
-        { campo: "Saldo", tipo: "number" },
-      ]
-    },
-
+    { campo: "Resultados del ultimo Arqueo Practicado", tipo: "string", obligatorio: true },
+    { campo: "Saldo en Cuenta de Cheques: No. de cuenta", tipo: "array", obligatorio: true },
+    { campo: "Saldo en Cuenta de Cheques: Banco", tipo: "array", obligatorio: true },
+    { campo: "Saldo en Cuenta de Cheques: Fecha", tipo: "array", obligatorio: true },
+    { campo: "Saldo en Cuenta de Cheques: Saldo", tipo: "array", obligatorio: false },
     { campo: "Monto Disponible en Efectivo", tipo: "number", obligatorio: true },
+    { campo: "Comprobantes: Acreedores diversos", tipo: "array", obligatorio: true },
+    { campo: "Comprobantes: Deudores Diversos", tipo: "array", obligatorio: true },
+    { campo: "Comprobantes: Documentos por Recuperar", tipo: "array", obligatorio: true },
   ],
 
-  /* 
-   */
-
   RF07: [
-    { campo: "Folio Contrarrecibo", tipo: "number", obligatorio: true, Descripcion: "Número de Folio del Contrarrecibo" },
-    { campo: "Beneficiario", tipo: "string", obligatorio: true, Descripcion: "Nombre del Beneficiario" },
-    { campo: "Fecha Recepcion", tipo: "date", obligatorio: true, Descripcion: "Fecha de Recepción" },
-    { campo: "Numero Factura", tipo: "string", obligatorio: true, Descripcion: "Número de Estimación o Factura" },
+    { campo: "Numero de Folio de Contrarrecibo", tipo: "number", obligatorio: true, Descripcion: "Número de Folio del Contrarrecibo" },
+    { campo: "Nombre del Beneficiario", tipo: "string", obligatorio: true, Descripcion: "Nombre del Beneficiario" },
+    { campo: "Número de estimacion o factura", tipo: "date", obligatorio: true, Descripcion: "Fecha de Recepción" },
     { campo: "Importe Total", tipo: "number", obligatorio: true, Descripcion: "Importe Total" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
   RF08: [
     { campo: "Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
-    { campo: "Numero Cheque", tipo: "number", obligatorio: true, Descripcion: "Número de Cheque" },
+    { campo: "Número de Cheque", tipo: "number", obligatorio: true, Descripcion: "Número de Cheque" },
     { campo: "Cuenta", tipo: "number", obligatorio: true, Descripcion: "Cuenta" },
     { campo: "Banco", tipo: "string", obligatorio: true, Descripcion: "Banco" },
     { campo: "Monto", tipo: "number", obligatorio: true, Descripcion: "Monto" },
-    { campo: "Beneficiario", tipo: "string", obligatorio: true, Descripcion: "Beneficiario" },
+    { campo: "Nombre del Beneficiario", tipo: "string", obligatorio: true, Descripcion: "Nombre del Beneficiario" },
     { campo: "Concepto", tipo: "string", obligatorio: true, Descripcion: "Concepto" },
   ],
 
   RF09: [
-    { campo: "Area Generadora", tipo: "string", obligatorio: true, Descripcion: "Área Generadora del Ingreso" },
-    { campo: "Concepto Ingreso", tipo: "string", obligatorio: true, Descripcion: "Concepto del Ingreso" },
+    { campo: "Area Generadora del Ingreso", tipo: "string", obligatorio: true, Descripcion: "Área Generadora del Ingreso" },
+    { campo: "Concepto que da Origen al Ingreso", tipo: "string", obligatorio: true, Descripcion: "Concepto del Ingreso" },
     { campo: "Fecha Ingreso", tipo: "date", obligatorio: true, Descripcion: "Fecha del Ingreso" },
-    { campo: "Documento Ingreso", tipo: "string", obligatorio: true, Descripcion: "Documento del Ingreso" },
-    { campo: "Importe", tipo: "number", obligatorio: true, Descripcion: "Importe del Ingreso" },
-    { campo: "Cuenta Bancaria", tipo: "string", obligatorio: true, Descripcion: "Cuenta Bancaria" },
-    { campo: "Institucion Bancaria", tipo: "string", obligatorio: true, Descripcion: "Institución Bancaria" },
-    { campo: "Responsable", tipo: "string", obligatorio: true, Descripcion: "Responsable de la Custodia" },
+    { campo: "Documento que identifica al Ingreso", tipo: "string", obligatorio: true, Descripcion: "Documento del Ingreso" },
+    { campo: "Importe del ingreso: Monto", tipo: "number", obligatorio: true, Descripcion: "Importe del Ingreso" },
+    { campo: "Importe del ingreso: Cuenta Bancaria Donde se Depositara", tipo: "string", obligatorio: true, Descripcion: "Cuenta Bancaria" },
+    { campo: "Importe del ingreso: Institucion Bancaria", tipo: "string", obligatorio: true, Descripcion: "Institución Bancaria" },
+    { campo: "Responsable de la Custodia: Nombre y cargo", tipo: "string", obligatorio: true, Descripcion: "Responsable de la Custodia" },
   ],
 
   RF11: [
-    { campo: "Deudor", tipo: "string", obligatorio: true, Descripcion: "Nombre del Deudor" },
+    { campo: "nombre del Deudor", tipo: "string", obligatorio: true, Descripcion: "Nombre del Deudor" },
     { campo: "Concepto", tipo: "string", obligatorio: true, Descripcion: "Concepto" },
-    { campo: "Fecha Documento", tipo: "date", obligatorio: true, Descripcion: "Fecha del Documento" },
-    { campo: "Tipo Documento", tipo: "string", obligatorio: true, Descripcion: "Tipo de Documento" },
-    { campo: "Folio", tipo: "string", obligatorio: true, Descripcion: "Folio" },
-    { campo: "Importe", tipo: "number", obligatorio: true, Descripcion: "Importe" },
-    { campo: "Fecha Vencimiento", tipo: "date", obligatorio: true, Descripcion: "Fecha de Vencimiento" },
-    { campo: "Numero Contable", tipo: "number", obligatorio: true, Descripcion: "Número Contable" },
-    { campo: "Titulo", tipo: "string", obligatorio: true, Descripcion: "Título" },
-    { campo: "Saldo Vencido", tipo: "number", obligatorio: true, Descripcion: "Saldo Vencido" },
+    { campo: "Documento que acredita la cuenta por cobrar: Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha del Documento" },
+    { campo: "Documento que acredita la cuenta por cobrar: Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de Documento" },
+    { campo: "Documento que acredita la cuenta por cobrar: Folio", tipo: "string", obligatorio: true, Descripcion: "Folio" },
+    { campo: "Documento que acredita la cuenta por cobrar: Importe", tipo: "number", obligatorio: true, Descripcion: "Importe" },
+    { campo: "Documento que acredita la cuenta por cobrar: Fecha Vencimiento", tipo: "date", obligatorio: true, Descripcion: "Fecha de Vencimiento" },
+    { campo: "Documento que acredita la cuenta por cobrar: Número Contable", tipo: "number", obligatorio: true, Descripcion: "Número Contable" },
+    { campo: "Documento que acredita la cuenta por cobrar: Titulo", tipo: "string", obligatorio: true, Descripcion: "Título" },
+    { campo: "Documento que acredita la cuenta por cobrar: Saldo Vencido", tipo: "number", obligatorio: true, Descripcion: "Saldo Vencido" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
   RF12: [
     { campo: "Concepto", tipo: "string", obligatorio: true, Descripcion: "Concepto" },
-    { campo: "Fecha Documento", tipo: "date", obligatorio: true, Descripcion: "Fecha del Documento" },
-    { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Tipo de Documento" },
-    { campo: "Folio", tipo: "string", obligatorio: true, Descripcion: "Folio" },
-    { campo: "Dependencia", tipo: "string", obligatorio: true, Descripcion: "Dependencia" },
-    { campo: "Partida", tipo: "string", obligatorio: true, Descripcion: "Partida" },
-    { campo: "Fecha de Vencimiento", tipo: "date", obligatorio: true, Descripcion: "Fecha de Vencimiento" },
-    { campo: "Numero", tipo: "number", obligatorio: true, Descripcion: "Número" },
-    { campo: "Titulo", tipo: "string", obligatorio: true, Descripcion: "Título" },
-    { campo: "Saldo de Vencido", tipo: "number", obligatorio: true, Descripcion: "Saldo Vencido" },
+    { campo: "Documento que acredita la cuenta por pagar: Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha del Documento" },
+    { campo: "Documento que acredita la cuenta por pagar: Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de Documento" },
+    { campo: "Documento que acredita la cuenta por pagar: Folio", tipo: "string", obligatorio: true, Descripcion: "Folio" },
+    { campo: "Documento que acredita la cuenta por pagar: Dependencia", tipo: "string", obligatorio: true, Descripcion: "Dependencia" },
+    { campo: "Documento que acredita la cuenta por pagar: Partida", tipo: "string", obligatorio: true, Descripcion: "Partida" },
+    { campo: "Documento que acredita la cuenta por pagar: Fecha de Vencimiento", tipo: "date", obligatorio: true, Descripcion: "Fecha de Vencimiento" },
+    { campo: "Datos de la cuenta por pagar: Numero", tipo: "number", obligatorio: true, Descripcion: "Número" },
+    { campo: "Datos de la cuenta por pagar: Titulo", tipo: "string", obligatorio: true, Descripcion: "Título" },
+    { campo: "Datos de la cuenta por pagar: Saldo Vencido", tipo: "number", obligatorio: true, Descripcion: "Saldo Vencido" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
@@ -306,7 +286,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Compañía", tipo: "string", obligatorio: true, Descripcion: "Compañía" },
     { campo: "Monto", tipo: "number", obligatorio: true, Descripcion: "Monto" },
     { campo: "Cobertura", tipo: "string", obligatorio: true, Descripcion: "Cobertura" },
-    { campo: "Vigencia", tipo: "date", obligatorio: true, Descripcion: "Vigencia" },
+    { campo: "Vigencia: desde", tipo: "date", obligatorio: true, Descripcion: "Vigencia" },
+    { campo: "Vigencia: hasta", tipo: "date", obligatorio: true, Descripcion: "Vigencia" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
@@ -714,8 +695,6 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "URE", tipo: "string", obligatorio: true, Descripcion: "URE" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
-
-
 
 
 
