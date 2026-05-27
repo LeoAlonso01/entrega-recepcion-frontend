@@ -1897,12 +1897,17 @@ export default function AnexosPage() {
 
 
   const requierePDF = (clave: string): boolean => {
-    return ["PP01", "SGC01", "EO01", "PPA01"].includes(clave.toUpperCase().trim());
+    return ["PP01", "SGC01", "EO01", "PPA01", "RF18" ].includes(clave.toUpperCase().trim());
   };
 
   function claveRequierePDF(clave?: string): boolean {
     if (!clave) return false;
     return requierePDF(clave);
+  }
+
+  // funcion para quitar el boton descargar plantillas en anexs que requiere un PDF
+  const mostrarBotonDescarga = (clave: string): boolean => {
+    return !claveRequierePDF(clave);
   }
 
 
@@ -2377,7 +2382,7 @@ export default function AnexosPage() {
                         </select>
                       </div>
 
-                      {watch("clave") && (
+                      {(watch("clave")) && mostrarBotonDescarga(watch("clave")) && (
 
                         <Button
                           type="button"
@@ -2394,6 +2399,7 @@ export default function AnexosPage() {
                           }}>
                           Descargar Plantilla
                         </Button>
+
                       )}
 
                       {errors.clave && (
