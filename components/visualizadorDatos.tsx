@@ -29,7 +29,7 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
     // Si la url es relativa, anteponer el dominio del backend (local o producción)
     if (pdfUrl && pdfUrl.startsWith("/")) {
       let apiUrl = 'https://api-entrega-recepcion.umich.mx';
-      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
         apiUrl = 'http://localhost:8000';
       }
       pdfUrl = apiUrl.replace(/\/$/, "") + pdfUrl;
