@@ -19,14 +19,6 @@ export const ReglasValidacion: Record<
 > = {
 
 
-  // Marco Jurídico (MJ01)
-  MJ01: {
-    requeridos: [
-      { nombre: "ordenamiento", alias: ["ley", "reglamento"] },
-      { nombre: "titulo", alias: ["título", "nombre"] },
-      { nombre: "Fecha de emision", alias: ["emisión", "publicación"], tipo: "date" }
-    ]
-  }
-
+  
   // ... puedes agregar todas las claves
 };

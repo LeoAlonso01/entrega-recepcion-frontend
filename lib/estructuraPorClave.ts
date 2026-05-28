@@ -9,7 +9,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   MJ01: [
     { campo: "Ordenamiento", tipo: "string", obligatorio: true, Descripcion: "Ordenamiento Jurídico Aplicable" },
     { campo: "Titulo", tipo: "string", obligatorio: true, Descripcion: "Título del Asunto Relevante" },
-    { campo: "Fecha de emision", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante" },
+    { campo: "Fecha de emision", tipo: "date", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante" },
   ]
   ,
   // Planeacion (PP01)
