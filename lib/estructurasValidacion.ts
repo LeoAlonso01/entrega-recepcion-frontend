@@ -17,8 +17,5 @@ export const ReglasValidacion: Record<
     }[];
   }
 > = {
-
-
-  
   // ... puedes agregar todas las claves
 };

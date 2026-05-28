@@ -16,7 +16,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   PP02: [
     { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Nombre del programa" },
     { campo: "Nombre ", tipo: "string", obligatorio: true, Descripcion: "Descripción del programa" },
-    { campo: "Fecha", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del programa" },
+    { campo: "Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha de emisión del programa" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el programa" },
   ],
 
