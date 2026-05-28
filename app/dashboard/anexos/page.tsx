@@ -1376,8 +1376,6 @@ export const validarDatosAnexo = (
       }
 
 
-
-
       const convertirFecha = (valor: any): Date | null => {
         if (valor instanceof Date) return valor;
 
