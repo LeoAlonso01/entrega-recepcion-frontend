@@ -9,14 +9,14 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   MJ01: [
     { campo: "Ordenamiento", tipo: "string", obligatorio: true, Descripcion: "Ordenamiento Jurídico Aplicable" },
     { campo: "Titulo", tipo: "string", obligatorio: true, Descripcion: "Título del Asunto Relevante" },
-    { campo: "Fecha de emision", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante" },
+    { campo: "Fecha de emision", tipo: "date", obligatorio: true, Descripcion: "Fecha de emisión del documento que sustenta el asunto relevante" },
   ]
   ,
   // Planeacion (PP01)
   PP02: [
     { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Nombre del programa" },
     { campo: "Nombre ", tipo: "string", obligatorio: true, Descripcion: "Descripción del programa" },
-    { campo: "Fecha", tipo: "string", obligatorio: true, Descripcion: "Fecha de emisión del programa" },
+    { campo: "Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha de emisión del programa" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el programa" },
   ],
 
