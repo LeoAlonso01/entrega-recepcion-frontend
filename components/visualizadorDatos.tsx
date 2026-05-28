@@ -25,10 +25,32 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
       pdfUrl = urlField;
     }
 
+
     // Si la url es relativa, anteponer el dominio del backend
     if (pdfUrl && pdfUrl.startsWith("/")) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      // Intenta usar la variable de entorno, si no existe, usa el host actual
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL;
+      if (!apiUrl) {
+        if (typeof window !== 'undefined') {
+          apiUrl = window.location.origin;
+        } else {
+          apiUrl = '';
+        }
+      }
+      // Si la variable contiene "localhost" y estamos en producción, reemplaza por el dominio de producción
+      if (apiUrl.includes('localhost') && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        apiUrl = window.location.origin;
+      }
       pdfUrl = apiUrl.replace(/\/$/, "") + pdfUrl;
+    }
+    // Si la url es absoluta pero contiene localhost y estamos en producción, reemplaza el host por el actual
+    if (pdfUrl && pdfUrl.includes('localhost') && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+      try {
+        const urlObj = new URL(pdfUrl);
+        urlObj.host = window.location.host;
+        urlObj.protocol = window.location.protocol;
+        pdfUrl = urlObj.toString();
+      } catch {}
     }
 
     if (pdfUrl) {
