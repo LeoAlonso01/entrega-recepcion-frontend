@@ -28,18 +28,12 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
 
     // Si la url es relativa, anteponer el dominio del backend
     if (pdfUrl && pdfUrl.startsWith("/")) {
-      // Intenta usar la variable de entorno, si no existe, usa el host actual
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL;
-      if (!apiUrl) {
-        if (typeof window !== 'undefined') {
-          apiUrl = window.location.origin;
-        } else {
-          apiUrl = '';
-        }
-      }
-      // Si la variable contiene "localhost" y estamos en producción, reemplaza por el dominio de producción
-      if (apiUrl.includes('localhost') && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-        apiUrl = window.location.origin;
+      // Forzar dominio de producción si estamos en producción
+      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        apiUrl = 'https://api-entrega-recepcion.umich.mx';
+      } else if (!apiUrl) {
+        apiUrl = 'http://localhost:8000';
       }
       pdfUrl = apiUrl.replace(/\/$/, "") + pdfUrl;
     }
