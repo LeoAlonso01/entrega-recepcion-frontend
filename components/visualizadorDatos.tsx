@@ -14,15 +14,32 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
   // Convertir a array si es un objeto único
   const dataArray = Array.isArray(datos) ? datos : [datos];
 
-  // Caso 1: Es un archivo PDF (tiene url)
+  // Caso 1: Es un archivo PDF (tiene url o un array de url)
   if (dataArray.length === 1 && typeof dataArray[0] === "object" && dataArray[0].url) {
-    return (
-      <div className="w-full">
-        <a className="text-blue-600 hover:underline " href={dataArray[0].url} target="_blank" rel="noopener noreferrer">
-          Ver PDF
-        </a>
-      </div>
-    );
+    // Si url es un array (como en el caso de la base de datos)
+    const urlField = dataArray[0].url;
+    let pdfUrl = null;
+    if (Array.isArray(urlField) && urlField.length > 0 && urlField[0].url) {
+      pdfUrl = urlField[0].url;
+    } else if (typeof urlField === "string") {
+      pdfUrl = urlField;
+    }
+
+    // Si la url es relativa, anteponer el dominio del backend
+    if (pdfUrl && pdfUrl.startsWith("/")) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      pdfUrl = apiUrl.replace(/\/$/, "") + pdfUrl;
+    }
+
+    if (pdfUrl) {
+      return (
+        <div className="w-full">
+          <a className="text-blue-600 hover:underline " href={pdfUrl} target="_blank" rel="noopener noreferrer">
+            Ver PDF
+          </a>
+        </div>
+      );
+    }
   }
 
   // Caso 2: Es una tabla (ej: RRH01, MJ01)

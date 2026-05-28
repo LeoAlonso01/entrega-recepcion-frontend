@@ -63,7 +63,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   // EO - Organizacion
   EO02: [
     { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de reglamento o manual" },
-    { campo: "Fecha de Actualización, Autorización ó Publicación", tipo: "string", obligatorio: true, Descripcion: "Fecha de actualización, autorización o publicación del reglamento o manual" },
+    { campo: "Fecha de Actualización, Autorización ó Publicación", tipo: "date", obligatorio: true, Descripcion: "Fecha de actualización, autorización o publicación del reglamento o manual" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el reglamento o manual" },
   ],
 
