@@ -34,15 +34,6 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
       }
       pdfUrl = apiUrl.replace(/\/$/, "") + pdfUrl;
     }
-    // Si la url es absoluta pero contiene localhost y estamos en producción, reemplaza el host por el actual
-    if (pdfUrl && pdfUrl.includes('localhost') && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      try {
-        const urlObj = new URL(pdfUrl);
-        urlObj.host = window.location.host;
-        urlObj.protocol = window.location.protocol;
-        pdfUrl = urlObj.toString();
-      } catch {}
-    }
 
     if (pdfUrl) {
       return (
