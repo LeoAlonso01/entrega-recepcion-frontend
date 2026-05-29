@@ -1895,7 +1895,7 @@ export default function AnexosPage() {
 
 
   const requierePDF = (clave: string): boolean => {
-    return ["PP01", "SGC01", "EO01", "PPA01", "RF18" ].includes(clave.toUpperCase().trim());
+    return ["PP01", "SGC01", "EO01", "PPA01", "RF18", "RF10" ].includes(clave.toUpperCase().trim());
   };
 
   function claveRequierePDF(clave?: string): boolean {
