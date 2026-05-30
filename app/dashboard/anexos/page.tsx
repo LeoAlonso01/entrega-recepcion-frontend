@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useForm, SubmitHandler } from "react-hook-form"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -1533,7 +1533,6 @@ export default function AnexosPage() {
   const [previewData, setPreviewData] = useState<Array<Record<string, any>>>([]);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [pendingFile, setPendingFile] = useState<{ file: File; data: any[] } | null>(null);
-  const [anexosFiltrados, setAnexosFiltrados] = useState<Anexo[]>(anexos);
   const [currentPage, setCurrentPage] = useState(1);
   const [unidadToShow, setUnidadToShow] = useState<string>("");
   const [creatorToShow, setCreatorToShow] = useState<string>("");
@@ -1542,6 +1541,13 @@ export default function AnexosPage() {
   const [anexoParaActualizar, setAnexoParaActualizar] = useState<Anexo | null>(null);
   const [todosLosAnexos, setTodosLosAnexos] = useState<Anexo[]>([]); // Estado para todos los anexos
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Estado para usuario seleccionado y anexos filtrados (ADMIN - Anexos por Usuario)
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("__all__");
+  const anexosFiltrados = useMemo(() => {
+    if (usuarioSeleccionado === "__all__") return todosLosAnexos;
+    return todosLosAnexos.filter(a => a.creador?.username === usuarioSeleccionado);
+  }, [usuarioSeleccionado, todosLosAnexos]);
 
   // Función para filtrar anexos por categoría
   const [filterCategory, setFilterCategory] = useState<string>("__all__");
@@ -1600,7 +1606,7 @@ export default function AnexosPage() {
       try {
         const userData = JSON.parse(userString);
         currentUserId = userData.id;
-      } catch {}
+      } catch { }
     }
     const filtrados = data.filter((anexo: Anexo) => anexo.creador_id === currentUserId);
     setAnexos(filtrados);
@@ -1811,14 +1817,8 @@ export default function AnexosPage() {
           },
         });
 
-        // Actualizar lista local
-        if (editingAnexo) {
-          setAnexos((prev) =>
-            prev.map((a) => (a.id === result.id ? result : a))
-          );
-        } else {
-          setAnexos((prev) => [...prev, result]);
-        }
+        // Recargar lista global de anexos desde la API
+        await recargarAnexos();
 
         // Resetear formulario
         reset();
@@ -1895,7 +1895,7 @@ export default function AnexosPage() {
 
 
   const requierePDF = (clave: string): boolean => {
-    return ["PP01", "SGC01", "EO01", "PPA01", "RF18", "RF10" ].includes(clave.toUpperCase().trim());
+    return ["PP01", "SGC01", "EO01", "PPA01", "RF18", "RF10"].includes(clave.toUpperCase().trim());
   };
 
   function claveRequierePDF(clave?: string): boolean {
@@ -2237,7 +2237,7 @@ export default function AnexosPage() {
 
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                        
+
                                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                                   <DialogTrigger asChild>
                                     <Button
@@ -2952,13 +2952,79 @@ export default function AnexosPage() {
             {userrole === "ADMIN" && (
               <TabsContent value="anexosPorUsuario" className="mt-4 sm:mt-6 md:mt-8">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Anexos por Usuario</CardTitle>
-                    <CardDescription>
-                      Visualiza los anexos creados por cada usuario
-                    </CardDescription>
+                  <CardHeader className="flex flex-row items-start justify-between gap-2">
+                    <div>
+                      <CardTitle>Anexos por Usuario</CardTitle>
+                      <CardDescription>
+                        Visualiza los anexos creados por cada usuario
+                      </CardDescription>
+                    </div>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                      style={{ minWidth: 44 }}
+                      onClick={() => {
+                        // Exportar a Excel la tabla filtrada
+                        const dataExport = (usuarioSeleccionado === "__all__" ? todosLosAnexos : anexosFiltrados).map(anexo => ({
+                          Creador: anexo.creador?.username,
+                          Clave: anexo.clave,
+                          Estado: anexo.estado,
+                          "Fecha de Creación": anexo.fecha_creacion,
+                          "Unidad Responsable": anexo.unidad_responsable_id
+                        }));
+                        const ws = XLSX.utils.json_to_sheet(dataExport);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, "AnexosPorUsuario");
+                        XLSX.writeFile(wb, "anexos_por_usuario.xlsx");
+                      }}
+                      title="Descargar Excel"
+                    >
+                      <FileSpreadsheet className="w-5 h-5" />
+                      <span className="hidden md:inline">Descargar Excel</span>
+                    </Button>
                   </CardHeader>
                   <CardContent>
+                    {/* Filtro por usuario */}
+                    <div className="mb-4 flex flex-col md:flex-row md:items-center gap-4">
+                      <div className="w-full md:w-1/3">
+                        <Select onValueChange={setUsuarioSeleccionado}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecciona un usuario" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">Todos los usuarios</SelectItem>
+                            {Array.from(
+                              new Set(
+                                todosLosAnexos
+                                  .map(anexo => anexo.creador?.username)
+                                  .filter(username => typeof username === "string" && username.trim() !== "")
+                              )
+                            ).map(username => (
+                              <SelectItem key={username} value={username}>{username}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Contador y barra de progreso */}
+                      <div className="flex-1 flex flex-col gap-2">
+                        <div className="text-sm text-gray-700">
+                          {usuarioSeleccionado === "__all__"
+                            ? `Total de anexos: ${todosLosAnexos.length}`
+                            : `Anexos de ${usuarioSeleccionado}: ${anexosFiltrados.length}`}
+                        </div>
+                        {/* Barra de progreso simple */}
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div
+                            className="bg-blue-600 h-4 rounded-full transition-all"
+                            style={{
+                              width: `${usuarioSeleccionado !== "__all__" && todosLosAnexos.length > 0
+                                ? (anexosFiltrados.length / todosLosAnexos.length) * 100
+                                : 100
+                              }%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                     {isLoading ? (
                       // Skeleton mientras carga
                       <div className="space-y-4">
@@ -2983,8 +3049,8 @@ export default function AnexosPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody className="divide-y divide-gray-200">
-                            {todosLosAnexos.length > 0 ? (
-                              todosLosAnexos.map((anexo) => (
+                            {(usuarioSeleccionado ? anexosFiltrados : todosLosAnexos).length > 0 ? (
+                              (usuarioSeleccionado ? anexosFiltrados : todosLosAnexos).map((anexo) => (
                                 <TableRow
                                   key={anexo.id}
                                   className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
@@ -2994,13 +3060,11 @@ export default function AnexosPage() {
                                     <div className="md:hidden font-semibold text-gray-500">Creador</div>
                                     <div className="font-medium text-gray-900">{anexo.creador?.username}</div>
                                   </TableCell>
-
                                   {/* Clave */}
                                   <TableCell className="px-4 py-4 md:table-cell">
                                     <div className="md:hidden font-semibold text-gray-500">Clave</div>
                                     <div className="text-gray-800">{anexo.clave}</div>
                                   </TableCell>
-
                                   {/* Estado */}
                                   <TableCell className="px-4 py-4 md:table-cell">
                                     <div className="md:hidden font-semibold text-gray-500">Estado</div>
@@ -3012,7 +3076,6 @@ export default function AnexosPage() {
                                       {anexo.estado}
                                     </span>
                                   </TableCell>
-
                                   {/* Fecha */}
                                   <TableCell className="px-4 py-4 md:table-cell">
                                     <div className="md:hidden font-semibold text-gray-500">Fecha</div>
@@ -3027,13 +3090,11 @@ export default function AnexosPage() {
                                       })}
                                     </div>
                                   </TableCell>
-
                                   {/* Unidad Responsable */}
                                   <TableCell className="px-4 py-4 md:table-cell">
                                     <div className="md:hidden font-semibold text-gray-500">Unidad Responsable</div>
                                     <div className="text-gray-800">{anexo.unidad_responsable_id}</div>
                                   </TableCell>
-
                                   {/* Acciones */}
                                   <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
                                     <div className="md:hidden font-semibold text-gray-500 mb-1">
@@ -3055,7 +3116,6 @@ export default function AnexosPage() {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
-
                                   </TableCell>
                                 </TableRow>
                               ))
@@ -3072,13 +3132,12 @@ export default function AnexosPage() {
                     )}
                   </CardContent>
                 </Card>
+
               </TabsContent>
             )}
           </Tabs>
-
         </div>
-
       </div>
     </>
-  )
+  );
 }
