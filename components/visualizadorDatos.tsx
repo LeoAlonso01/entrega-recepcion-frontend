@@ -27,17 +27,24 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
 
 
     // Si la url es relativa, anteponer el dominio del backend (local o producción)
-    if (pdfUrl && pdfUrl.startsWith("/")) {
-      const apiUrl = 'https://api-entrega-recepcion.umich.mx';
-      pdfUrl = apiUrl.replace(/\/$/, "") + pdfUrl;
-    }
-
     if (pdfUrl) {
+      // Si la url es relativa o contiene localhost, anteponer el dominio correcto
+      const apiUrl = 'https://api-entrega-recepcion.umich.mx';
+      if (pdfUrl.startsWith("/")) {
+        pdfUrl = apiUrl.replace(/\/$/, "") + pdfUrl;
+      } else if (pdfUrl.includes("localhost")) {
+        // Reemplazar cualquier referencia a localhost por el dominio real
+        pdfUrl = pdfUrl.replace(/https?:\/\/localhost(:\d+)?/, apiUrl);
+      }
       return (
         <div className="w-full">
-          <a className="text-blue-600 hover:underline " href={pdfUrl} target="_blank" rel="noopener noreferrer">
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow"
+            onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
+            type="button"
+          >
             Ver PDF
-          </a>
+          </button>
         </div>
       );
     }

@@ -469,18 +469,23 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   ],
 
   AG03: [
-    { campo: "Numero_Acta", tipo: "string", obligatorio: true, Descripcion: "Número de Acta" },
-    { campo: "Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
-    { campo: "Descripcion", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
-    { campo: "Responsable", tipo: "string", obligatorio: true, Descripcion: "Responsable" },
-    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
+    { campo: "Institución que Autorizó la Firma o Clave Electrónica", tipo: "string", obligatorio: true, Descripcion: "Institución que autorizó la firma o clave electrónica" },
+    { campo: "Número de Cuenta", tipo: "string", obligatorio: true, Descripcion: "Número de Cuenta" },
+    { campo: "Usuario", tipo: "string", obligatorio: true, Descripcion: "Usuario" },
+    { campo: "Nombre del Sistema o Proceso", tipo: "string", obligatorio: true, Descripcion: "Nombre del Sistema o Proceso" },
+    { campo: "tipo de Clave", tipo: "string", obligatorio: true, Descripcion: "Tipo de Clave" },
+    { campo: "Datos del personal con acceso: Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre del personal con acceso" },
+    { campo: "Datos del personal con acceso: Puesto", tipo: "string", obligatorio: true, Descripcion: "Cargo del personal con acceso" },
   ],
 
   AG04: [
-    { campo: "Numero_Acta", tipo: "string", obligatorio: true, Descripcion: "Número de Acta" },
-    { campo: "Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
-    { campo: "Descripcion", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
-    { campo: "Responsable", tipo: "string", obligatorio: true, Descripcion: "Responsable" },
+    { campo: "Institución que Autorizó la Firma o Clave Electrónica", tipo: "string", obligatorio: true, Descripcion: "Institución que autorizó la firma o clave electrónica" },
+    { campo: "Número de Cuenta", tipo: "string", obligatorio: true, Descripcion: "Número de Cuenta" },
+    { campo: "Usuario de la Firma o Clave Electrónica: nombre", tipo: "string", obligatorio: true, Descripcion: "Usuario" },
+    { campo: "Usuario de la Firma o Clave Electrónica: Cargo", tipo: "string", obligatorio: true, Descripcion: "Cargo del Usuario" },
+    { campo: "Vigencia de la Clave o Firma: Desde", tipo: "date", obligatorio: true, Descripcion: "Vigencia de la Clave o Firma" },
+    { campo: "Documento que acredita la Cancelacion de la Clave o Firma: Número ", tipo: "string", obligatorio: true, Descripcion: "Número del Documento" },
+    { campo: "Documento que acredita la Cancelacion de la Clave o Firma: Fecha ", tipo: "date", obligatorio: true, Descripcion: "Fecha de Cancelación" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
