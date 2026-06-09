@@ -386,10 +386,11 @@ export default function LoginPage() {
                     )}
                   </Button>
                 </form>
-                {/* Recuperacion de la contraseña */}
+                {/* Recuperacion de la contraseña 
                 <a href="/recuperacionContrasena" className="text-sm text-blue-500 hover:underline block mt-4 text-center">
                   ¿Olvidaste tu contraseña?
                 </a>
+                */}
               </TabsContent>
 
               <TabsContent value="register" className="pt-4">
