@@ -4,6 +4,12 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { imageToDataUrl } from "./helpPngPdf";
 
+const fechaActa = new Date().toLocaleDateString("es-MX", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+});
+
 // helper de cambio de página
 function checkPageBreak(doc: jsPDF, y: number) {
 
@@ -16,6 +22,42 @@ function checkPageBreak(doc: jsPDF, y: number) {
     }
 
     return y;
+}
+
+function ensureSpaceForBlock(doc: jsPDF, y: number, requiredHeight: number) {
+
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const bottomMargin = 20;
+
+    if (y + requiredHeight > pageHeight - bottomMargin) {
+        doc.addPage();
+        return 25;
+    }
+
+    return y;
+}
+
+function drawSignatureBlock(
+    doc: jsPDF,
+    x: number,
+    y: number,
+    width: number,
+    title: string,
+    name: string
+) {
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+
+    const titleLines = doc.splitTextToSize(title, width);
+    doc.text(titleLines, x, y, { align: "center" });
+
+    const titleHeight = Array.isArray(titleLines) ? titleLines.length * 5 : 5;
+    const lineY = y + titleHeight + 6;
+    doc.line(x - width / 2, lineY, x + width / 2, lineY);
+
+    doc.setFontSize(11);
+    doc.text(name || "", x, lineY + 6, { align: "center" });
 }
 
 // motor de escritor de parrafos, tablas y demás contenido del acta
@@ -140,7 +182,7 @@ export const generarActa = async (actaData: any) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
 
-    const p1 = `Se levanta la presente Acta Administrativa con motivo de la Entrega-Recepción de la Unidad Académica denominada ${actaData.unidad_responsable}, en la ciudad de Morelia, siendo las ${actaData.hora_cierre_acta} horas del día 09 de junio de 2025. Para tal efecto se reunieron en las oficinas que ocupa el Departamento de Auditoría Interna, ubicadas en Av. Francisco J. Mújica s/n, Antigua Torre de Rectoría, colonia Felícitas del Río, código postal 58040, en la ciudad de Morelia, Michoacán.`
+    const p1 = `Se levanta la presente Acta Administrativa con motivo de la Entrega-Recepción de la Unidad Académica denominada ${actaData.unidad_responsable}, en la ciudad de Morelia, siendo las ${actaData.hora_cierre_acta} horas del día ${fechaActa}. Para tal efecto se reunieron en las oficinas que ocupa el Departamento de Auditoría Interna, ubicadas en Av. Francisco J. Mújica s/n, Antigua Torre de Rectoría, colonia Felícitas del Río, código postal 58040, en la ciudad de Morelia, Michoacán.`
 
     const p2 = `Comparecen el C. ${actaData.entrante}, quien se identifica con credencial expedida por el Instituto Nacional Electoral número ${actaData.ine_entrante} y señala como domicilio para recibir notificaciones o documentos relacionados con la presente acta el ubicado en ${actaData.domicilio_entrante}, quien al día 27 de mayo de 2025 deja de ocupar el cargo de Secretario Académico.`
 
@@ -182,7 +224,7 @@ export const generarActa = async (actaData: any) => {
 
     const p21 = `Los términos y condiciones que en el Acta se establecen quedan bajo la aceptación y responsabilidad de quien entrega y de quien recibe.`
 
-    const p22 = `No habiendo otro hecho que hacer constar, leída que fue la presente Acta y enterados de su contenido y alcance, siendo las ${actaData.horaCierre} horas del día ${actaData.fecha}, se da por terminada, firmando al margen y al calce cada una de sus hojas todos los que en ella intervinieron y quisieron hacerlo.`
+    const p22 = `No habiendo otro hecho que hacer constar, leída que fue la presente Acta y enterados de su contenido y alcance, siendo las ${actaData.hora_cierre_acta} horas del día ${actaData.fecha_cierre_acta}, se da por terminada, firmando al margen y al calce cada una de sus hojas todos los que en ella intervinieron y quisieron hacerlo.`
     // -------- PARRAFO 1 --------
 
     y = writeParagraph(doc, p1, marginLeft, y, usableWidth);
@@ -234,7 +276,7 @@ actaData.anexos?.forEach((anexo: any) => {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(11)
 
-    doc.text(anexo.nombre || "ANEXO", marginLeft, y)
+    doc.text(anexo.categoria || "ANEXO", marginLeft, y)
 
     y += 6
     y = checkPageBreak(doc, y)
@@ -300,31 +342,32 @@ y = checkPageBreak(doc, y)
 
     // -------- FIRMAS --------
 
+    y = ensureSpaceForBlock(doc, y, 65);
+
     const firmaY = y;
 
-    doc.text("ENTREGA:", marginLeft, firmaY);
-    doc.text("RECIBE:", pageWidth / 2 + 10, firmaY);
+    const leftCenterX = marginLeft + 30;
+    const rightCenterX = pageWidth - marginRight - 30;
+    const signatureWidth = 60;
 
-    y += 25;
+    drawSignatureBlock(doc, leftCenterX, firmaY, signatureWidth, "ENTREGA:", actaData.saliente || "");
+    drawSignatureBlock(doc, rightCenterX, firmaY, signatureWidth, "RECIBE:", actaData.entrante || "");
+    drawSignatureBlock(doc, leftCenterX, firmaY + 34, signatureWidth, "TESTIGO DE ENTREGA:", actaData.testigo_saliente || "");
+    drawSignatureBlock(doc, rightCenterX, firmaY + 34, signatureWidth, "TESTIGO DE RECEPCIÓN:", actaData.testigo_entrante || "");
 
-    doc.line(marginLeft, y, marginLeft + 60, y);
-    doc.line(pageWidth / 2 + 10, y, pageWidth / 2 + 70, y);
+    y = firmaY + 74;
 
-    y += 5;
-
-    doc.text(actaData.saliente || "", marginLeft, y);
-    doc.text(actaData.entrante || "", pageWidth / 2 + 10, y);
-
-    y += 20;
-
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
     doc.text("POR LA CONTRALORÍA", pageWidth / 2, y, { align: "center" });
 
     y += 15;
 
-    doc.line(pageWidth / 2 - 35, y, pageWidth / 2 + 35, y);
+    doc.line(pageWidth / 2 - 45, y, pageWidth / 2 + 45, y);
 
-    y += 5;
+    y += 6;
 
+    doc.setFontSize(11);
     doc.text(actaData.comisionado || "", pageWidth / 2, y, { align: "center" });
 
     // -------- NUMERACIÓN DE PÁGINAS --------

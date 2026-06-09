@@ -22,12 +22,13 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { generarActa } from "@/lib/generarActa";
+import { generarActaDocx } from "@/lib/generarActaDocx";
 
 const generarPDF = async () =>{
     const {generarActa} = await import('@/lib/generarActa');
     return generarActa;
 }
-import { generarActaDocx } from "@/lib/generarActaDocx";
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -369,10 +370,10 @@ export default function ViewActaPage() {
                         <Download className="h-4 w-4 ml-2" />
                         Generar PDF
                     </Button>
-                    {/* <Button onClick={() => generarActaDocx} >
+                        <Button onClick={() => acta && generarActaDocx(acta)} >
                             <Download className="h-4 w-4 ml-2" />
-                            Generar Doc
-                    </Button> */}
+                            Generar Word
+                    </Button>
                 </div>
 
                 {/* Sección: Información General */}

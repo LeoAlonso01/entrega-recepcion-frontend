@@ -52,7 +52,7 @@ function Recursos() {
           </a>
 
           <a 
-            href="https://www.contraloria.umich.mx/index.php/portal/entrega_recepcion" 
+            href="https://contraloria.umich.mx/entregarecepcion/archivos/plantillas/PlantillasSERUMICHV2.zip" 
             target="_blank" 
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
