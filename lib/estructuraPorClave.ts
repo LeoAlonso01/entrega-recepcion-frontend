@@ -75,7 +75,6 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de base" },
     { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
     { campo: "Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
-    { campo: "Fecha de Ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
     { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de base" },
     { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de base" },
     { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de base" },
@@ -129,15 +128,18 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de honorarios" },
   ]
 
+  // recursos financieros (RF01-RF14)
+
   ,
   RF01: [
     { campo: "Partida", tipo: "string", obligatorio: true, Descripcion: "Partida" },
     { campo: "Denominacion", tipo: "string", obligatorio: true, Descripcion: "Denominación" },
-    { campo: "Autorizado", tipo: "number", obligatorio: true },
-    { campo: "Ampliaciones y/o reducciones", tipo: "number", obligatorio: true },
-    { campo: "Modificado", tipo: "number", obligatorio: true },
-    { campo: "Ejercido", tipo: "number", obligatorio: true },
-    { campo: "Por ejercer", tipo: "number", obligatorio: true },
+    { campo: "Presupuesto: Autorizado", tipo: "number", obligatorio: true },
+    { campo: "Presupuesto: Ampliaciones y/o reducciones", tipo: "number", obligatorio: true },
+    { campo: "Presupuesto: Modificado", tipo: "number", obligatorio: true },
+    { campo: "Presupuesto: Ejercido", tipo: "number", obligatorio: true },
+    { campo: "Presupuesto: Por ejercer", tipo: "number", obligatorio: true },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el presupuesto por partida" },
   ],
 
   RF02: [
@@ -155,6 +157,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   RF03: [
     { campo: "Ramo", tipo: "string", obligatorio: true },
     { campo: "Programa", tipo: "string", obligatorio: true },
+    { campo: "Dependencia Ejecutora", tipo: "string", obligatorio: true },
     { campo: "Número del Convenio o Referencia de la Autorización", tipo: "string", obligatorio: true },
     { campo: "Importe: Aprobado", tipo: "object", obligatorio: true },
     { campo: "Importe: Modificado", tipo: "number" },
@@ -170,7 +173,6 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Nombre del Programa", tipo: "string", obligatorio: true },
     { campo: "Numero del Capitulo", tipo: "number", obligatorio: true },
     { campo: "Nombre del Capitulo", tipo: "string", obligatorio: true },
-    { campo: "Presupuesto", tipo: "object", obligatorio: true },
     { campo: "Presupuesto: Autorizado", tipo: "number" },
     { campo: "Presupuesto: Ampliaciones y/o reducciones", tipo: "number" },
     { campo: "Presupuesto: Modificado", tipo: "number" },
@@ -215,6 +217,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   RF07: [
     { campo: "Numero de Folio de Contrarrecibo", tipo: "number", obligatorio: true, Descripcion: "Número de Folio del Contrarrecibo" },
     { campo: "Nombre del Beneficiario", tipo: "string", obligatorio: true, Descripcion: "Nombre del Beneficiario" },
+    { campo: "Fecha de recepcion", tipo: "date", obligatorio: true, Descripcion: "Fecha de Recepción" },
     { campo: "Número de estimacion o factura", tipo: "date", obligatorio: true, Descripcion: "Fecha de Recepción" },
     { campo: "Importe Total", tipo: "number", obligatorio: true, Descripcion: "Importe Total" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
@@ -228,6 +231,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Monto", tipo: "number", obligatorio: true, Descripcion: "Monto" },
     { campo: "Nombre del Beneficiario", tipo: "string", obligatorio: true, Descripcion: "Nombre del Beneficiario" },
     { campo: "Concepto", tipo: "string", obligatorio: true, Descripcion: "Concepto" },
+      { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
   RF09: [
@@ -239,10 +243,11 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Importe del ingreso: Cuenta Bancaria Donde se Depositara", tipo: "string", obligatorio: true, Descripcion: "Cuenta Bancaria" },
     { campo: "Importe del ingreso: Institucion Bancaria", tipo: "string", obligatorio: true, Descripcion: "Institución Bancaria" },
     { campo: "Responsable de la Custodia: Nombre y cargo", tipo: "string", obligatorio: true, Descripcion: "Responsable de la Custodia" },
+    {campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
   RF11: [
-    { campo: "nombre del Deudor", tipo: "string", obligatorio: true, Descripcion: "Nombre del Deudor" },
+    { campo: "Nombre del Deudor", tipo: "string", obligatorio: true, Descripcion: "Nombre del Deudor" },
     { campo: "Concepto", tipo: "string", obligatorio: true, Descripcion: "Concepto" },
     { campo: "Documento que acredita la cuenta por cobrar: Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha del Documento" },
     { campo: "Documento que acredita la cuenta por cobrar: Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de Documento" },
@@ -279,6 +284,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Declaraciones anuales: Presentadas", tipo: "number", obligatorio: true, Descripcion: "Declaraciones Anuales Presentadas" },
     { campo: "Declaraciones anuales: Por Presentar", tipo: "number", obligatorio: true, Descripcion: "Declaraciones Anuales por Presentar" },
     { campo: "Declaraciones anuales: Año", tipo: "number", obligatorio: true, Descripcion: "Año de Declaraciones" },
+      { campo: "Declaraciones anuales: Importe", tipo: "number", obligatorio: true, Descripcion: "Importe de Declaraciones Anuales" },
   ],
 
   RF14: [
@@ -294,26 +300,30 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   RF15: [
     { campo: "Número de Póliza", tipo: "string", obligatorio: true, Descripcion: "Número de Póliza" },
     { campo: "Compañía Aseguradora", tipo: "string", obligatorio: true, Descripcion: "Compañía Aseguradora" },
-    { campo: "Tipo de Fianza", tipo: "string", obligatorio: true, Descripcion: "Tipo de Fianza o Garantía" },
-    { campo: "Concepto de Fianza", tipo: "string", obligatorio: true, Descripcion: "Concepto u Obra de la Fianza o Garantía" },
-    { campo: "Cobertura de Fianza", tipo: "string", obligatorio: true, Descripcion: "Cobertura de la Fianza o Garantía" },
-    { campo: "Vigencia", tipo: "date", obligatorio: true, Descripcion: "Vigencia" },
+    { campo: "Tipo de Fianza o garantía", tipo: "string", obligatorio: true, Descripcion: "Tipo de Fianza o Garantía" },
+    { campo: "Concepto u obra de la fianza o garantía", tipo: "string", obligatorio: true, Descripcion: "Concepto u Obra de la Fianza o Garantía" },
+    { campo: "Cobertura de la fianza o garantía", tipo: "string", obligatorio: true, Descripcion: "Cobertura de la Fianza o Garantía" },
+    { campo: "Vigencia: desde", tipo: "date", obligatorio: true, Descripcion: "Vigencia" },
+    { campo: "Vigencia: hasta", tipo: "date", obligatorio: true, Descripcion: "Vigencia" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
   RF16: [
-    { campo: "Descripcion_Convenio", tipo: "string", obligatorio: true, Descripcion: "Descripción del Convenio o Contrato" },
-    { campo: "Responsable", tipo: "string", obligatorio: true, Descripcion: "Nombre de quien conviene o contrata" },
+    { campo: "Descripcio del Convenio o Contrato", tipo: "string", obligatorio: true, Descripcion: "Descripción del Convenio o Contrato" },
+    { campo: "Nombre de Quien conviene o Contrata por la Unidad Responsable", tipo: "string", obligatorio: true, Descripcion: "Nombre de quien conviene o contrata" },
     { campo: "Importe", tipo: "number", obligatorio: true, Descripcion: "Importe" },
     { campo: "Periodo", tipo: "string", obligatorio: true, Descripcion: "Periodo" },
   ],
 
   RF17: [
     { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Tipo de Documento" },
-    { campo: "Folio", tipo: "string", obligatorio: true, Descripcion: "Folio" },
+    { campo: "Folio: desde", tipo: "string", obligatorio: true, Descripcion: "Folio" },
+    { campo: "Folio: hasta", tipo: "string", obligatorio: true, Descripcion: "Folio" },
     { campo: "Fecha de Último Registro", tipo: "date", obligatorio: true, Descripcion: "Fecha de Último Registro" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
+
+  // anexos de contratos y obras (OP01-OP04)
 
   OP01: [
     { campo: "No. de Expediente", tipo: "string", obligatorio: true, Descripcion: "No. de Expediente" },
@@ -369,6 +379,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
+  // Estructura para registros de bienes muebles
+
   ADI01: [
     { campo: "Area", tipo: "string", obligatorio: true, Descripcion: "Área" },
     { campo: "Descripcion_Bien", tipo: "string", obligatorio: true, Descripcion: "Descripción del Bien" },
@@ -390,6 +402,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
+  // Estructura para registros de funcionarios
+
   CF01: [
     { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre" },
     { campo: "Cargo", tipo: "string", obligatorio: true, Descripcion: "Cargo" },
@@ -407,6 +421,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
+  // Estructura para registros de informes
+
   IG01: [
     { campo: "Tipo_Informe", tipo: "string", obligatorio: true, Descripcion: "Tipo de Informe" },
     { campo: "Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
@@ -422,12 +438,16 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
+  // Estructura para registros de archivos
+
   TAI01: [
     { campo: "Tipo_Archivo", tipo: "string", obligatorio: true, Descripcion: "Tipo de Archivo" },
     { campo: "Nombre_Archivo", tipo: "string", obligatorio: true, Descripcion: "Nombre del Archivo" },
     { campo: "Descripcion", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
     { campo: "Fecha", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
   ],
+
+  // Estructura para registros de comisiones, honorarios, actas, claves y firmas
 
   CC01: [
     { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre" },
@@ -451,6 +471,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Firma", tipo: "string", obligatorio: true, Descripcion: "Firma" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
+
+  // Estructura para registros de actas, claves y firmas
 
   AG01: [
     { campo: "Numero_Acta", tipo: "string", obligatorio: true, Descripcion: "Número de Acta" },
@@ -497,6 +519,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Descripcion", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
+
+  // Estructura para registros de bienes muebles e inmuebles
 
   RM01: [
     { campo: "Descripcion", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
