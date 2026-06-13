@@ -44,7 +44,7 @@ function Recursos() {
           </a>
 
           <a 
-            href="https://contraloria.umich.mx/entregarecepcion/archivos/plantillas/PlantillasSERUMICHV2.zip" 
+            href="https://contraloria.umich.mx/entregarecepcion/archivos/plantillas/PlantillasSERUMICHV2.zip                                       " 
             download="plantillas_anexos.zip"
             className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
           >
