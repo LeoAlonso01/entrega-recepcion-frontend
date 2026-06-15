@@ -21,7 +21,12 @@ import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb"
 import { toast } from "sonner"
 import { UnidadesPorUsuario } from "../../services/get_unidades";
 import { ESTRUCTURA_DATOS_POR_CLAVE } from "../../../lib/estructuraPorClave";
-import { validarEstructuraExcel, validarTiposExcel } from "@/lib/valildaciones"
+import {
+  validarEstructuraExcel,
+  validarTiposExcel,
+  esFechaDdMmAaaaEstricta,
+  parseFechaDdMmAaaa,
+} from "@/lib/valildaciones"
 import { generarPlantillaPorClave } from "@/lib/generarPlantillas"
 
 import {
@@ -200,11 +205,10 @@ const validarCampoEstructura = (clave: string, campo: string, valor: any): Valid
   }
 
   if (campoDef.tipo === "date" && valor !== "" && valor !== null && valor !== undefined) {
-    const fecha = new Date(String(valor).trim());
-    if (isNaN(fecha.getTime())) {
+    if (!esFechaDdMmAaaaEstricta(valor)) {
       return {
         nivel: campoDef.obligatorio ? "error" : "warning",
-        mensaje: `Fila: Campo "${campoDef.campo}" debe ser una fecha válida.`,
+        mensaje: `Fila: Campo "${campoDef.campo}" debe ser una fecha válida con formato dd/mm/aaaa.`,
       };
     }
   }
@@ -231,8 +235,8 @@ const validarFilasObligatorias = (datosValidar: Array<Record<string, any>>, clav
         }
       }
       if (def.tipo === "date" && valor !== "" && valor !== null && valor !== undefined) {
-        if (isNaN(new Date(String(valor).trim()).getTime())) {
-          errores.push(`Fila ${idx + 1}: Campo "${def.campo}" debe ser fecha válida.`);
+        if (!esFechaDdMmAaaaEstricta(valor)) {
+          errores.push(`Fila ${idx + 1}: Campo "${def.campo}" debe ser fecha válida en formato dd/mm/aaaa.`);
         }
       }
     });
@@ -1376,50 +1380,14 @@ export const validarDatosAnexo = (
       }
 
 
-      const convertirFecha = (valor: any): Date | null => {
-        if (valor instanceof Date) return valor;
-
-        if (typeof valor === "number") {
-          return new Date((valor - 25569) * 86400 * 1000);
-        }
-
-        if (typeof valor === "string") {
-          const parsed = Date.parse(valor);
-          if (!isNaN(parsed)) return new Date(parsed);
-        }
-
-        return null;
-      };
+      const convertirFecha = (valor: any): Date | null => parseFechaDdMmAaaa(valor);
 
       fila[keyReal] = convertirFecha(valor) ?? valor;
 
 
       if (campo.tipo === "date") {
-        let fechaValida = false;
-
-        // Caso 1: ya es Date
-        if (valor instanceof Date && !isNaN(valor.getTime())) {
-          fechaValida = true;
-        }
-
-        // Caso 2: número (Excel serial)
-        else if (typeof valor === "number") {
-          const fecha = new Date((valor - 25569) * 86400 * 1000);
-          if (!isNaN(fecha.getTime())) {
-            fechaValida = true;
-          }
-        }
-
-        // Caso 3: string (dd/mm/yyyy o similar)
-        else if (typeof valor === "string") {
-          const parsed = Date.parse(valor);
-          if (!isNaN(parsed)) {
-            fechaValida = true;
-          }
-        }
-
-        if (!fechaValida) {
-          errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser una fecha válida.`);
+        if (!esFechaDdMmAaaaEstricta(valor)) {
+          errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser una fecha válida con formato dd/mm/aaaa.`);
         }
       }
 
@@ -1444,11 +1412,6 @@ export const validarDatosAnexo = (
         if (!(valor === true || valor === false)) {
           errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser true/false.`);
         }
-      }
-
-      const fecha = convertirFecha(valor);
-      if (campo.tipo === "date" && !fecha) {
-        errores.push(`Fila ${index + 1}: El campo "${campo.campo}" debe ser una fecha válida.`);
       }
 
     });

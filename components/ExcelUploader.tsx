@@ -35,7 +35,7 @@ const ExcelUploader = ({ onUploadSuccess, onUploadError, clave }: ExcelUploaderP
         const json = XLSX.utils.sheet_to_json(worksheet,{
           defval:"", 
           raw: false,
-          dateNF: "yyyy-mm-dd"
+          dateNF: "dd/mm/yyyy"
         });
 
         if (Array.isArray(json) && json.length > 0) {
