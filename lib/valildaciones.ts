@@ -3,6 +3,44 @@ import { inferirTipo } from "./inferirTipo";
 import { ReglasValidacion } from "./estructurasValidacion";
 import { normalizar } from "./inferirTipo";
 
+const FECHA_DD_MM_AAAA_REGEX = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(\d{4})$/;
+
+export function parseFechaDdMmAaaa(valor: unknown): Date | null {
+  if (valor instanceof Date) {
+    return isNaN(valor.getTime()) ? null : new Date(valor.getTime());
+  }
+
+  if (typeof valor === "number" && Number.isFinite(valor)) {
+    const fecha = new Date((valor - 25569) * 86400 * 1000);
+    return isNaN(fecha.getTime()) ? null : fecha;
+  }
+
+  if (typeof valor !== "string") return null;
+
+  const limpio = valor.trim();
+  const match = limpio.match(FECHA_DD_MM_AAAA_REGEX);
+  if (!match) return null;
+
+  const dia = Number(match[1]);
+  const mes = Number(match[2]);
+  const anio = Number(match[3]);
+  const fecha = new Date(anio, mes - 1, dia);
+
+  if (
+    fecha.getFullYear() !== anio ||
+    fecha.getMonth() !== mes - 1 ||
+    fecha.getDate() !== dia
+  ) {
+    return null;
+  }
+
+  return fecha;
+}
+
+export function esFechaDdMmAaaaEstricta(valor: unknown): boolean {
+  return parseFechaDdMmAaaa(valor) !== null;
+}
+
 export function validarNombredeArchivo(file: File, clave: string): { valido: boolean; mensaje?: string } {
     if (!file || !clave) {
         return { valido: false, mensaje: "Archivo o clave no proporcionados" };
@@ -133,10 +171,9 @@ export function validarTiposExcel(
       const tipoEsperado = tiposEsperados.get(nombreNormalizado) || inferirTipo(columna);
 
       if (tipoEsperado === "date") {
-        const fecha = new Date(valor);
-        if (isNaN(fecha.getTime())) {
+        if (!esFechaDdMmAaaaEstricta(valor)) {
           advertencias.push(
-            `Fila ${idx + 1}: "${columna}" ('${valor}') no es una fecha válida`
+            `Fila ${idx + 1}: "${columna}" ('${valor}') no es una fecha válida con formato dd/mm/aaaa`
           );
         }
         return;
