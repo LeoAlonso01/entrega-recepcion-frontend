@@ -55,7 +55,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   DO04: [
     { campo: "Cargo", tipo: "string", obligatorio: true, Descripcion: "Cargo del responsable" },
     { campo: "Con derecho a ", tipo: "string", obligatorio: true, Descripcion: "Derechos asociados al cargo" },
-    { campo: "Fecha de inicio del cargo", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del cargo" },
+    { campo: "Fecha de inicio del cargo", tipo: "date", obligatorio: true, Descripcion: "Fecha de inicio del cargo" },
     { campo: "Periodicidad con que se reúnen", tipo: "string", obligatorio: true, Descripcion: "Periodicidad con que se reúnen los responsables" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre las representaciones y cargos honoríficos" },
   ],
@@ -74,7 +74,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de base" },
     { campo: "Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de base" },
     { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
-    { campo: "Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Fecha de ingreso", tipo: "date", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
     { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de base" },
     { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de base" },
     { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de base" },
@@ -88,7 +88,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de apoyo" },
     { campo: "Plaza (Categoría)", tipo: "string", obligatorio: true, Descripcion: "Plaza o categoría del personal de apoyo" },
     { campo: "Tipo", tipo: "string", obligatorio: true, Descripcion: "Tipo de personal (base, apoyo, comisionado, honorarios)" },
-    { campo: "Fecha de ingreso", tipo: "string", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
+    { campo: "Fecha de ingreso", tipo: "date", obligatorio: true, Descripcion: "Fecha de ingreso del personal a la dependencia" },
     { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal de apoyo" },
     { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal de apoyo" },
     { campo: "Total", tipo: "number", obligatorio: true, Descripcion: "Total de percepciones económicas del personal de apoyo" },
@@ -105,8 +105,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Unidad de Adscripción (UPP)", tipo: "string", obligatorio: true, Descripcion: "Unidad de adscripción del personal comisionado" },
     { campo: "Comisionado a: UR", tipo: "string", obligatorio: true, Descripcion: "Dependencia o entidad a la que el personal comisionado está asignado" },
     { campo: "Referencia Documental (Oficio)", tipo: "string", obligatorio: true, Descripcion: "Referencia documental que sustenta la comisión del personal" },
-    { campo: "Inicio de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio de la comisión del personal" },
-    { campo: "Fin de comisión", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin de la comisión del personal" },
+    { campo: "Inicio de comisión", tipo: "date", obligatorio: true, Descripcion: "Fecha de inicio de la comisión del personal" },
+    { campo: "Fin de comisión", tipo: "date", obligatorio: true, Descripcion: "Fecha de fin de la comisión del personal" },
     { campo: "Sueldo", tipo: "number", obligatorio: true, Descripcion: "Sueldo del personal comisionado" },
     { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal comisionado" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal comisionado" },
@@ -115,8 +115,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   RH04: [
     { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de honorarios" },
     { campo: "RFC", tipo: "string", obligatorio: true, Descripcion: "RFC del personal de honorarios" },
-    { campo: "Fecha de Inicio de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de inicio del contrato del personal de honorarios" },
-    { campo: "Fecha de fin de contrato", tipo: "string", obligatorio: true, Descripcion: "Fecha de fin del contrato del personal de honorarios" },
+    { campo: "Fecha de Inicio de contrato", tipo: "date", obligatorio: true, Descripcion: "Fecha de inicio del contrato del personal de honorarios" },
+    { campo: "Fecha de fin de contrato", tipo: "date", obligatorio: true, Descripcion: "Fecha de fin del contrato del personal de honorarios" },
     { campo: "Fuente de Recurso", tipo: "string", obligatorio: true, Descripcion: "Fuente de recursos para el pago del personal de honorarios" },
     { campo: "Actividades a Desarrollar", tipo: "string", obligatorio: true, Descripcion: "Descripción de las actividades a desarrollar por el personal de honorarios" },
     { campo: "Salario", tipo: "number", obligatorio: true, Descripcion: "Salario del personal de honorarios" },
@@ -550,9 +550,9 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "No. de expediente o solicitud", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
     { campo: "Estado de Solicitud", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
     { campo: "Fecha limite de Respuesta", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
-    { campo:"Recurso de Revision ", tipo: "string", obligatorio: false, Descripcion: "Recurso de Revision" },
-    { campo:"Estatus Actual", tipo: "string", obligatorio: false, Descripcion: "Estatus Actual" },
-    { campo:"Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
+    { campo: "Recurso de Revision ", tipo: "string", obligatorio: false, Descripcion: "Recurso de Revision" },
+    { campo: "Estatus Actual", tipo: "string", obligatorio: false, Descripcion: "Estatus Actual" },
+    { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
   ],
 
   // Estructura para registros de comisiones, honorarios, actas, claves y firmas
@@ -566,7 +566,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: " Vigencia: Hasta", tipo: "date", obligatorio: true, Descripcion: "Vigencia" },
     { campo: "Importe Convenido", tipo: "string", obligatorio: true, Descripcion: "Importe Convenido" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
-    
+
   ],
 
   CC02: [
@@ -593,22 +593,22 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
 
   AG01: [
     { campo: "Tipo de Documento", tipo: "string", obligatorio: true, Descripcion: "Número de Acta" },
-    { campo: "Especificar", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
+    { campo: "Especificar", tipo: "string", obligatorio: true, Descripcion: "Fecha" },
     { campo: "Area Usuaria", tipo: "string", obligatorio: true, Descripcion: "Lugar" },
     { campo: "Ultima Forma Utilizada: Folio", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
     { campo: "Ultima Forma Utilizada: Fecha", tipo: "string", obligatorio: true, Descripcion: "Responsable" },
     { campo: "Ultima Forma Utilizada: Conceptos", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
-    { campo : "Folios sin utilizar: desde ", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
-    { campo : "Folios sin utilizar: hasta ", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
-    {campo: "Folios sin utilizar: Cantidad ", tipo: "number", obligatorio: false, Descripcion: "Observaciones" },
-    {campo:"Responsable de su custodia: Nombre y puesto", tipo: "string", obligatorio: false, Descripcion: "Responsable de su custodia" },
+    { campo: "Folios sin utilizar: desde ", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
+    { campo: "Folios sin utilizar: hasta ", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
+    { campo: "Folios sin utilizar: Cantidad ", tipo: "number", obligatorio: false, Descripcion: "Observaciones" },
+    { campo: "Responsable de su custodia: Nombre y puesto", tipo: "string", obligatorio: false, Descripcion: "Responsable de su custodia" },
     { campo: "Comentarios", tipo: "string", obligatorio: false, Descripcion: "Comentarios" }
 
   ],
 
   AG02: [
     { campo: "Especificar", tipo: "string", obligatorio: true, Descripcion: "Número de Acta" },
-    { campo: "Area Usuaria", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
+    { campo: "Area Usuaria", tipo: "string", obligatorio: true, Descripcion: "Fecha" },
     { campo: "Cantidad", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
     { campo: "Responsable de su custodia: Nombre y cargo", tipo: "string", obligatorio: true, Descripcion: "Responsable" },
     { campo: "En uso o Inutilizado", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
