@@ -1,6 +1,7 @@
 
 import type { Metadata } from 'next'
 import ClientToaster from '@/components/ClientToaster'
+import SessionExpirationWatcher from '@/components/SessionExpirationWatcher'
 import '../styles/globals.css';
 
 
@@ -43,6 +44,7 @@ export default function RootLayout({
     <html lang="es" className="h-full">
       <body className="h-full bg-gray-100 text-gray-900 antialiased">
         <ClientToaster />
+        <SessionExpirationWatcher />
         {children}
       </body>
     </html>
