@@ -11,7 +11,7 @@ import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Download, Eye, Check } from "lucide-react"
+import { Plus, Edit, Download, Eye, Check, Trash2 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
@@ -155,6 +155,8 @@ export interface Anexo {
   datos: Array<Record<string, any>>   // o simplemente `any` si prefieres
   estado: string
   unidad_responsable_id: number
+  is_deleted?: boolean
+  acta_id?: number | null
   creador: Array<{ id: number; username: string; email: string; role: string }>
 }
 
@@ -1502,6 +1504,7 @@ export default function AnexosPage() {
   const rowsPerPage = 5;
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [anexoParaActualizar, setAnexoParaActualizar] = useState<Anexo | null>(null);
+  const [anexoParaEliminar, setAnexoParaEliminar] = useState<Anexo | null>(null);
   const [todosLosAnexos, setTodosLosAnexos] = useState<Anexo[]>([]); // Estado para todos los anexos
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -1842,6 +1845,54 @@ export default function AnexosPage() {
     )
   }
 
+  const handleEliminarAnexo = async () => {
+    if (!anexoParaEliminar) return;
+
+    try {
+      const response = await fetch(`${API_URL}/anexos/${anexoParaEliminar.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "No fue posible eliminar el anexo");
+      }
+
+      await registrarEventoAuditoria({
+        actor_id: userid,
+        action: "delete_anexo",
+        object_type: "anexo",
+        object_id: String(anexoParaEliminar.id),
+        success: true,
+        metadata: { clave: anexoParaEliminar.clave, acta_id: anexoParaEliminar.acta_id ?? null },
+      });
+
+      toast.success("Anexo eliminado", {
+        description: `El anexo ${anexoParaEliminar.clave} fue enviado a eliminados.`,
+      });
+      await recargarAnexos();
+    } catch (error: any) {
+      console.error("Error al eliminar anexo:", error);
+      await registrarEventoAuditoria({
+        actor_id: userid,
+        action: "delete_anexo",
+        object_type: "anexo",
+        object_id: String(anexoParaEliminar.id),
+        success: false,
+        metadata: { clave: anexoParaEliminar.clave, motivo: error.message },
+      });
+      toast.error("No se pudo eliminar el anexo", {
+        description: error.message || "Verifica tus permisos e inténtalo de nuevo.",
+      });
+    } finally {
+      setAnexoParaEliminar(null);
+    }
+  };
+
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case "Completado":
@@ -1905,7 +1956,10 @@ export default function AnexosPage() {
     try {
       const response = await fetch(`${API_URL}/anexos/${anexoParaActualizar.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
         body: JSON.stringify({ ...anexoParaActualizar, estado: nuevoEstado }),
       });
 
@@ -2200,6 +2254,18 @@ export default function AnexosPage() {
 
                                   <Eye className="h-4 w-4" />
                                 </Button>
+
+                                {userrole === "ADMIN" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setAnexoParaEliminar(anexo)}
+                                    className="text-red-600 hover:text-red-800"
+                                    title="Eliminar anexo"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
 
                                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                                   <DialogTrigger asChild>
@@ -3079,6 +3145,15 @@ export default function AnexosPage() {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setAnexoParaEliminar(anexo)}
+                                      className="text-red-600 hover:text-red-800"
+                                      title="Eliminar anexo"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
                                   </TableCell>
                                 </TableRow>
                               ))
@@ -3098,6 +3173,29 @@ export default function AnexosPage() {
 
               </TabsContent>
             )}
+            <Dialog
+              open={Boolean(anexoParaEliminar)}
+              onOpenChange={(open) => !open && setAnexoParaEliminar(null)}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>¿Eliminar anexo?</DialogTitle>
+                  <DialogDescription>
+                    {anexoParaEliminar
+                      ? `Se eliminará el anexo ${anexoParaEliminar.clave}. Esta acción requiere autorización de administrador y el backend aplicará su borrado lógico.`
+                      : ""}
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setAnexoParaEliminar(null)}>
+                    Cancelar
+                  </Button>
+                  <Button variant="destructive" onClick={handleEliminarAnexo}>
+                    Eliminar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Tabs>
         </div>
       </div>
