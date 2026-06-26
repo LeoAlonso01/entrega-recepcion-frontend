@@ -204,6 +204,28 @@ export default function LoginPage() {
       return;
     }
 
+    // La lista de autorizados se valida en el servidor para no exponerla al navegador.
+    try {
+      const authorizationResponse = await fetch("/api/email-authorization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      const authorization = await authorizationResponse.json().catch(() => null);
+
+      if (!authorizationResponse.ok || !authorization?.authorized) {
+        toast.error(
+          authorization?.message || "No fue posible validar si el correo está autorizado.",
+        );
+        setIsLoading(false);
+        return;
+      }
+    } catch {
+      toast.error("No fue posible validar el correo autorizado. Intenta nuevamente.");
+      setIsLoading(false);
+      return;
+    }
+
     // Validar que las contraseñas coincidan
     if (formData.password !== formData.confirmPassword) {
       toast.error("Las contraseñas no coinciden.");
