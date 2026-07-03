@@ -181,15 +181,18 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
   ],
 
   RF05: [
-    { campo: "Numero de Cuenta", tipo: "string", obligatorio: true },
-    { campo: "Firmas Registradas: Nombre", tipo: "array", obligatorio: true },
-    { campo: "Firmas Registradas: Cargo", tipo: "array", obligatorio: true },
-    { campo: "Folio Ultimo Cheque", tipo: "number", obligatorio: true },
+    { campo: "Institución Bancaria", tipo: "string", obligatorio: true },
+    { campo: "Clave de Sucursal", tipo: "string", obligatorio: true },
+    { campo: "Tipo de Cuenta", tipo: "string", obligatorio: true },
+    { campo: "Número de Cuenta", tipo: "string", obligatorio: true },
+    { campo: "Nombre", tipo: "string", obligatorio: true },
+    { campo: "Cargo", tipo: "string", obligatorio: true },
+    { campo: "Folio del Ultimo Cheque Expedido", tipo: "number", obligatorio: true },
     { campo: "Saldo Segun Banco", tipo: "number", obligatorio: true },
     { campo: "Cargos No Correspondidos", tipo: "number", obligatorio: true },
     { campo: "Abonos No Correspondidos", tipo: "number", obligatorio: true },
     { campo: "Saldo Segun Registros", tipo: "number", obligatorio: true },
-    { campo: "Responsable del Manejo", tipo: "string", obligatorio: true },
+    { campo: "Responsable del Manejo", tipo: "string", obligatorio: true }
   ],
 
   RF06: [
