@@ -13,16 +13,58 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 
+function sanitizeDocxText(value: unknown) {
+    if (value === null || value === undefined) return "";
+
+    return String(value)
+        // Remove XML-invalid control chars that can corrupt Word documents.
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
+        .trim();
+}
+
 async function loadUmsnhLogo() {
     try {
         const response = await fetch("/logos/ESCUDO-UMSNH.jpg");
         if (!response.ok) return null;
 
         const buffer = await response.arrayBuffer();
+        if (!buffer.byteLength) return null;
+
+        const bytes = new Uint8Array(buffer);
+
+        const isJpeg =
+            bytes.length >= 3 &&
+            bytes[0] === 0xff &&
+            bytes[1] === 0xd8 &&
+            bytes[2] === 0xff;
+        const isPng =
+            bytes.length >= 8 &&
+            bytes[0] === 0x89 &&
+            bytes[1] === 0x50 &&
+            bytes[2] === 0x4e &&
+            bytes[3] === 0x47 &&
+            bytes[4] === 0x0d &&
+            bytes[5] === 0x0a &&
+            bytes[6] === 0x1a &&
+            bytes[7] === 0x0a;
+        const isGif =
+            bytes.length >= 4 &&
+            bytes[0] === 0x47 &&
+            bytes[1] === 0x49 &&
+            bytes[2] === 0x46 &&
+            bytes[3] === 0x38;
+        const isBmp = bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d;
+
+        let imageType: "jpg" | "png" | "gif" | "bmp" | null = null;
+        if (isJpeg) imageType = "jpg";
+        if (isPng) imageType = "png";
+        if (isGif) imageType = "gif";
+        if (isBmp) imageType = "bmp";
+        if (!imageType) return null;
 
         return new ImageRun({
-            data: new Uint8Array(buffer),
-            type: "jpg",
+            data: bytes,
+            type: imageType,
             transformation: {
                 width: 62,
                 height: 62,
@@ -35,12 +77,12 @@ async function loadUmsnhLogo() {
 
 function getTextValue(value: any) {
     if (!value) return "";
-    if (typeof value === "string") return value;
-    return value.nombre ?? value.name ?? value.fullName ?? "";
+    if (typeof value === "string") return sanitizeDocxText(value);
+    return sanitizeDocxText(value.nombre ?? value.name ?? value.fullName ?? "");
 }
 
 function getUnidadNombre(acta: any) {
-    return (
+    return sanitizeDocxText(
         acta.unidad_responsable?.nombre ??
         acta.unidad_responsable?.name ??
         acta.unidad?.nombre ??
@@ -56,7 +98,7 @@ function textParagraph(text: string, options: { bold?: boolean; align?: any } = 
         alignment: options.align ?? AlignmentType.JUSTIFIED,
         children: [
             new TextRun({
-                text,
+                text: sanitizeDocxText(text),
                 bold: options.bold ?? false,
                 size: 24,
                 font: "Arial",
@@ -71,7 +113,7 @@ function titleParagraph(text: string, size: number, bold = false) {
         alignment: AlignmentType.CENTER,
         children: [
             new TextRun({
-                text,
+                text: sanitizeDocxText(text),
                 bold,
                 size,
                 font: "Arial",
@@ -128,7 +170,7 @@ function signatureCell(title: string, name: string) {
                 alignment: AlignmentType.LEFT,
                 children: [
                     new TextRun({
-                        text: title,
+                        text: sanitizeDocxText(title),
                         size: 24,
                         font: "Arial",
                     }),
@@ -140,7 +182,7 @@ function signatureCell(title: string, name: string) {
                 alignment: AlignmentType.CENTER,
                 children: [
                     new TextRun({
-                        text: name,
+                        text: sanitizeDocxText(name),
                         size: 22,
                         font: "Arial",
                     }),
@@ -165,7 +207,7 @@ function centeredSignatureCell(title: string, name: string) {
                 alignment: AlignmentType.CENTER,
                 children: [
                     new TextRun({
-                        text: title,
+                        text: sanitizeDocxText(title),
                         size: 24,
                         font: "Arial",
                     }),
@@ -188,7 +230,7 @@ function centeredSignatureCell(title: string, name: string) {
                 alignment: AlignmentType.CENTER,
                 children: [
                     new TextRun({
-                        text: name,
+                        text: sanitizeDocxText(name),
                         size: 22,
                         font: "Arial",
                     }),
@@ -221,7 +263,7 @@ export async function generarActaDocx(acta: any) {
               new Paragraph({
                   children: [
                       new TextRun({
-                          text: anexo.categoria || "ANEXO",
+                          text: sanitizeDocxText(anexo.categoria || "ANEXO"),
                           bold: true,
                           size: 22,
                           font: "Arial",

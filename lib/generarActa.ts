@@ -132,7 +132,33 @@ function drawAnexoTable(doc: jsPDF, anexo: any, y: number, marginLeft: number, u
     return y
 }
 
-export const generarActa = async (actaData: any) => {
+function resolveAnexoCategoria(anexo: any) {
+    const categoria = String(anexo?.categoria ?? "").trim();
+    if (categoria) return categoria;
+
+    const clave = String(anexo?.clave ?? "").trim().toUpperCase();
+    const prefijo = clave.replace(/\d+$/, "");
+
+    const categoriasPorPrefijo: Record<string, string> = {
+        ADI: "ARCHIVOS DOCUMENTALES E INFORMÁTICOS",
+        AG: "ASUNTOS GENERALES",
+        AR: "ASUNTOS RELEVANTES",
+        CF: "CONTROL Y FISCALIZACIÓN",
+        EO: "ORGANIZACIÓN",
+        IG: "INFORME DE GESTIÓN",
+        MJ: "MARCO JURÍDICO",
+        PPA: "TRANSPARENCIA",
+        PP: "PLANEACIÓN",
+        RF: "RECURSOS FINANCIEROS",
+        RH: "RECURSOS HUMANOS",
+        RRH: "RECURSOS HUMANOS",
+        RM: "RECURSOS MATERIALES",
+    };
+
+    return categoriasPorPrefijo[prefijo] ?? "";
+}
+
+export const generarActa = async (actaData: any, options?: { preview?: boolean }) => {
 
     const doc = new jsPDF("p", "mm", "letter");
 
@@ -182,39 +208,63 @@ export const generarActa = async (actaData: any) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
 
-    const p1 = `Se levanta la presente Acta Administrativa con motivo de la Entrega-Recepción de la Unidad Académica denominada ${actaData.unidad_responsable}, en la ciudad de Morelia, siendo las ${actaData.hora_cierre_acta} horas del día ${fechaActa}. Para tal efecto se reunieron en las oficinas que ocupa el Departamento de Auditoría Interna, ubicadas en Av. Francisco J. Mújica s/n, Antigua Torre de Rectoría, colonia Felícitas del Río, código postal 58040, en la ciudad de Morelia, Michoacán.`
+    const nombreEntrante = actaData.entrante || actaData.entrante?.nombre || actaData.entrante?.name || "";
+    const nombreSaliente = actaData.saliente || actaData.saliente?.nombre || actaData.saliente?.name || "";
+    const nombreTestigoEntrante = actaData.testigo_entrante || actaData.testigo_entrante?.nombre || actaData.testigo_entrante?.name || "";
+    const nombreTestigoSaliente = actaData.testigo_saliente || actaData.testigo_saliente?.nombre || actaData.testigo_saliente?.name || "";
+    const nombreComisionado = actaData.comisionado || actaData.comisionado?.nombre || actaData.comisionado?.name || "";
+    const nombreUnidad = actaData.unidad_responsable || actaData.unidad_responsable?.nombre || actaData.unidad_responsable?.name || actaData.unidad || "";
+    const oficioComision = actaData.oficio_comision || "";
+    const fechaOficioComision = actaData.fecha_oficio_comision || "";
+    const nombramiento = actaData.nombramiento || "";
+    const fechaNombramiento = actaData.fecha_nombramiento || "";
+    const asignacion = actaData.asignacion || "";
+    const asignadoPor = actaData.asignado_por || "";
+    const fechaInicioLabores = actaData.fecha_inicio_labores || "";
+    const fechaFinLabores = actaData.fecha_fin_labores || "";
+    const domicilioEntrante = actaData.domicilio_entrante || "";
+    const domicilioSaliente = actaData.domicilio_saliente || "";
+    const ineEntrante = actaData.ine_entrante || "";
+    const ineSaliente = actaData.ine_saliente || "";
+    const ineTestigoEntrante = actaData.ine_testigo_entrante || "";
+    const ineTestigoSaliente = actaData.ine_testigo_saliente || "";
+    const ineComisionado = actaData.ine_comisionado || "";
+    const fechaCierre = actaData.fecha_cierre_acta || actaData.fecha || "";
+    const horaCierre = actaData.hora_cierre_acta || actaData.hora || "";
 
-    const p2 = `Comparecen el C. ${actaData.entrante}, quien se identifica con credencial expedida por el Instituto Nacional Electoral número ${actaData.ine_entrante} y señala como domicilio para recibir notificaciones o documentos relacionados con la presente acta el ubicado en ${actaData.domicilio_entrante}, quien al día 27 de mayo de 2025 deja de ocupar el cargo de Secretario Académico.`
+    const p1 = `Se levanta la presente Acta Administrativa con motivo de la Entrega-Recepción de la Unidad Académica denominada ${nombreUnidad}, en la ciudad de Morelia, siendo las ${horaCierre} horas del día ${fechaActa}. Para tal efecto se reunieron en las oficinas que ocupa el Departamento de Auditoría Interna, ubicadas en Av. Francisco J. Mújica s/n, Antigua Torre de Rectoría, colonia Felícitas del Río, código postal 58040, en la ciudad de Morelia, Michoacán.`
 
-    const p3 = `Asimismo comparece el C. Barajas Pérez Beny Oliver, quien se identifica con credencial expedida por el Instituto Nacional Electoral número ${actaData.ine_saliente} y señala como domicilio para recibir notificaciones o documentos relacionados con la presente acta el ubicado en ${actaData.domicilio_saliente},interior 304, fraccionamiento Campestre del Vergel, código postal 58195, en la ciudad de Morelia, Michoacán, quien a partir del día 28 de mayo de 2025 recibe el área en calidad de Secretario Académico.`
+    const p2 = `Comparecen el C. ${nombreEntrante}, quien se identifica con credencial expedida por el Instituto Nacional Electoral número ${ineEntrante} y señala como domicilio para recibir notificaciones o documentos relacionados con la presente acta el ubicado en ${domicilioEntrante}, quien al día ${fechaInicioLabores || ""} deja de ocupar el cargo de Secretario Académico.`
 
-    const p4 = `Lo anterior en atención a la designación de que fue objeto por parte de la Doctora Yarabí Ávila González, en su carácter de Rectora de la Universidad Michoacana de San Nicolás de Hidalgo, a través del nombramiento número 456/2025 de fecha 28 de mayo de 2025, para asumir las funciones que le han sido conferidas, con fundamento en lo dispuesto por el artículo 22, fracción I, de la Ley Orgánica de la Universidad Michoacana de San Nicolás de Hidalgo, con actividades propias de un trabajador de confianza en términos de lo dispuesto en el artículo 9° de la Ley Federal del Trabajo.`
+    const p3 = `Asimismo comparece el C. ${nombreSaliente}, quien se identifica con credencial expedida por el Instituto Nacional Electoral número ${ineSaliente} y señala como domicilio para recibir notificaciones o documentos relacionados con la presente acta el ubicado en ${domicilioSaliente}, quien a partir del día ${fechaFinLabores || ""} recibe el área en calidad de Secretario Académico.`
 
-    const p5 = `Acto seguido, el C. ${actaData.testigo_entrante} y el C. ${actaData.testigo_saliente}, en su carácter deservidor público saliente y entrante respectivamente, designan como testigos de asistencia a las C. Vargas Moreno Tania y C. Nambo Cervantes Arisbeth Montsserrat, quienes se identificaron con credencial oficial números ${actaData.ine_testigo_entrante} y ${actaData.ine_testigo_saliente} expedidas por el Instituto Nacional Electoral.`
+    const p4 = `Lo anterior en atención a la designación de que fue objeto por parte de la autoridad correspondiente, a través del nombramiento ${nombramiento || ""}${fechaNombramiento ? ` de fecha ${fechaNombramiento}` : ""}, para asumir las funciones que le han sido conferidas, con fundamento en lo dispuesto por la normatividad aplicable, con actividades propias de un trabajador de confianza en términos de lo dispuesto en la legislación vigente.`
 
-    const p6 = `También se encuentra presente en este acto la C. ${actaData.comisionado}, quien se identifica con credencial oficial número ${actaData.ine_comisionado} expedida por el Instituto Nacional Electoral, en su carácter deauditora comisionada por el Departamento de Auditoría Interna, mediante oficio número 316/2025/DAI de fecha 06 de junio de 2025, para intervenir en la presente Acta Administrativa.`
+    const p5 = `Acto seguido, el C. ${nombreTestigoEntrante} y el C. ${nombreTestigoSaliente}, en su carácter de servidor público saliente y entrante respectivamente, designan como testigos de asistencia a las personas que se identificaron con credencial oficial número ${ineTestigoEntrante} y ${ineTestigoSaliente} expedidas por el Instituto Nacional Electoral.`
+
+    const p6 = `También se encuentra presente en este acto la C. ${nombreComisionado}, quien se identifica con credencial oficial número ${ineComisionado} expedida por el Instituto Nacional Electoral, en su carácter de auditor comisionado por el Departamento de Auditoría Interna, mediante oficio ${oficioComision || ""}${fechaOficioComision ? ` de fecha ${fechaOficioComision}` : ""}, para intervenir en la presente Acta Administrativa.`
 
     const p7 = `Continuando con la parte principal de esta Acta y con fundamento en lo dispuesto por los artículos 1, 3 fracción XXI, 8, 9 fracción II, 10, 49 fracciones V y VII, 63 y 71 segundo párrafo de la Ley General de Responsabilidades Administrativas, el auditor comisionado exhorta a los que en ella intervienen a cumplir con la función pública y con las responsabilidades que como servidores públicos les corresponden.`
 
     const p8 = `Asimismo se hace del conocimiento que la presencia del auditor comisionado no implica la realización de una revisión, teniendo únicamente como finalidad auxiliar en la formalización del acto administrativo de Entrega-Recepción.`
 
-    const p9 = `El C. Montaño Ávila Eduardo hace entrega de la Secretaría Académica de la Unidad Profesional Lázaro Cárdenas de esta Casa de Estudios, área en la que fungió como titular, por lo que de conformidad hace entrega y se compromete a realizar las acciones que contempla la normatividad señalada respecto de su cargo en la administración de dicha secretaría.`
+    const p9 = `El C. ${nombreEntrante} hace entrega de la ${nombreUnidad}, área en la que fungió como titular, por lo que de conformidad hace entrega y se compromete a realizar las acciones que contempla la normatividad señalada respecto de su cargo en la administración de dicha secretaría.`
 
     const p10 = `Para efectos de la presente Acta se entenderá que el servidor público entrante es la persona que recibe y el servidor público saliente es quien realiza la entrega.`
 
-    const p11 = `Acreditadas las personalidades con que comparecen los participantes en la presente Acta, se procede a entregar los anexos que contienen la información relacionada con los asuntos de su competencia, sí como los recursos asignados para el ejercicio de sus atribuciones legales, por lo que para estos efectos se hace entrega conforme al siguiente orden:`
+    const p11 = `Acreditadas las personalidades con que comparecen los participantes en la presente Acta, se procede a entregar los anexos que contienen la información relacionada con los asuntos de su competencia, así como los recursos asignados para el ejercicio de sus atribuciones legales, por lo que para estos efectos se hace entrega conforme al siguiente orden.`
 
-    const p12 = `Acto seguido, el C. ${actaData.saliente.nombre}, Servidor Público Saliente, dio curso a la entrega de la ${actaData.unidad} al C. ${actaData.entrante.nombre}, Servidor Público Entrante.`
+    const p12 = `Acto seguido, el C. ${nombreSaliente}, Servidor Público Saliente, dio curso a la entrega de la ${nombreUnidad} al C. ${nombreEntrante}, Servidor Público Entrante.`
 
     const p13 = `Los informes, anexos y documentos que se mencionan son parte integrante de la misma y se firman en todas sus fojas para su identificación y efectos legales a que haya lugar, las cuales están foliadas en forma consecutiva por la persona designada para elaborarla y verificarla.`
 
-    const p14 = `El C. ${actaData.entrante.nombre}, recibe con las reservas de la Ley, del C. ${actaData.saliente.nombre}, toda la información, recursos y documentos que se precisan en el contenido de la presente Acta y sus anexos.`
+    const p14 = `El C. ${nombreEntrante}, recibe con las reservas de la Ley, del C. ${nombreSaliente}, toda la información, recursos y documentos que se precisan en el contenido de la presente Acta y sus anexos.`
 
-    const p15 = `Respecto a la propiedad de documentación y expedientes: Tomando la palabra el Auditor comisionado hace del conocimiento a las partes que la documentación contable, financiera, administrativa y expedientes generados durante cada administración deben quedar bajo resguardo y conservación en la ${actaData.unidad}, para los fines a que haya lugar.`
+    const p15 = `Respecto a la propiedad de documentación y expedientes: Tomando la palabra el Auditor comisionado hace del conocimiento a las partes que la documentación contable, financiera, administrativa y expedientes generados durante cada administración deben quedar bajo resguardo y conservación en la ${nombreUnidad}, para los fines a que haya lugar.`
 
-    const p16 = `Origen de la documentación soporte y de evidencia para integración del Acta de Entrega-Recepción: Se deja asentado que la documentación para la integración del presente instrumento fue proporcionada por el C. ${actaData.saliente.nombre}, quien en uso de la palabra señala que los documentos originales e información contenida en diversos documentos que se formularon para integrarlos en esta Acta obran en las áreas administrativas de la ${actaData.unidad} para su cotejo y validación.`
+    const p16 = `Origen de la documentación soporte y de evidencia para integración del Acta de Entrega-Recepción: Se deja asentado que la documentación para la integración del presente instrumento fue proporcionada por el C. ${nombreSaliente}, quien en uso de la palabra señala que los documentos originales e información contenida en diversos documentos que se formularon para integrarlos en esta Acta obran en las áreas administrativas de la ${nombreUnidad} para su cotejo y validación.`
 
-    const p17 = `Seguimiento del servidor público saliente derivado de su función pública: De conformidad con el artículo 51 de las Disposiciones Generales para la Administración, Ejercicio y Rendición de Cuentas de los Recursos Públicos Universitarios periodo 2023, el servidor público saliente que haya sido responsable de la ejecución financiera y del control de los ingresos y egresos del gasto público que deja de ocupar su cargo universitario deberá ser informado por el rector o el enlace que éste designe para la atención y seguimiento de las auditorías dentro de las siguientes veinticuatro horas de haber recibido alguna notificación para la práctica de una auditoría, así como de los oficios que de ésta se desprendan.`
+    const p17 = `Seguimiento del servidor público saliente derivado de su función pública: De conformidad con la normatividad aplicable, el servidor público saliente que haya sido responsable de la ejecución financiera y del control de los ingresos y egresos del gasto público que deja de ocupar su cargo universitario deberá ser informado por la autoridad correspondiente para la atención y seguimiento de las auditorías dentro de los plazos señalados.`
 
     const p18 = `De la verificación física y validación de información: El servidor público que recibe tiene la obligación de revisar la información contenida en los rubros y anexos inherentes a su nuevo encargo, de la cual podrá solicitar por escrito las aclaraciones o precisiones que considere pertinentes a quien le entregó dentro de los treinta días hábiles siguientes al de la firma del Acta; el servidor público que entregó tendrá la obligación de dar respuesta a las mismas en un plazo igual contado a partir del requerimiento.`
 
@@ -224,7 +274,7 @@ export const generarActa = async (actaData: any) => {
 
     const p21 = `Los términos y condiciones que en el Acta se establecen quedan bajo la aceptación y responsabilidad de quien entrega y de quien recibe.`
 
-    const p22 = `No habiendo otro hecho que hacer constar, leída que fue la presente Acta y enterados de su contenido y alcance, siendo las ${actaData.hora_cierre_acta} horas del día ${actaData.fecha_cierre_acta}, se da por terminada, firmando al margen y al calce cada una de sus hojas todos los que en ella intervinieron y quisieron hacerlo.`
+    const p22 = `No habiendo otro hecho que hacer constar, leída que fue la presente Acta y enterados de su contenido y alcance, siendo las ${horaCierre} horas del día ${fechaCierre}, se da por terminada, firmando al margen y al calce cada una de sus hojas todos los que en ella intervinieron y quisieron hacerlo.`
     // -------- PARRAFO 1 --------
 
     y = writeParagraph(doc, p1, marginLeft, y, usableWidth);
@@ -276,7 +326,7 @@ actaData.anexos?.forEach((anexo: any) => {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(11)
 
-    doc.text(anexo.categoria || "ANEXO", marginLeft, y)
+    doc.text(resolveAnexoCategoria(anexo), marginLeft, y)
 
     y += 6
     y = checkPageBreak(doc, y)
@@ -388,7 +438,11 @@ y = checkPageBreak(doc, y)
         );
     }
 
-    // -------- DESCARGA --------
+    // -------- DESCARGA / PREVIEW --------
+
+    if (options?.preview) {
+        return doc.output("blob");
+    }
 
     doc.save(`acta_${actaData.folio}.pdf`);
 };

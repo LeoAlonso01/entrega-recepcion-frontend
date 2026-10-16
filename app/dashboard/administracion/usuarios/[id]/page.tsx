@@ -12,16 +12,13 @@ import NavbarWithBreadcrumb from '../../../../../components/NavbarBreadcrumb';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { get } from 'http';
-import { parse } from 'path';
-import { set } from 'date-fns';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -157,6 +154,49 @@ export default function UsuarioDetallePage() {
         } finally {
             setLoading(false);
             setRefreshing(false);
+        }
+    };
+
+    const obtenerActasPorUnidad = async (unidadId: number) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            throw new Error('Token no encontrado. Por favor inicia sesión de nuevo.');
+        }
+
+        const response = await fetch(`${API_URL}/actas`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('No se pudo obtener las actas de entrega-recepción.');
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    };
+
+    const cerrarCargosActivosIguales = async (cargoId: number, unidadId: number) => {
+        const cargosActivos = (usuario?.cargos_actuales ?? []).filter((cargo) =>
+            !cargo.fecha_fin && !cargo.is_deleted && cargo.cargo_id === cargoId && cargo.unidad_responsable_id === unidadId
+        );
+
+        for (const cargo of cargosActivos) {
+            const response = await fetch(`${API_URL}/cargos/desasignar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                },
+                body: JSON.stringify({ hist_id: cargo.id }),
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudo cerrar la asignación previa del cargo.');
+            }
         }
     };
 
@@ -330,42 +370,34 @@ export default function UsuarioDetallePage() {
 
         setAssigningCargo(true);
         try {
-
             const token = localStorage.getItem("token");
-
             if (!token) {
-                toast.error("Token no encontrado. Inicia sesión de nuevo.");
+                toast.error("Token no encontrado. Por favor inicia sesión de nuevo.");
                 router.push("/");
                 return;
             }
 
-            // 1 cerrar cargo actual si existe
-            if (cargoActual) {
+            // 1) Validar que existe un acta de entrega-recepción para la unidad responsable
+            const actas = await obtenerActasPorUnidad(unidadId);
+            const tieneActa = actas.some((acta: any) => {
+                const actaUnidad = acta.unidad_responsable ?? acta.unidad_responsable_id;
+                return Number(actaUnidad) === Number(unidadId);
+            });
 
-                const cerrar = await fetch(`${API_URL}/cargos/desasignar`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        hist_id: cargoActual.id
-                    }),
-                });
-
-                if (!cerrar.ok) {
-                    toast.error("No se pudo cerrar el cargo actual");
-                    return;
-                }
-
+            if (!tieneActa) {
+                toast.error("No existe un acta de entrega-recepción para esta unidad. No se puede reasignar el cargo.");
+                return;
             }
 
-            // 2 asignar nuevo cargo
+            // 2) Cerrar cualquier cargo activo igual en la misma unidad antes de reasignar
+            await cerrarCargosActivosIguales(cargoIdNum, unidadId);
+
+            // 3) Asignar el nuevo cargo
             const res = await fetch(`${API_URL}/cargos/asignar`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     cargo_id: cargoIdNum,
@@ -383,95 +415,21 @@ export default function UsuarioDetallePage() {
 
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                toast.error(err?.detail || "No se pudo asignar el cargo");
+                toast.error(err?.detail || "No se pudo asignar el cargo.");
                 return;
             }
 
-            if (cargoActual?.cargo_id === cargoIdNum) {
-
-                toast.error("El usuario ya tiene asignado ese cargo");
-                return;
-
-            }
-
-            toast.success("Cargo asignado correctamente");
+            toast.success("Cargo reasignado correctamente.");
             setOpenCargoModal(false);
             setSelectedCargoId("");
-            // refrescar usuario para que se pinte el cargo actual
             await fetchUsuario();
-        } catch (e) {
-            console.error(e);
-            toast.error("Error al asignar cargo");
+        } catch (error) {
+            console.error(error);
+            toast.error((error as Error).message || "Error al asignar cargo");
         } finally {
             setAssigningCargo(false);
         }
     };
-
-
-
-    // Reasignar cargo 
-    const cambiarCargo = async () => {
-
-        if (!selectedCargoId) {
-            toast.error("Selecciona un cargo");
-            return;
-        }
-
-        if (!usuario?.id) {
-            toast.error("Usuario inválido");
-            return;
-        }
-
-        try {
-
-            // cerrar cargo actual
-            if (cargoActual) {
-
-                const cerrar = await fetch(`${API_URL}/cargos/desasignar`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                    body: JSON.stringify({
-                        hist_id: cargoActual.id
-                    })
-                });
-
-                if (!cerrar.ok) {
-                    throw new Error("No se pudo cerrar el cargo actual");
-                }
-            }
-
-            // asignar nuevo
-            const res = await fetch(`${API_URL}/cargos/asignar`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-                body: JSON.stringify({
-                    cargo_id: Number(selectedCargoId),
-                    user_id: usuario.id,
-                    unidad_responsable_id: usuario?.unidad_responsable?.id_unidad,
-                    motivo: motivoCargo
-                })
-            });
-
-            if (!res.ok) throw new Error("No se pudo asignar el nuevo cargo");
-
-            toast.success("Cargo actualizado");
-            setOpenCargoModal(false);
-
-            await fetchUsuario();
-
-        } catch (error) {
-
-            toast.error((error as Error).message);
-
-        }
-    };
-
 
 
 

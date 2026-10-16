@@ -160,6 +160,18 @@ export interface Anexo {
   creador: Array<{ id: number; username: string; email: string; role: string }>
 }
 
+type CargoAsignacionUsuario = {
+  unidad_responsable_id: number;
+  fecha_inicio: string;
+  fecha_fin?: string | null;
+  is_deleted?: boolean;
+};
+
+type UsuarioConHistorial = {
+  cargos_actuales?: CargoAsignacionUsuario[];
+  cargos_historial?: CargoAsignacionUsuario[];
+};
+
 type CampoEstructura = {
   campo: string;
   tipo: string | number | boolean | null;
@@ -1472,6 +1484,8 @@ export default function AnexosPage() {
   const [userid, setUserid] = useState<number>(0);
   const [userrole, setUserrole] = useState<string>("USER"); // valor por defecto
   const [unidadResponsable, setUnidadResponsable] = useState<number>()
+  const [unidadesHistorialIds, setUnidadesHistorialIds] = useState<number[]>([])
+  const [verHistorialUnidad, setVerHistorialUnidad] = useState(false)
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<IFormInput>({
     defaultValues: {
       creador_id: userid,
@@ -1561,29 +1575,107 @@ export default function AnexosPage() {
   // ...dentro del componente AnexosPage...
 
 
-  // Función para recargar y filtrar anexos del usuario
+  const filtrarAnexosPorContexto = (
+    listaAnexos: Anexo[],
+    currentUserId: number,
+    unidadActivaId?: number,
+    historialUnidadIds: number[] = [],
+    mostrarHistorial = false
+  ) => {
+    if (mostrarHistorial) {
+      if (historialUnidadIds.length === 0) return [];
+      const historialSet = new Set(historialUnidadIds.map((id) => Number(id)));
+
+      return listaAnexos.filter((anexo) => {
+        const esUnidadDelHistorial = historialSet.has(Number(anexo.unidad_responsable_id));
+        const noEsCreador = Number(anexo.creador_id) !== Number(currentUserId);
+        return esUnidadDelHistorial && noEsCreador;
+      });
+    }
+
+    if (!unidadActivaId) {
+      return listaAnexos.filter((anexo) => Number(anexo.creador_id) === Number(currentUserId));
+    }
+
+    return listaAnexos.filter((anexo) =>
+      Number(anexo.unidad_responsable_id) === Number(unidadActivaId) ||
+      Number(anexo.creador_id) === Number(currentUserId)
+    );
+  };
+
+  const obtenerContextoUnidadesUsuario = async (userId: number) => {
+    const token = localStorage.getItem("token") || "";
+    const response = await fetch(`${API_URL}/users/${userId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("No se pudo obtener el historial de unidades del usuario");
+    }
+
+    const usuarioData: UsuarioConHistorial = await response.json();
+    const asignaciones = [
+      ...(usuarioData.cargos_actuales ?? []),
+      ...(usuarioData.cargos_historial ?? []),
+    ]
+      .filter((asignacion) => !asignacion.is_deleted && Number(asignacion.unidad_responsable_id) > 0)
+      .sort((a, b) => new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime());
+
+    if (asignaciones.length === 0) {
+      return {
+        unidadActivaId: undefined,
+        historialIds: [] as number[],
+      };
+    }
+
+    const activas = asignaciones
+      .filter((asignacion) => !asignacion.fecha_fin)
+      .sort((a, b) => new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime());
+
+    const unidadActivaId = Number((activas[0] ?? asignaciones[0]).unidad_responsable_id);
+    const historialIds = Array.from(
+      new Set(
+        asignaciones
+          .map((asignacion) => Number(asignacion.unidad_responsable_id))
+          .filter((unidadId) => unidadId !== unidadActivaId)
+      )
+    );
+
+    return { unidadActivaId, historialIds };
+  };
+
+  // Función para recargar anexos según contexto del usuario
   const recargarAnexos = async () => {
     const data = await getAnexos();
     setTodosLosAnexos(data);
-    // Filtrar por usuario actual
-    const userString = localStorage.getItem("user");
-    let currentUserId = userid;
-    if (userString) {
-      try {
-        const userData = JSON.parse(userString);
-        currentUserId = userData.id;
-      } catch { }
-    }
-    const filtrados = data.filter((anexo: Anexo) => anexo.creador_id === currentUserId);
-    setAnexos(filtrados);
   };
 
+  const visibleAnexos = useMemo(() => {
+    const filtrados = filtrarAnexosPorContexto(
+      todosLosAnexos,
+      userid,
+      unidadResponsable,
+      unidadesHistorialIds,
+      verHistorialUnidad
+    );
+
+    if (selectedCategory && selectedCategory !== "__all__") {
+      return filtrados.filter((a) => a.categoria === selectedCategory);
+    }
+
+    return filtrados;
+  }, [todosLosAnexos, userid, unidadResponsable, unidadesHistorialIds, verHistorialUnidad, selectedCategory]);
+
   useEffect(() => {
-    if (activeTab === "anexos") {
+    if (activeTab === "anexos" && userid > 0) {
       recargarAnexos();
     }
     // eslint-disable-next-line
-  }, [activeTab]);
+  }, [activeTab, userid]);
 
 
 
@@ -1645,39 +1737,53 @@ export default function AnexosPage() {
     // 3. Obtener unidad responsable
     const obtenerUnidad = async () => {
       try {
+        const contextoUnidades = await obtenerContextoUnidadesUsuario(currentUserId!);
+
+        if (contextoUnidades.unidadActivaId) {
+          setUnidadResponsable(contextoUnidades.unidadActivaId);
+          setValue("unidad_responsable_id", contextoUnidades.unidadActivaId);
+        }
+        setUnidadesHistorialIds(contextoUnidades.historialIds);
+
         const unidad = await UnidadesPorUsuario(currentUserId!);
         // console.log("Unidad responsable:", unidad.id_unidad, "Nombre:", unidad.nombre); // Debug: comentar para valorar eliminación definitiva
-        setUnidadResponsable(unidad.id_unidad);
+        if (!contextoUnidades.unidadActivaId) {
+          setUnidadResponsable(unidad.id_unidad);
+          setValue("unidad_responsable_id", unidad.id_unidad);
+        }
         setUnidadToShow(unidad.nombre);
         setCreatorToShow(unidad.responsable.nombre);
-        setValue("unidad_responsable_id", unidad.id_unidad);
         setValue("creador_id", currentUserId!);
+
+        return contextoUnidades;
       } catch (error) {
         console.error("Error al obtener la unidad responsable:", error);
+        return { unidadActivaId: undefined, historialIds: [] as number[] };
       }
     };
 
     if (currentUserId) {
-      obtenerUnidad();
+      const cargarDatosIniciales = async () => {
+        try {
+          const contextoUnidades = await obtenerUnidad();
+          const data = await getAnexos();
+          setTodosLosAnexos(data);
+          const filtrados = filtrarAnexosPorContexto(
+            data,
+            currentUserId,
+            contextoUnidades.unidadActivaId,
+            contextoUnidades.historialIds,
+            verHistorialUnidad
+          );
+          setAnexos(filtrados);
+        } catch (error) {
+          console.error("Error al cargar datos iniciales:", error);
+          toast.error("No se pudieron cargar los anexos");
+        }
+      };
+
+      cargarDatosIniciales();
     }
-
-    // 3.1 validacion tipos de excel 
-
-
-    // 4. Obtener anexos
-    // Obtener y filtrar anexos
-    getAnexos()
-      .then((data) => {
-        setTodosLosAnexos(data); // Guardar todos los anexos
-        const filtrados = data.filter((anexo: Anexo) => anexo.creador_id === currentUserId);
-        setAnexos(filtrados);
-      })
-      .catch((error) => {
-        console.error("Error al obtener anexos:", error);
-        toast.error("No se pudieron cargar los anexos");
-      });
-
-
 
   }, []); // Dependencia vacía: se ejecuta una vez
 
@@ -1992,26 +2098,23 @@ export default function AnexosPage() {
 
   // manejo de edicion de anexos por usuario y por unidad responsable
   const canEdit = (anexo: Anexo): boolean => {
-    // Si el estado es "Cerrado", nadie puede editar
+    // Si el anexo ya está cerrado, nadie puede editar
     if (anexo.estado === "Completado") return false;
-    // convertir el boton en desabilidato
 
+    // Solo el anexo de la unidad activa puede editarse
+    if (Number(anexo.unidad_responsable_id) !== Number(unidadResponsable)) return false;
 
-    // Si el usuario es ADMIN, puede editar (excepto si está cerrado)
-    if (userrole === "ADMIN") return true;
+    // Si ya tiene acta, solo se puede ver
+    if (anexo.acta_id !== null && anexo.acta_id !== undefined) return false;
 
-    // Si es el creador y el estado es "Borrador", puede editar
-    if (anexo.creador_id === userid && anexo.estado === "Borrador") return true;
-
-    // Si es el creador y está en "Revisión" o "Pendiente", puede editar (opcional)
+    // Si es el creador y tiene un estado editable, puede editar
     if (
       anexo.creador_id === userid &&
-      ["Revisión", "Pendiente"].includes(anexo.estado)
+      ["Borrador", "Revisión", "Pendiente"].includes(anexo.estado)
     ) {
       return true;
     }
 
-    // En cualquier otro caso, no puede editar
     return false;
   };
 
@@ -2052,7 +2155,7 @@ export default function AnexosPage() {
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{anexos.length}</div>
+                      <div className="text-2xl font-bold">{visibleAnexos.length}</div>
                     </CardContent>
                   </Card>
 
@@ -2062,7 +2165,7 @@ export default function AnexosPage() {
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Completado").length}</div>
+                      <div className="text-2xl font-bold">{visibleAnexos.filter((a) => a.estado === "Completado").length}</div>
                     </CardContent>
                   </Card>
 
@@ -2072,7 +2175,7 @@ export default function AnexosPage() {
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Borrador").length}</div>
+                      <div className="text-2xl font-bold">{visibleAnexos.filter((a) => a.estado === "Borrador").length}</div>
                     </CardContent>
                   </Card>
 
@@ -2082,7 +2185,7 @@ export default function AnexosPage() {
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{anexos.filter((a) => a.estado === "Revisión").length}</div>
+                      <div className="text-2xl font-bold">{visibleAnexos.filter((a) => a.estado === "Revisión").length}</div>
                     </CardContent>
                   </Card>
                 </div>
@@ -2125,6 +2228,21 @@ export default function AnexosPage() {
                       <FileSpreadsheet className="h-4 w-4" />
                       <span className="hidden sm:inline ml-2">Exportar Excel</span>
                     </Button>
+
+                    <Button
+                      variant={verHistorialUnidad ? "default" : "outline"}
+                      onClick={() => {
+                        if (!verHistorialUnidad && unidadesHistorialIds.length === 0) {
+                          toast.info("No hay unidades anteriores en historial para mostrar anexos");
+                          return;
+                        }
+                        setVerHistorialUnidad((prev) => !prev);
+                        setCurrentPage(1);
+                      }}
+                      className="min-w-[48px] flex items-center justify-center text-xs sm:text-sm"
+                    >
+                      {verHistorialUnidad ? "Ver Unidad Actual" : "Ver Historial de Unidad"}
+                    </Button>
                   </div>
 
                   {/* Selector de Categoría colocado junto a botones de export */}
@@ -2156,7 +2274,9 @@ export default function AnexosPage() {
                 <Card className="w-full">
                   <CardHeader className="p-3 sm:p-6 flex justify-between items-center">
                     <div>
-                      <CardTitle>Lista de Anexos</CardTitle>
+                      <CardTitle>
+                        {verHistorialUnidad ? "Historial de Anexos de Unidades Previas (Solo Lectura)" : "Lista de Anexos de la Unidad Actual"}
+                      </CardTitle>
                     </div>
                   </CardHeader>
 
@@ -2183,7 +2303,7 @@ export default function AnexosPage() {
 
                         {/* Cuerpo de tabla / tarjetas responsivas */}
                         <TableBody className="divide-y divide-gray-200">
-                          {(selectedCategory && selectedCategory !== "__all__" ? anexos.filter(a => a.categoria === selectedCategory) : anexos).map((anexo) => (
+                          {visibleAnexos.map((anexo) => (
                             <TableRow
                               key={anexo.id}
                               className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
@@ -2245,6 +2365,12 @@ export default function AnexosPage() {
                                   </Button>
                                 )}
 
+                                {!canEdit(anexo) && (
+                                  <span className="text-xs text-gray-500 px-2 py-1 border rounded">
+                                    Solo lectura
+                                  </span>
+                                )}
+
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -2255,7 +2381,7 @@ export default function AnexosPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
 
-                                {userrole === "ADMIN" && (
+                                {userrole === "ADMIN" && canEdit(anexo) && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -2267,6 +2393,7 @@ export default function AnexosPage() {
                                   </Button>
                                 )}
 
+                                {canEdit(anexo) && (
                                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                                   <DialogTrigger asChild>
                                     <Button
@@ -2321,6 +2448,7 @@ export default function AnexosPage() {
                                     </DialogContent>
                                   )}
                                 </Dialog>
+                                )}
 
 
                               </TableCell>
@@ -3145,15 +3273,17 @@ export default function AnexosPage() {
                                     >
                                       <Eye className="h-4 w-4" />
                                     </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setAnexoParaEliminar(anexo)}
-                                      className="text-red-600 hover:text-red-800"
-                                      title="Eliminar anexo"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    {canEdit(anexo) && userrole === "ADMIN" && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setAnexoParaEliminar(anexo)}
+                                        className="text-red-600 hover:text-red-800"
+                                        title="Eliminar anexo"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    )}
                                   </TableCell>
                                 </TableRow>
                               ))

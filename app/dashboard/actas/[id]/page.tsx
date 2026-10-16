@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { generarActa } from "@/lib/generarActa";
 import { generarActaDocx } from "@/lib/generarActaDocx";
+import { mergeAnexosConCategorias } from "@/lib/anexos";
 
 const generarPDF = async () =>{
     const {generarActa} = await import('@/lib/generarActa');
@@ -41,6 +42,7 @@ interface Unidad {
 interface Anexo {
     id: number;
     clave: string;
+    categoria?: string;
     creador_id?: number;
     datos?: any[];
     estado?: string;
@@ -104,6 +106,19 @@ const getUnidadNombre = (unidades: Unidad[], id?: number) => {
     return unidad ? unidad.nombre : `Unidad ${id}`;
 };
 
+const enrichActaForExport = (acta: ActaForm | null, unidades: Unidad[]) => {
+    if (!acta) return null;
+
+    const unidadNombre = getUnidadNombre(unidades, acta.unidad_responsable);
+
+    return {
+        ...acta,
+        // Solo para exportación: mantener flujo original y evitar que el PDF muestre el ID.
+        unidad: unidadNombre,
+        unidad_responsable: unidadNombre,
+    };
+};
+
 export default function ViewActaPage() {
     const router = useRouter();
     const params = useParams();
@@ -156,7 +171,28 @@ export default function ViewActaPage() {
                     throw new Error('Error al cargar el acta');
                 }
                 const actaData = await actaRes.json();
-                setActa(actaData);
+
+                let anexosCatalogo: Anexo[] = [];
+                try {
+                    const anexosRes = await fetch(`${API_URL}/anexos`, {
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (anexosRes.ok) {
+                        anexosCatalogo = await anexosRes.json();
+                    }
+                } catch (error) {
+                    console.warn("No se pudo recuperar el catálogo de anexos para enriquecer categorías", error);
+                }
+
+                const anexosEnriquecidos = mergeAnexosConCategorias(
+                    Array.isArray(actaData.anexos) ? actaData.anexos : [],
+                    anexosCatalogo
+                );
+
+                setActa({
+                    ...actaData,
+                    anexos: anexosEnriquecidos,
+                });
             } catch (error) {
                 console.error(error);
                 toast.error("No se pudo cargar el acta");
@@ -196,11 +232,10 @@ export default function ViewActaPage() {
     };
 
     const handleCreateActa = async () => {
-        
-        // Aquí podrías implementar la lógica para generar el PDF del acta
-        // o redirigir a otra página que maneje esa funcionalidad.
-        generarActa(acta);
-        // await generarActaDocx(acta);
+        const actaParaExportar = enrichActaForExport(acta, unidades);
+        if (!actaParaExportar) return;
+
+        generarActa(actaParaExportar);
         toast.success("Generando PDF del acta...");
 
         const unidad = unidades.find(u => u.id_unidad === acta?.unidad_responsable);
@@ -242,11 +277,34 @@ export default function ViewActaPage() {
         setPreviewOpen(true);
     };
 
+    const handlePreviewActa = async () => {
+        const actaParaExportar = enrichActaForExport(acta, unidades);
+        if (!actaParaExportar) return;
+
+        try {
+            setPreviewLoading(true);
+            setPreviewOpen(true);
+
+            const pdfBlob = await generarActa(actaParaExportar, { preview: true });
+            const blobUrl = URL.createObjectURL(pdfBlob as Blob);
+            setPreviewUrl(blobUrl);
+        } catch (error) {
+            console.error(error);
+            toast.error("No se pudo generar la vista previa del acta");
+            setPreviewOpen(false);
+            setPreviewUrl(null);
+            setPreviewLoading(false);
+        }
+    };
+
     const handleIframeLoad = () => {
         setPreviewLoading(false);
     };
 
     const handleIframeError = () => {
+        if (previewUrl?.startsWith("blob:")) {
+            URL.revokeObjectURL(previewUrl);
+        }
         setPreviewLoading(false);
         toast.error("No se pudo cargar el documento para vista previa");
         setPreviewOpen(false);
@@ -368,11 +426,22 @@ export default function ViewActaPage() {
 
                     <Button variant="secondary" onClick={() => handleCreateActa()} className="flex items-center">
                         <Download className="h-4 w-4 ml-2" />
-                        Generar PDF
+                        Descargar Acta PDF
                     </Button>
-                        <Button onClick={() => acta && generarActaDocx(acta)} >
+                        <Button
+                            onClick={() => {
+                                const actaParaExportar = enrichActaForExport(acta, unidades);
+                                if (actaParaExportar) {
+                                    generarActaDocx(actaParaExportar);
+                                }
+                            }}
+                        >
                             <Download className="h-4 w-4 ml-2" />
-                            Generar Word
+                            Descargar Acta DOCX
+                    </Button>
+                    <Button onClick={handlePreviewActa} >
+                        <Eye className="h-4 w-4 ml-2" />
+                        Vista Previa Acta PDF
                     </Button>
                 </div>
 
@@ -648,7 +717,19 @@ export default function ViewActaPage() {
                                 </div>
 
                                 {/* Dialog para vista previa */}
-                                <Dialog open={previewOpen} onOpenChange={(open) => { if (!open) { setPreviewUrl(null); setPreviewOpen(false); } }}>
+                                <Dialog
+                                    open={previewOpen}
+                                    onOpenChange={(open) => {
+                                        if (!open) {
+                                            if (previewUrl?.startsWith("blob:")) {
+                                                URL.revokeObjectURL(previewUrl);
+                                            }
+                                            setPreviewUrl(null);
+                                            setPreviewOpen(false);
+                                            setPreviewLoading(false);
+                                        }
+                                    }}
+                                >
                                     <DialogContent>
                                         <DialogHeader>
                                             <DialogTitle>Vista previa del documento</DialogTitle>
