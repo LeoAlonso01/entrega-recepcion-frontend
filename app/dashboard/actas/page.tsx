@@ -338,6 +338,81 @@ export default function ActasPage() {
     }
   };
 
+  const getCurrentUserId = () => {
+    try {
+      const userRaw = localStorage.getItem("user")
+      if (!userRaw) return null
+
+      const parsedUser = JSON.parse(userRaw)
+      const userId = Number(parsedUser?.id)
+      return Number.isFinite(userId) ? userId : null
+    } catch {
+      return null
+    }
+  }
+
+  const vincularAnexosSinActa = async (acta: ActaForm) => {
+    const token = localStorage.getItem("token")
+    const userId = getCurrentUserId()
+
+    if (!token || !userId) {
+      return { vinculados: 0, errores: 0 }
+    }
+
+    const anexosResponse = await fetch(`${API_URL}/anexos`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    })
+
+    if (!anexosResponse.ok) {
+      throw new Error("No se pudieron consultar anexos para vinculación automática")
+    }
+
+    const anexosData: Anexo[] = await anexosResponse.json()
+
+    const anexosParaVincular = anexosData.filter((anexo) => {
+      const coincideCreador = Number(anexo.creador_id) === userId
+      const coincideUnidad = Number(anexo.unidad_responsable_id) === Number(acta.unidad_responsable)
+      const sinActaAsignada = anexo.acta_id === null || anexo.acta_id === undefined
+
+      return coincideCreador && coincideUnidad && sinActaAsignada
+    })
+
+    if (anexosParaVincular.length === 0) {
+      return { vinculados: 0, errores: 0 }
+    }
+
+    const resultados = await Promise.allSettled(
+      anexosParaVincular.map(async (anexo) => {
+        const updateResponse = await fetch(`${API_URL}/anexos/${anexo.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...anexo,
+            acta_id: acta.id,
+          }),
+        })
+
+        if (!updateResponse.ok) {
+          throw new Error(`No se pudo vincular anexo ${anexo.id}`)
+        }
+
+        return anexo.id
+      })
+    )
+
+    const vinculados = resultados.filter((resultado) => resultado.status === "fulfilled").length
+    const errores = resultados.length - vinculados
+
+    return { vinculados, errores }
+  }
+
   const handleSaveActa = async (formData: any) => {
     try {
       let savedActa: ActaForm;
@@ -352,8 +427,19 @@ export default function ActasPage() {
         const { id, ...createData } = formData;
         console.log("datos: ", createData);
         savedActa = await createActa(createData);
+        const { vinculados, errores } = await vincularAnexosSinActa(savedActa)
+
         setActas([...actas, savedActa]);
-        toast.success("Acta creada correctamente");
+
+        if (vinculados > 0) {
+          toast.success(`Acta creada y ${vinculados} anexo(s) vinculados automáticamente`)
+        } else {
+          toast.success("Acta creada correctamente")
+        }
+
+        if (errores > 0) {
+          toast.warning(`Se creo la acta, pero ${errores} anexo(s) no pudieron vincularse`)
+        }
       }
 
       setShowForm(false);
@@ -664,6 +750,8 @@ export default function ActasPage() {
                                   {new Date(acta.fecha).toLocaleDateString()}
                                 </div>
                               </TableCell>
+
+                              
 
                               {/* Unidad */}
                               <TableCell className="px-3 sm:px-4 py-4 md:table-cell">
