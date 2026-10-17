@@ -551,7 +551,7 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Fecha de Solicitud", tipo: "string", obligatorio: true, Descripcion: "Tipo de Archivo" },
     { campo: "Area que atiende", tipo: "string", obligatorio: true, Descripcion: "Nombre del Archivo" },
     { campo: "No. de expediente o solicitud", tipo: "string", obligatorio: true, Descripcion: "Descripción" },
-    { campo: "Estado de Solicitud", tipo: "date", obligatorio: true, Descripcion: "Fecha" },
+    { campo: "Estado de Solicitud", tipo: "string", obligatorio: true, Descripcion: "Estado de Solicitud" },
     { campo: "Fecha limite de Respuesta", tipo: "string", obligatorio: false, Descripcion: "Observaciones" },
     { campo: "Recurso de Revision ", tipo: "string", obligatorio: false, Descripcion: "Recurso de Revision" },
     { campo: "Estatus Actual", tipo: "string", obligatorio: false, Descripcion: "Estatus Actual" },
