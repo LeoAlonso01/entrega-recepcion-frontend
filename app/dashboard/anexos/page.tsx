@@ -1515,7 +1515,7 @@ export default function AnexosPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [unidadToShow, setUnidadToShow] = useState<string>("");
   const [creatorToShow, setCreatorToShow] = useState<string>("");
-  const rowsPerPage = 5;
+  const rowsPerPage = 35;
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [anexoParaActualizar, setAnexoParaActualizar] = useState<Anexo | null>(null);
   const [anexoParaEliminar, setAnexoParaEliminar] = useState<Anexo | null>(null);
