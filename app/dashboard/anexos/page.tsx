@@ -1447,6 +1447,19 @@ export const validarDatosAnexo = (
 };
 
 
+const obtenerCategoriaPorClave = (clave?: string | null): string => {
+  const claveNormalizada = clave?.trim().toUpperCase();
+  if (!claveNormalizada) return "";
+
+  const claveCatalogo = claves_anexos.find(
+    (item) => item.clave.trim().toUpperCase() === claveNormalizada
+  );
+
+  return categoria_anexos.find((categoria) => categoria.id === claveCatalogo?.id_categoria)
+    ?.nombre_categoria ?? "";
+};
+
+
 export default function AnexosPage() {
   // =====================================================
   // Estado principal del componente
@@ -1532,6 +1545,10 @@ export default function AnexosPage() {
   // Función para filtrar anexos por categoría
   const [filterCategory, setFilterCategory] = useState<string>("__all__");
   const [formCategory, setFormCategory] = useState<string>("");
+
+  // La clave duplicada bloquea solo la creación; en edición se modifica el registro actual.
+  const hayDuplicadoEnCreacion = (clave: string): boolean =>
+    !editingAnexo && yaTieneAnexoConClave(clave, anexos, userid);
 
   // Calcular filas actuales
   const indexOfLastRow = currentPage * rowsPerPage;
@@ -1664,7 +1681,7 @@ export default function AnexosPage() {
     );
 
     if (selectedCategory && selectedCategory !== "__all__") {
-      return filtrados.filter((a) => a.categoria === selectedCategory);
+      return filtrados.filter((anexo) => obtenerCategoriaPorClave(anexo.clave) === selectedCategory);
     }
 
     return filtrados;
@@ -1846,7 +1863,7 @@ export default function AnexosPage() {
     // console.log("✅ Payload final a enviar:", payload); // Debug: comentar para valorar eliminación definitiva
 
     // Si NO estamos editando → validamos duplicados
-    if (!editingAnexo && yaTieneAnexoConClave(data.clave, anexos, userid)) {
+    if (hayDuplicadoEnCreacion(data.clave)) {
       toast.error(`Ya existe un anexo con la clave ${data.clave}`);
       return;
     }
@@ -1918,16 +1935,22 @@ export default function AnexosPage() {
       return;
     }
 
-    // llenar el formulario
-    setValue("clave", fetchd.clave);
-    setValue("categoria", fetchd.categoria);
-    setValue("fecha_creacion", fetchd.fecha_creacion.split("T")[0]);
-    setValue("estado", fetchd.estado);
-    setValue("unidad_responsable_id", fetchd.unidad_responsable_id);
-    setValue("creador_id", fetchd.creador_id);
+    // La API no devuelve categoria; se deriva de la clave con el catálogo local.
+    const categoriaDerivada = obtenerCategoriaPorClave(fetchd.clave);
 
-    // actualizar los datos
+    // Preparar todas las filas antes de hidratar RHF para limpiar errores anteriores
+    // y cargar la clave aunque el selector todavía no estuviera montado.
     const datosArray = Array.isArray(fetchd.datos) ? fetchd.datos : [fetchd.datos];
+    reset({
+      clave: fetchd.clave,
+      categoria: categoriaDerivada,
+      fecha_creacion: fetchd.fecha_creacion.split("T")[0],
+      creador_id: fetchd.creador_id,
+      datos: datosArray,
+      estado: fetchd.estado,
+      unidad_responsable_id: fetchd.unidad_responsable_id,
+    });
+    setCurrentPage(1);
     setDatos(datosArray);
 
     // guardar el id del anexo en edicion
@@ -2486,7 +2509,6 @@ export default function AnexosPage() {
                           onChange={(e) => {
                             const categoriaSeleccionada = e.target.value;
                             setValue("categoria", categoriaSeleccionada);
-                            setSelectedCategory?.(categoriaSeleccionada);
                             // limpiar clave y datos al cambiar de categoría
                             setValue("clave", "");
                             setDatos([]);
@@ -2511,17 +2533,17 @@ export default function AnexosPage() {
                       <div className="text-sm text-gray-500 border border-gray-300 mb-1 ">
                         <select
                           {...register("clave", { required: "Clave es obligatoria" })}
+                          value={watch("clave") || ""}
                           className="w-full text-sm p-2 sm:p-2 md:p-2 border border-gray-300 "
                           onChange={(e) => {
                             const clave = e.target.value;
-                            setValue("clave", clave);
+                            setValue("clave", clave, { shouldValidate: true, shouldDirty: true });
                             const claveData = claves_anexos.find((k) => k.clave === clave);
                             if (claveData) {
                               const categoria = categoria_anexos.find(
                                 (c) => c.id === claveData.id_categoria
                               )?.nombre_categoria || "";
                               setValue("categoria", categoria);
-                              setSelectedCategory?.(categoria);
                             }
                           }}
                           disabled={!watch("categoria")}
@@ -2675,9 +2697,9 @@ export default function AnexosPage() {
                                         }}
                                         disabled={
                                           !watch("clave") ||
-                                          yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)
+                                          hayDuplicadoEnCreacion(watch("clave"))
                                         }
-                                        className={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined) ? "opacity-50 cursor-not-allowed" : ""}
+                                        className={hayDuplicadoEnCreacion(watch("clave")) ? "opacity-50 cursor-not-allowed" : ""}
                                       >
                                         + Agregar fila
                                       </Button>
@@ -2691,7 +2713,7 @@ export default function AnexosPage() {
                                       <>
                                         {/* Contenedor con scroll horizontal/vertical */}
                                         <div className="border border-gray-300 rounded-md overflow-hidden">
-                                          <div className="max-h-60 overflow-y-auto">
+                                          <div className={editingAnexo ? "overflow-y-visible" : "max-h-60 overflow-y-auto"}>
                                             <table className="min-w-full divide-y divide-gray-200 text-sm">
                                               <thead className="bg-gray-50 sticky top-0">
                                                 <tr>
@@ -2752,7 +2774,7 @@ export default function AnexosPage() {
                                                               }
                                                             }}
                                                             className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
+                                                            disabled={hayDuplicadoEnCreacion(watch("clave"))}
                                                           />
                                                         </td>
                                                       ))}
@@ -2767,7 +2789,7 @@ export default function AnexosPage() {
                                                             setDatos(nuevas);
                                                             setValue("datos", nuevas);
                                                           }}
-                                                          disabled={yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
+                                                          disabled={hayDuplicadoEnCreacion(watch("clave"))}
                                                         >
                                                           Eliminar
                                                         </Button>
@@ -2810,7 +2832,7 @@ export default function AnexosPage() {
                                             return;
                                           }
 
-                                          if (yaTieneAnexoConClave(clave, anexos, userid, editingAnexo ? editingAnexo.id : undefined)) {
+                                          if (hayDuplicadoEnCreacion(clave)) {
                                             toast.warning(`Ya tienes un anexo con la clave ${clave}.`);
                                             return;
                                           }
@@ -2981,7 +3003,6 @@ export default function AnexosPage() {
                               setDatos([]);
                               setEditingAnexo(null); // Limpiar modo edición
                               setShowForm(false);
-                              setSelectedCategory("__all__"); // Limpiar filtro de categoría
                               setCategoryResetKey((k) => k + 1); // Forzar refresco visual
                               await recargarAnexos();
                               setActiveTab("anexos"); // Volver a la lista
@@ -3002,7 +3023,7 @@ export default function AnexosPage() {
                             if (erroresFilas.length > 0) {
                               reasons.push(...erroresFilas);
                             }
-                            if (yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)) reasons.push("Ya existe un anexo con esa clave para este usuario.");
+                            if (hayDuplicadoEnCreacion(watch("clave"))) reasons.push("Ya existe un anexo con esa clave para este usuario.");
                             return reasons.length > 0 ? (
                               <div style={{
                                 background: '#fff3cd',
@@ -3035,7 +3056,7 @@ export default function AnexosPage() {
                               || !watch("estado")
                               || !datos.length
                               || validarFilasObligatorias(datos, watch("clave")).length > 0
-                              || yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)}
+                              || hayDuplicadoEnCreacion(watch("clave"))}
                             onClick={() => {
                               const isEnabled =
                                 watch("clave") &&
@@ -3043,17 +3064,19 @@ export default function AnexosPage() {
                                 watch("estado") &&
                                 datos.length > 0 &&
                                 validarFilasObligatorias(datos, watch("clave")).length === 0 &&
-                                !yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined);
+                                !hayDuplicadoEnCreacion(watch("clave"));
                               if (isEnabled) {
                                 toast.success("¡El formulario está listo para guardar el anexo!");
                               }
                             }}
                           >
-                            {yaTieneAnexoConClave(watch("clave"), anexos, userid, editingAnexo ? editingAnexo.id : undefined)
+                            {hayDuplicadoEnCreacion(watch("clave"))
                               ? "Ya tienes este anexo"
                               : !datos.length
                                 ? "Agrega datos primero"
-                                : "Guardar Anexo"}
+                                : editingAnexo
+                                  ? "Editar Anexo"
+                                  : "Guardar Anexo"}
                           </Button>
 
                           {!editingAnexo && (
