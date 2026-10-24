@@ -14,6 +14,36 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+const CATEGORIA_POR_PREFIJO: Record<string, string> = {
+  ADI: "ARCHIVOS DOCUMENTALES E INFORMATICOS",
+  AG: "ASUNTOS GENERALES",
+  AR: "ASUNTOS RELEVANTES",
+  CC: "CONVENIOS Y CONTRATOS",
+  CF: "CONTROL Y FISCALIZACION",
+  DO: "DERECHOS Y OBLIGACIONES",
+  EO: "ORGANIZACION",
+  IG: "INFORME DE GESTION",
+  MJ: "MARCO JURIDICO",
+  OP: "OBRA PÚBLICA",
+  PPA: "RECURSOS MATERIALES",
+  PP: "PLANEACION",
+  RF: "RECURSOS PRESUPUESTALES Y FINANCIEROS",
+  RH: "RECURSOS HUMANOS",
+  RM: "RECURSOS MATERIALES",
+  TAI: "TRANSPARENCIA Y ACCESO A LA INFORMACION",
+  SGC: "SISTEMA DE GESTION DE CALIDAD",
+};
+
+function obtenerCategoriaPorClave(clave?: string | null): string {
+  const claveNormalizada = clave?.trim().toUpperCase();
+  if (!claveNormalizada) return "";
+
+  const prefijo = claveNormalizada.match(/^[A-Z]+/)?.[0];
+  if (!prefijo) return "";
+
+  return CATEGORIA_POR_PREFIJO[prefijo] ?? "";
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Tipo del anexo basado en tu backend
@@ -94,7 +124,10 @@ const AnexoDetail: React.FC = () => {
       }
 
       const data: Anexo = await response.json();
-      setAnexo(data);
+      setAnexo({
+        ...data,
+        categoria: obtenerCategoriaPorClave(data.clave),
+      });
     } catch (error) {
       console.error("Error:", error);
       toast.error((error as Error).message);
