@@ -111,6 +111,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Otras percepciones", tipo: "number", obligatorio: false, Descripcion: "Otras percepciones económicas del personal comisionado" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal comisionado" },
   ]
+
+  // aqui falto un campo, si se agrega se dañan los que ya estan subido? quizas no pero por ahora no cambiar nada, si se agrega un campo nuevo se debe agregar al final de la lista para no afectar los indices de los campos ya existentes
   ,
   RH04: [
     { campo: "Nombre", tipo: "string", obligatorio: true, Descripcion: "Nombre completo del personal de honorarios" },
@@ -126,6 +128,8 @@ export const ESTRUCTURA_DATOS_POR_CLAVE: Record<string, Array<{
     { campo: "Área Laboral (UR)", tipo: "string", obligatorio: true, Descripcion: "Área laboral del personal de honorarios" },
     { campo: "Observaciones", tipo: "string", obligatorio: false, Descripcion: "Observaciones adicionales sobre el personal de honorarios" },
   ]
+
+  
 
   // recursos financieros (RF01-RF14)
 
