@@ -567,25 +567,27 @@ export default function ActasPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col xs:flex-row gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-2 mb-5">
           <Button
             onClick={() => {
               setEditingActa(null)
               setShowForm(!showForm)
             }}
-            className="bg-[#751518] hover:bg-[#8a1a1d] text-white text-sm sm:text-base flex items-center justify-center"
+            size="sm"
+            className="h-9 w-auto rounded-md bg-[#751518] px-3 text-sm font-medium text-white shadow-none hover:bg-[#8a1a1d]"
           >
-            <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             {showForm ? 'Ver lista' : 'Nueva acta'}
           </Button>
 
           <Button
             variant="outline"
+            size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="text-gray-600 hover:text-gray-800 text-sm sm:text-base flex items-center justify-center"
+            className="h-9 w-auto rounded-md border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-none hover:bg-gray-50 hover:text-gray-900"
           >
-            <RotateCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RotateCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
         </div>
@@ -603,25 +605,25 @@ export default function ActasPage() {
         ) : (
           <>
             {/* Filters Section */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+            <div className="mb-5 flex items-center gap-2 sm:gap-3">
+              <div className="relative min-w-0 flex-1 sm:max-w-md">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
                   type="search"
                   placeholder="Buscar actas..."
-                  className="pl-8 text-sm sm:text-base"
+                  className="h-9 rounded-md border-gray-200 bg-white pl-9 text-sm shadow-none placeholder:text-gray-400 focus-visible:ring-[#751518]/20"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2 text-sm sm:text-base">
-                    <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <Button variant="outline" size="sm" className="h-9 w-auto shrink-0 justify-center gap-2 rounded-md border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 shadow-none hover:bg-gray-50">
+                    <Filter className="h-4 w-4 text-gray-500" />
                     <span>Filtros</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 rounded-md border-gray-200 shadow-lg">
                   <DropdownMenuLabel className="text-sm">Filtrar por estado</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {["Pendiente", "Completada", "Revisión"].map((status) => (
@@ -635,7 +637,7 @@ export default function ActasPage() {
                           setStatusFilter(statusFilter.filter(s => s !== status))
                         }
                       }}
-                      className="text-sm"
+                      className="h-8 rounded-md px-3 text-sm"
                     >
                       {status}
                     </DropdownMenuCheckboxItem>
@@ -645,7 +647,7 @@ export default function ActasPage() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setStatusFilter([])}
-                        className="text-sm"
+                        className="h-8 rounded-md px-3 text-sm"
                       >
                         Limpiar filtros
                       </DropdownMenuItem>
@@ -681,7 +683,7 @@ export default function ActasPage() {
                         element.click()
                         document.body.removeChild(element)
                       }}
-                      className="text-xs sm:text-sm"
+                      className="h-8 rounded-md border-gray-200 px-3 text-xs font-medium sm:text-sm"
                     >
                       <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Descargar datos
@@ -790,12 +792,12 @@ export default function ActasPage() {
                                 <div className="md:hidden font-semibold text-gray-500 text-xs mb-2">
                                   Acciones
                                 </div>
-                                <div className="flex gap-2 justify-end md:justify-end">
+                                <div className="flex flex-wrap justify-end gap-1.5">
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleView(acta)}
-                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                    className="h-8 w-8 rounded-md border border-transparent p-0 text-blue-700 hover:border-blue-100 hover:bg-blue-50"
                                     title="Ver detalles"
                                   >
                                     <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -805,7 +807,7 @@ export default function ActasPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleEdit(acta)}
-                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-green-600 hover:text-green-800 hover:bg-green-50"
+                                    className="h-8 w-8 rounded-md border border-transparent p-0 text-green-700 hover:border-green-100 hover:bg-green-50"
                                     title="Editar acta"
                                   >
                                     <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -819,7 +821,7 @@ export default function ActasPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => confirmDelete(acta.id)}
-                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                    className="h-8 w-8 rounded-md border border-transparent p-0 text-red-700 hover:border-red-100 hover:bg-red-50"
                                     title="Eliminar acta"
                                   >
                                     <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -832,7 +834,7 @@ export default function ActasPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleUploadResume(acta.id)} // Implementar lógica de adjuntos
-                                    className="h-8 w-8 sm:h-9 sm:w-9 p-0 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                                    className="h-8 w-8 rounded-md border border-transparent p-0 text-purple-700 hover:border-purple-100 hover:bg-purple-50"
                                     title="Adjuntar archivo"
                                   >
                                     <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />

@@ -6,8 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 import LogoutComponent from "./LogoutComponent";
-import path from "path";
-import { LayoutDashboard, FileText, Paperclip, Building2, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, Paperclip, Building2, LogOut, UserRound } from "lucide-react";
 
 // Tipos
 interface NavLink {
@@ -18,9 +17,10 @@ interface NavLink {
 
 // Intreface para el usuario y su role
 interface User {
+  id?: number;
   username: string;
   role: string;
-  unidas_a_cargo: string[];
+  unidas_a_cargo?: string[];
 }
 
 // Mapeo de íconos por nombre
@@ -54,7 +54,7 @@ const getNavLinksByRole = (role: string): NavLink[] => {
   return baseNavLinks[role] || [];
 };
 
-function getBreadcrumbs(pathname: string) {
+function getBreadcrumbs(pathname: string, role: string | null) {
   const segments = pathname.split("/").filter(Boolean);
   const breadcrumbs = segments
     .map((segment, index) => {
@@ -62,35 +62,54 @@ function getBreadcrumbs(pathname: string) {
       const name = segment.charAt(0).toUpperCase() + segment.slice(1);
       return { name, href };
     })
-    .filter((crumb) => !["dashboard", "admin"].includes(crumb.href.split("/").pop()!));
+    .filter((crumb) => {
+      const segment = crumb.href.split("/").pop()!.toLowerCase();
+      if (["dashboard", "admin"].includes(segment)) return false;
+      if (segment === "administracion" && role?.trim().toUpperCase() !== "ADMIN") return false;
+      return true;
+    });
   return breadcrumbs;
 }
 
 
 interface NavbarWithBreadcrumbProps {
-  user?: string | null;
+  user?: User | string | null;
   role?: string | null;
   disableAuthCheck?: boolean; // Para pruebas
 }
 
-export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck = false }: NavbarWithBreadcrumbProps) {
+export default function NavbarWithBreadcrumb({ user: propUser, role: propRole, disableAuthCheck = false }: NavbarWithBreadcrumbProps) {
   const [role, setRole] = useState<string | null>(null);
   // Verificar si hay usuario autenticado
   const pathname = usePathname();
-  const breadcrumbs = getBreadcrumbs(pathname);
-  const isActive = (href: string) => pathname === href;
+  const breadcrumbs = getBreadcrumbs(pathname, role);
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   // funcion para usar getnavbyrole basado en el rol obtenido
   const displayedNavLinks = role ? getNavLinksByRole(role) : [];
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [localUser, setLocalUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const mobileNavLinks = role?.trim().toUpperCase() === "ADMIN"
+    ? [
+        ...displayedNavLinks.filter(({ href }) => href !== "/dashboard/auditplatform"),
+        ...(localUser?.id !== undefined
+          ? [{ name: "Mi perfil", href: `/dashboard/administracion/usuarios/${localUser.id}`, icon: <UserRound size={20} /> }]
+          : []),
+      ]
+    : role?.trim().toUpperCase() === "USER"
+      ? [
+          ...(localUser?.id !== undefined
+            ? [{ name: "Mi perfil", href: `/dashboard/administracion/usuarios/${localUser.id}`, icon: <UserRound size={20} /> }]
+            : []),
+          ...displayedNavLinks,
+        ]
+      : displayedNavLinks;
 
   // Detectar si es móvil (solo en cliente)
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024); // Usa 768px como breakpoint para móvil
+      setIsMobile(window.innerWidth < 768);
     };
 
     checkMobile();
@@ -99,41 +118,44 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  useEffect(() => {
+    const body = document.body;
+    const originalHeight = body.style.height;
+    const originalMinHeight = body.style.minHeight;
+    const originalPaddingBottom = body.style.paddingBottom;
+
+    if (isMobile) {
+      body.style.height = "auto";
+      body.style.minHeight = "100vh";
+      body.style.paddingBottom = "calc(7rem + env(safe-area-inset-bottom))";
+    }
+
+    return () => {
+      body.style.height = originalHeight;
+      body.style.minHeight = originalMinHeight;
+      body.style.paddingBottom = originalPaddingBottom;
+    };
+  }, [isMobile]);
+
   // Verificar si hay usuario autenticado
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userData = localStorage.getItem("user");
-      const userRole = localStorage.getItem("role");
-      const parsedUser = userData ? JSON.parse(userData) : null;
+    const userData = localStorage.getItem("user");
+    const userRole = localStorage.getItem("role");
+    const parsedUser = userData ? JSON.parse(userData) : null;
 
-      // Usar el prop si existe, sino usar el localStorage
-      const currentUser = propUser || parsedUser;
-      setLocalUser(propUser || parsedUser);
+    // Some screens pass only the username. Use the complete stored user in that case,
+    // so the welcome link and label have the same data as on /dashboard.
+    const currentUser = propUser && typeof propUser === "object" ? propUser : parsedUser;
+    setLocalUser(currentUser);
 
-      // Solo acceder a localStorage en el cliente
-      if (typeof window !== 'undefined') {
-        const userData = localStorage.getItem("user");
-        const userRole = localStorage.getItem("role");
-        const parsedUser = userData ? JSON.parse(userData) : null;
-
-        // Usar el prop si existe, sino usar el localStorage
-        const currentUser = propUser || parsedUser;
-        setLocalUser(propUser || parsedUser);
-
-        console.log("Current User:", currentUser);
-
-        if (!currentUser && !disableAuthCheck && !propUser) {
-          window.location.href = "/";
-          return;
-        }
-
-        // Determinar el rol
-        const currentRole = userRole || (parsedUser?.role ? parsedUser.role : null);
-        setRole(currentRole);
-        setLoading(false);
-      }
+    if (!currentUser && !disableAuthCheck && !propUser) {
+      window.location.href = "/";
+      return;
     }
-  }, [propUser, disableAuthCheck]);
+
+    setRole(propRole || userRole || currentUser?.role || null);
+    setLoading(false);
+  }, [propUser, propRole, disableAuthCheck]);
 
   if (loading) {
     return (
@@ -151,32 +173,39 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
 
   // Bottom Navigation (solo en dispositivos ≤ 1024px)
   const BottomNavigation = () => (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-      <div className="flex justify-around">
-        {displayedNavLinks.map(({ name, href, icon }) => (
+    <nav aria-label="Navegación principal móvil" className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div className={`pointer-events-auto relative mx-auto flex min-h-[3.75rem] items-center rounded-full border border-white/10 bg-[#24356B] px-2 text-white shadow-[0_8px_28px_rgba(36,53,107,0.32)] ${role?.trim().toUpperCase() === "USER" ? "w-[min(18rem,100%)] justify-center" : "w-full max-w-lg justify-around"}`}>
+        {mobileNavLinks.map(({ name, href, icon }) => (
           <Link
             key={href}
             href={href}
-            className={`flex flex-col items-center py-3 px-4 text-xs font-medium transition ${isActive(href)
-                ? "text-blue-600"
-                : "text-gray-500 hover:text-gray-700"
+            aria-label={name}
+            aria-current={isActive(href) ? "page" : undefined}
+            title={name}
+            className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1.5 text-center transition-colors ${isActive(href) || (role?.trim().toUpperCase() === "USER" && href === "/dashboard/anexos")
+                ? "bg-white/10 text-white"
+                : "text-white/65 hover:bg-white/5 hover:text-white"
               }`}
           >
-            {icon}
-            <span className="mt-1">{name}</span>
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors [&>svg]:h-5 [&>svg]:w-5 ${isActive(href) || (role?.trim().toUpperCase() === "USER" && href === "/dashboard/anexos") ? "bg-[#B59E60] text-[#24356B]" : "text-white/90"}`}>{icon}</span>
+            <span className="w-full truncate text-[10px] font-semibold leading-tight">
+              {href.endsWith("/administracion") ? "Admin" : name}
+            </span>
           </Link>
         ))}
         {/* Botón de logout en bottom nav */}
         <button
+          type="button"
+          aria-label="Salir"
           onClick={() => {
             localStorage.removeItem("user");
             localStorage.removeItem("role");
             window.location.href = "/";
           }}
-          className="flex flex-col items-center py-3 px-4 text-xs text-gray-500 hover:text-red-600"
+          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1 py-1.5 text-center text-white/65 transition-colors hover:bg-white/10 hover:text-white"
         >
-          <LogOut size={20} />
-          <span>Salir</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full [&>svg]:h-5 [&>svg]:w-5"><LogOut aria-hidden="true" /></span>
+          <span className="w-full truncate text-[10px] font-semibold leading-tight">Salir</span>
         </button>
       </div>
     </nav>
@@ -269,8 +298,8 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
 
           {/* Breadcrumb (ocultar en móvil si lo deseas) */}
           {pathname !== "/dashboard" && (
-            <nav className="text-sm text-white py-2 border-t border-gray-600 pt-2">
-              <ol className="flex space-x-2">
+            <nav aria-label="Ruta de navegación" className="max-w-full overflow-x-auto border-t border-gray-600 py-2 text-xs text-white sm:text-sm">
+              <ol className="flex w-max min-w-full whitespace-nowrap space-x-2 pb-1">
                 <li>
                   <Link href="/dashboard" className="hover:underline text-gray-300">
                     Inicio
@@ -301,8 +330,6 @@ export default function NavbarWithBreadcrumb({ user: propUser, disableAuthCheck 
       {/* Bottom Navigation para móviles */}
       {isMobile && <BottomNavigation />}
 
-      {/* Espacio para que el bottom nav no tape contenido */}
-      {isMobile && <div className="h-16"></div>}
     </>
   );
 }

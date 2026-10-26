@@ -63,6 +63,8 @@ export interface PdfMeta {
 function fmtDate(d?: string) {
     if (!d) return "";
     if (/^\d{2}-\d{2}-\d{4}$/.test(d)) return d;
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+    if (dateOnly) return `${dateOnly[3]}-${dateOnly[2]}-${dateOnly[1]}`;
     const dt = new Date(d);
     if (Number.isNaN(dt.getTime())) return d;
     const dd = String(dt.getDate()).padStart(2, "0");
@@ -215,6 +217,19 @@ export async function generarAnexoPdf(
         });
     }
 
+    function drawEmptyTableAreaX(tableBottomY?: number) {
+        const bottomY = pageH - footerH - 1.5;
+        const topY = Math.max(headerH + 2, (tableBottomY ?? headerH) + 1.5);
+        if (bottomY - topY < 10) return;
+
+        const leftX = marginX + 2;
+        const rightX = pageW - marginX - 2;
+        doc.setDrawColor(70, 70, 70);
+        doc.setLineWidth(0.5);
+        doc.line(leftX, topY, rightX, bottomY);
+        doc.line(rightX, topY, leftX, bottomY);
+    }
+
     autoTable(doc, {
         startY: headerH,
         head,
@@ -222,10 +237,10 @@ export async function generarAnexoPdf(
         margin: { left: marginX, right: marginX, top: headerH, bottom: footerH },
         styles: { font: "helvetica", fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
         headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold" },
-        didDrawPage: () => {
+        didDrawPage: (data) => {
             drawHeader();
-            const pageNumber = doc.getNumberOfPages();
-            drawFooter(pageNumber);
+            drawFooter(data.pageNumber);
+            drawEmptyTableAreaX(data.cursor?.y ?? undefined);
         },
     });
 

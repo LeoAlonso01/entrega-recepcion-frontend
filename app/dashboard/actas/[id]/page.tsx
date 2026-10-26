@@ -10,6 +10,7 @@ import { ArrowLeft, Download, Edit, Trash2, Eye, ExternalLink } from "lucide-rea
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import FormActa from "@/components/forms/FormActa";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,7 +23,6 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { generarActa } from "@/lib/generarActa";
-import { generarActaDocx } from "@/lib/generarActaDocx";
 import { mergeAnexosConCategorias } from "@/lib/anexos";
 
 const generarPDF = async () =>{
@@ -126,6 +126,7 @@ export default function ViewActaPage() {
     const [unidades, setUnidades] = useState<Unidad[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
 
     // Normalize params.id to a string (if it's an array take the first element) before parsing
     const idParam = params?.id;
@@ -228,6 +229,49 @@ export default function ViewActaPage() {
         } catch (error) {
             console.error(error);
             toast.error("No se pudo eliminar el acta");
+        }
+    };
+
+    const handleUpdateActa = async (formData: Partial<ActaForm> & { id?: number }) => {
+        const token = localStorage.getItem("token");
+        if (!token || !acta) {
+            toast.error("No se pudo validar la sesión para guardar el acta");
+            return;
+        }
+
+        const { id: _id, ...formFields } = formData;
+        const payload = {
+            ...formFields,
+            unidad_responsable: Number(formFields.unidad_responsable),
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/actas/${acta.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || errorData.message || "No se pudo actualizar el acta");
+            }
+
+            const updatedActa = await response.json().catch(() => ({}));
+            setActa((currentActa) => currentActa ? {
+                ...currentActa,
+                ...payload,
+                ...(updatedActa && typeof updatedActa === "object" ? updatedActa : {}),
+                anexos: currentActa.anexos,
+            } : currentActa);
+            setEditDialogOpen(false);
+            toast.success("Acta actualizada correctamente");
+        } catch (error) {
+            console.error("Error al actualizar el acta:", error);
+            toast.error(error instanceof Error ? error.message : "No se pudo actualizar el acta");
         }
     };
 
@@ -363,7 +407,7 @@ export default function ViewActaPage() {
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Encabezado */}
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
                     <Button
                         variant="ghost"
                         onClick={() => router.back()}
@@ -372,7 +416,7 @@ export default function ViewActaPage() {
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Regresar
                     </Button>
-                    <h1 className="text-2xl font-bold text-gray-900">Acta #{acta.folio || acta.id}</h1>
+                    <h1 className="min-w-0 break-words text-xl sm:text-2xl font-bold text-gray-900">Acta #{acta.folio || acta.id}</h1>
                     <Badge
                         className={
                             acta.estado === "Completada"
@@ -387,22 +431,22 @@ export default function ViewActaPage() {
                 </div>
 
                 {/* Acciones */}
-                <div className="flex justify-end gap-3 mb-6">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-3 mb-6">
 
                     <Button
                         variant="outline"
-                        onClick={() => toast("Funcionalidad de edición no implementada aún")}
-                        className="flex items-center gap-2"
+                        onClick={() => setEditDialogOpen(true)}
+                        className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm"
                     >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-4 w-4 shrink-0 mr-2" />
                         Editar
                     </Button>
 
                     {(!acta.anexos || acta.anexos.length === 0) && (
                     <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" className="flex items-center gap-2">
-                                <Trash2 className="h-4 w-4" />
+                            <Button variant="destructive" className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm">
+                                <Trash2 className="h-4 w-4 shrink-0 mr-2" />
                                 Eliminar
                             </Button>
                         </AlertDialogTrigger>
@@ -424,26 +468,27 @@ export default function ViewActaPage() {
                     </AlertDialog>
                     )}
 
-                    <Button variant="secondary" onClick={() => handleCreateActa()} className="flex items-center">
-                        <Download className="h-4 w-4 ml-2" />
+                    <Button variant="secondary" onClick={() => handleCreateActa()} className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm">
+                        <Download className="h-4 w-4 shrink-0 mr-2" />
                         Descargar Acta PDF
                     </Button>
-                        <Button
-                            onClick={() => {
-                                const actaParaExportar = enrichActaForExport(acta, unidades);
-                                if (actaParaExportar) {
-                                    generarActaDocx(actaParaExportar);
-                                }
-                            }}
-                        >
-                            <Download className="h-4 w-4 ml-2" />
-                            Descargar Acta DOCX
-                    </Button>
-                    <Button onClick={handlePreviewActa} >
-                        <Eye className="h-4 w-4 ml-2" />
+                    <Button onClick={handlePreviewActa} className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm">
+                        <Eye className="h-4 w-4 shrink-0 mr-2" />
                         Vista Previa Acta PDF
                     </Button>
                 </div>
+
+                <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                    <DialogContent className="w-[calc(100%-1rem)] max-w-4xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
+                        <DialogHeader>
+                            <DialogTitle>{"Editar acta " + (acta.folio || "#" + acta.id)}</DialogTitle>
+                            <DialogDescription>Actualiza los datos del acta y guarda los cambios.</DialogDescription>
+                        </DialogHeader>
+                        {editDialogOpen && (
+                            <FormActa key={acta.id} acta={acta} unidades={unidades} onCancel={() => setEditDialogOpen(false)} onSave={handleUpdateActa} />
+                        )}
+                    </DialogContent>
+                </Dialog>
 
                 {/* Sección: Información General */}
                 <Card className="mb-6">
