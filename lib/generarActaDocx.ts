@@ -11,14 +11,20 @@ import {
     TextRun,
     WidthType,
 } from "docx";
-import { saveAs } from "file-saver";
+import saveAs from "file-saver";
 
 function sanitizeDocxText(value: unknown) {
     if (value === null || value === undefined) return "";
 
-    return String(value)
-        // Remove XML-invalid control chars that can corrupt Word documents.
-        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
+    return Array.from(String(value))
+        .filter((character) => {
+            const codePoint = character.codePointAt(0) ?? 0;
+            return codePoint === 0x09 || codePoint === 0x0a || codePoint === 0x0d ||
+                (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+                (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+                (codePoint >= 0x10000 && codePoint <= 0x10ffff);
+        })
+        .join("")
         .trim();
 }
 
@@ -246,7 +252,7 @@ function centeredSignatureCell(title: string, name: string) {
     });
 }
 
-export async function generarActaDocx(acta: any) {
+async function crearDocumentoActa(acta: any): Promise<Document> {
     const unidadNombre = getUnidadNombre(acta);
     const horaCierre = acta.hora_cierre_acta || acta.hora || "";
     const fechaCierre = acta.fecha_cierre_acta || acta.fecha || "";
@@ -411,7 +417,18 @@ export async function generarActaDocx(acta: any) {
         ],
     });
 
-    const blob = await Packer.toBlob(doc);
+    return doc;
+}
 
+export async function crearActaDocxBlob(acta: any): Promise<Blob> {
+    return Packer.toBlob(await crearDocumentoActa(acta));
+}
+
+export async function crearActaDocxBuffer(acta: any): Promise<Buffer> {
+    return Packer.toBuffer(await crearDocumentoActa(acta));
+}
+
+export async function generarActaDocx(acta: any) {
+    const blob = await crearActaDocxBlob(acta);
     saveAs(blob, `acta_${acta.folio}.docx`);
 }

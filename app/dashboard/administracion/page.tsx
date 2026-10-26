@@ -238,6 +238,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [isAuthorized, setIsAuthorized] = useState(false)
   const [searchUser, setSearchUser] = useState<string>("") // Para buscar unidades
   const [searchUsuario, setSearchUsuario] = useState<string>("") // Para buscar usuarios en el select
   const [isDeleting, setIsDeleting] = useState(false)
@@ -344,20 +345,29 @@ export default function AdministracionPage(user: { role: string } | null) {
 
   useEffect(() => {
     const token = localStorage.getItem("token")
-    if (!token) {
-      router.push("/")
+    const storedUser = localStorage.getItem("user")
+    if (!token || !storedUser) {
+      router.replace("/")
       return;
     }
 
-    // Obtener los usuarios desde la API
-    handleGetUsers();
+    try {
+      const parsedUser = JSON.parse(storedUser) as { id?: number; username?: string; role?: string }
+      if (parsedUser.role?.trim().toUpperCase() !== "ADMIN") {
+        toast.error("No tienes permiso para acceder a administración.")
+        router.replace("/dashboard")
+        return
+      }
 
-    // Cargar el usuario actual desde localStorage para decisiones de UI (mostrar botón de "cambiar contraseña" solo en la fila propia)
-    const storedCurrent = localStorage.getItem('currentUser');
-    if (storedCurrent) {
-      try { setCurrentUser(JSON.parse(storedCurrent)); } catch (e) { console.warn('No se pudo parsear currentUser', e); }
+      setCurrentUser({ username: parsedUser.username || "", role: parsedUser.role || "" })
+      setIsAuthorized(true)
+      handleGetUsers()
+    } catch {
+      toast.error("No se pudo validar la sesión.")
+      router.replace("/")
     }
 
+    // Cargar el usuario actual desde localStorage para decisiones de UI (mostrar botón de "cambiar contraseña" solo en la fila propia)
     // Obtener unidades: NOTE: we no longer fetch all unidades automatically on mount to avoid loading delays.
     // Loading of unidades is performed lazily when opening the "Asignar" modal to improve performance.
   }, [router])
@@ -541,6 +551,8 @@ export default function AdministracionPage(user: { role: string } | null) {
 
   }
 
+
+  if (!isAuthorized) return null
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>

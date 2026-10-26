@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { obtenerCategoriaPorClave } from '@/lib/anexosCatalogo';
 import { useParams, useRouter } from 'next/navigation';
 import NavbarWithBreadcrumb from '@/components/NavbarBreadcrumb';
 import { toast } from 'sonner';
@@ -13,36 +14,6 @@ import { showIntermedioModal } from '@/lib/exports/pdf';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const CATEGORIA_POR_PREFIJO: Record<string, string> = {
-  ADI: "ARCHIVOS DOCUMENTALES E INFORMATICOS",
-  AG: "ASUNTOS GENERALES",
-  AR: "ASUNTOS RELEVANTES",
-  CC: "CONVENIOS Y CONTRATOS",
-  CF: "CONTROL Y FISCALIZACION",
-  DO: "DERECHOS Y OBLIGACIONES",
-  EO: "ORGANIZACION",
-  IG: "INFORME DE GESTION",
-  MJ: "MARCO JURIDICO",
-  OP: "OBRA PÚBLICA",
-  PPA: "RECURSOS MATERIALES",
-  PP: "PLANEACION",
-  RF: "RECURSOS PRESUPUESTALES Y FINANCIEROS",
-  RH: "RECURSOS HUMANOS",
-  RM: "RECURSOS MATERIALES",
-  TAI: "TRANSPARENCIA Y ACCESO A LA INFORMACION",
-  SGC: "SISTEMA DE GESTION DE CALIDAD",
-};
-
-function obtenerCategoriaPorClave(clave?: string | null): string {
-  const claveNormalizada = clave?.trim().toUpperCase();
-  if (!claveNormalizada) return "";
-
-  const prefijo = claveNormalizada.match(/^[A-Z]+/)?.[0];
-  if (!prefijo) return "";
-
-  return CATEGORIA_POR_PREFIJO[prefijo] ?? "";
-}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -60,6 +31,47 @@ export interface Anexo {
   unidad_responsable_id: number;
   datos: Array<Record<string, any>> | Record<string, any> | null;
   is_deleted: boolean;
+}
+
+type UnidadParaPdf = {
+  id_unidad: number;
+  nombre: string;
+  unidad_padre_id?: number | null;
+  dependientes?: UnidadParaPdf[];
+};
+
+function resolverMetadataUnidad(unidades: UnidadParaPdf[], unidadId: number): Pick<PdfMeta, "dependenciaClave" | "dependenciaNombre" | "urClave" | "urNombre"> {
+  const unidadesPorId = new Map<number, UnidadParaPdf>();
+  const padrePorId = new Map<number, number>();
+
+  const registrarUnidad = (unidad: UnidadParaPdf, padreAnidadoId?: number) => {
+    const id = Number(unidad.id_unidad);
+    if (!Number.isFinite(id)) return;
+
+    unidadesPorId.set(id, { ...unidadesPorId.get(id), ...unidad });
+
+    const padreExplicitoId = Number(unidad.unidad_padre_id);
+    if (Number.isFinite(padreExplicitoId) && padreExplicitoId > 0 && padreExplicitoId !== id) {
+      padrePorId.set(id, padreExplicitoId);
+    } else if (padreAnidadoId && !padrePorId.has(id)) {
+      padrePorId.set(id, padreAnidadoId);
+    }
+
+    unidad.dependientes?.forEach((dependiente) => registrarUnidad(dependiente, id));
+  };
+
+  unidades.forEach((unidad) => registrarUnidad(unidad));
+
+  const dependencia = unidadesPorId.get(Number(unidadId));
+  const urId = padrePorId.get(Number(unidadId));
+  const ur = urId ? unidadesPorId.get(urId) : undefined;
+
+  return {
+    dependenciaClave: String(unidadId),
+    dependenciaNombre: dependencia?.nombre || "",
+    urClave: ur ? String(ur.id_unidad) : "",
+    urNombre: ur?.nombre || "",
+  };
 }
 
 const AnexoDetail: React.FC = () => {
@@ -126,7 +138,7 @@ const AnexoDetail: React.FC = () => {
       const data: Anexo = await response.json();
       setAnexo({
         ...data,
-        categoria: obtenerCategoriaPorClave(data.clave),
+        categoria: obtenerCategoriaPorClave(data.clave) || data.categoria || "",
       });
     } catch (error) {
       console.error("Error:", error);
@@ -268,7 +280,32 @@ const AnexoDetail: React.FC = () => {
 
               <Button
                 onClick={async () => {
+                  let metadataUnidad: Pick<PdfMeta, "dependenciaClave" | "dependenciaNombre" | "urClave" | "urNombre"> = {
+                    dependenciaClave: String(anexo.unidad_responsable_id),
+                  };
+
+                  try {
+                    const token = localStorage.getItem("token");
+                    const response = await fetch(`${API_URL}/unidades_responsables`, {
+                      method: "GET",
+                      headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                      },
+                    });
+                    if (!response.ok) throw new Error("No se pudieron consultar las unidades responsables");
+                    const unidades: UnidadParaPdf[] = await response.json();
+                    metadataUnidad = resolverMetadataUnidad(unidades, anexo.unidad_responsable_id);
+                  } catch (error) {
+                    console.error("Error al resolver Dependencia y UR para el PDF:", error);
+                    toast.error("No se pudieron consultar la Dependencia y la UR; el PDF se generará con los datos disponibles.");
+                  }
+
                   const metaFinal: PdfMeta = {
+                    ...metadataUnidad,
+                    categoriaNombre: obtenerCategoriaPorClave(anexo.clave),
+                    claveAnexo: anexo.clave,
+                    infoActualizadaAl: anexo.actualizado_en || anexo.creado_en || anexo.fecha_creacion,
                     fechaElaboracion: pdfFooter.fechaElaboracion,
                     elaboro: pdfFooter.elaboro,
                     superviso: pdfFooter.superviso,

@@ -78,6 +78,7 @@ export default function UsuarioDetallePage() {
     const router = useRouter();
     const [usuario, setUsuario] = useState<Usuario | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isAuthorized, setIsAuthorized] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [user, setUser] = useState<{ id?: number; username: string; role: string }>({ id: undefined, username: "", role: "" })
 
@@ -120,7 +121,7 @@ export default function UsuarioDetallePage() {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
-                    // Authorization: `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                 },
             });
 
@@ -201,22 +202,30 @@ export default function UsuarioDetallePage() {
     };
 
     useEffect(() => {
-        // el token existe
         const token = localStorage.getItem("token");
-        if (!token) {
-            router.push('/login');
+        const stored = localStorage.getItem('user');
+        if (!token || !stored) {
+            router.replace('/');
             return;
         }
-        // leer usuario actual almacenado (si existe) para decisiones de UI (si es admin o el mismo usuario)
-        const stored = localStorage.getItem('user');
-        if (stored) {
-            try {
-                setUser(JSON.parse(stored));
-            } catch (e) {
-                console.warn('No se pudo parsear user', e);
+
+        try {
+            const currentUser = JSON.parse(stored) as { id?: number; username?: string; role?: string };
+            const isAdmin = currentUser.role?.trim().toUpperCase() === 'ADMIN';
+            const isOwnProfile = Number(currentUser.id) === Number(id);
+            if (!isAdmin && !isOwnProfile) {
+                toast.error('No tienes permiso para consultar este usuario.');
+                router.replace('/dashboard');
+                return;
             }
+
+            setUser({ id: currentUser.id, username: currentUser.username || '', role: currentUser.role || '' });
+            setIsAuthorized(true);
+            fetchUsuario();
+        } catch {
+            toast.error('No se pudo validar la sesión.');
+            router.replace('/');
         }
-        fetchUsuario();
     }, [id]);
 
     const handleChangePassword = async (e: React.FormEvent) => {
@@ -432,6 +441,8 @@ export default function UsuarioDetallePage() {
     };
 
 
+
+    if (!isAuthorized) return null;
 
     if (loading) {
         return <LoadingSkeleton />;

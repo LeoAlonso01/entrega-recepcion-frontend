@@ -57,12 +57,12 @@ export default function Dashboard() {
           <p className="text-gray-600">Gestiona las actas, anexos y administración del sistema</p>
         </div>
         {user.role === "USER" && (
-          <div className=" grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Tarjeta Llenado en Anexos */}
             
-            <Link href="/dashboard/anexos">
+            <Link href="/dashboard/anexos" className="block h-full">
               <Card
-                className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
+                className="h-full hover:shadow-lg transition-shadow cursor-pointer border-l-4"
                 style={{ borderLeftColor: "#24356B" }}
               >
                 <CardHeader>
@@ -78,7 +78,9 @@ export default function Dashboard() {
                   </p>
                 </CardContent>
               </Card>
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
+            </Link>
+
+            <Card className="h-full hover:shadow-lg transition-shadow border-l-4"
                 style={{ borderLeftColor: "#24356B" }}>
                 <CardHeader>
                   <div className="flex items-center space-x-2">
@@ -99,12 +101,12 @@ export default function Dashboard() {
                     </a>
 
                     <a
-                      href="https://www.contraloria.umich.mx/entregarecepcion/archivos/archivos_contraloria/guia_usuario_serumich.pdf"
+                      href="https://docs.google.com/document/d/1FsAKenFAvSO3gL54nnxlLytzZAsWqSXVShDE1t_ND84/edit?usp=sharing"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-3 py-2 text-gray-700 hover:bg-gray-200 transition"
                     >
-                      📄 Guía del Usuario SERUMICH
+                      📄 Guía del Usuario SERUMICH V2
                     </a>
 
                     <a
@@ -135,7 +137,6 @@ export default function Dashboard() {
                   </div>
                 </CardContent>
               </Card>
-            </Link>
 
             {/* 🔹 Video explicativo */}
             <Card className="hover:shadow-lg transition-shadow cursor-pointer border-l-4"
