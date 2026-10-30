@@ -301,21 +301,50 @@ const registrarEventoAuditoria = async ({
   }
 };
 
-const getAnexos = async () => {
+const getAnexos = async (): Promise<Anexo[]> => {
   try {
-    const response = await fetch(`${API_URL}/anexos`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
+    const todosLosRegistros: Anexo[] = [];
+    const limite = 500;
+    let skip = 0;
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || "Error en la respuesta");
+    while (true) {
+      const response = await fetch(
+        `${API_URL}/anexos?skip=${skip}&limit=${limite}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "Error al consultar anexos");
+      }
+
+      const data: Anexo[] = await response.json();
+
+      if (!Array.isArray(data)) {
+        throw new Error("La API devolvió una respuesta inválida");
+      }
+
+      todosLosRegistros.push(...data);
+
+      if (data.length < limite) {
+        break;
+      }
+
+      skip += limite;
     }
 
-    const data = await response.json();
-    console.log("Anexos obtenidos:", data); // Debug: comentar para valorar eliminación definitiva
-    return data;
+    console.log("Anexos obtenidos:", {
+      total: todosLosRegistros.length,
+      registros: todosLosRegistros,
+    });
+
+    return todosLosRegistros;
+
   } catch (error) {
     console.error("Error al obtener anexos:", error);
     toast.error("No se pudieron cargar los anexos");
