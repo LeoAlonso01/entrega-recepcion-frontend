@@ -1,6 +1,7 @@
 "use client"
 
 import { categoria_anexos, claves_anexos, obtenerCategoriaPorClave } from "@/lib/anexosCatalogo"
+import HabilitacionAnexos from "@/components/HabilitacionAnexos"
 import type React from "react"
 import { useForm, SubmitHandler } from "react-hook-form"
 import { useState, useEffect, useMemo } from "react"
@@ -1452,21 +1453,23 @@ export default function AnexosPage() {
   const [recargasPendientes, setRecargasPendientes] = useState(0);
   const isLoading = cargaInicialPendiente || recargasPendientes > 0;
 
-  // Estado para usuario seleccionado y anexos filtrados (ADMIN - Anexos por Usuario)
+  // Filtros combinables (ADMIN - Anexos por Usuario)
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("__all__");
-  const [busquedaAnexos, setBusquedaAnexos] = useState("");
+  const [unidadSeleccionada, setUnidadSeleccionada] = useState("__all__");
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState("__all__");
+  const [busquedaClave, setBusquedaClave] = useState("");
+  const hayFiltrosAnexos = usuarioSeleccionado !== "__all__" ||
+    unidadSeleccionada !== "__all__" || estadoSeleccionado !== "__all__" || !!busquedaClave.trim();
   const anexosFiltrados = useMemo(() => {
-    const busqueda = normalizarDatos(busquedaAnexos);
+    const clave = normalizarDatos(busquedaClave);
     return todosLosAnexos.filter((anexo) => {
       const username = anexo.creador?.username ?? "";
       const coincideUsuario = usuarioSeleccionado === "__all__" || username === usuarioSeleccionado;
-      return coincideUsuario && (
-        !busqueda ||
-        normalizarDatos(username).includes(busqueda) ||
-        normalizarDatos(anexo.clave).includes(busqueda)
-      );
+      const coincideUnidad = unidadSeleccionada === "__all__" || String(anexo.unidad_responsable_id) === unidadSeleccionada;
+      const coincideEstado = estadoSeleccionado === "__all__" || anexo.estado === estadoSeleccionado;
+      return coincideUsuario && coincideUnidad && coincideEstado && normalizarDatos(anexo.clave).includes(clave);
     });
-  }, [busquedaAnexos, usuarioSeleccionado, todosLosAnexos]);
+  }, [busquedaClave, usuarioSeleccionado, unidadSeleccionada, estadoSeleccionado, todosLosAnexos]);
 
   // Función para filtrar anexos por categoría
   const [filterCategory, setFilterCategory] = useState<string>("__all__");
@@ -1929,7 +1932,6 @@ export default function AnexosPage() {
   const puedeEliminarAnexo = (anexo: Anexo) =>
     anexo.estado === "Borrador" &&
     anexo.acta_id == null &&
-    !anexo.is_deleted &&
     (userrole === "ADMIN" || (userid > 0 && Number(anexo.creador_id) === userid));
 
   const handleEliminarAnexo = async () => {
@@ -2131,11 +2133,14 @@ export default function AnexosPage() {
         <div className="container whitespace-nowrap overflow-x-auto px-4 py-8">
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-0 gap-3 text-sm" >
+            <TabsList className={`grid h-auto w-full grid-cols-2 gap-2 text-sm ${userrole === "ADMIN" ? "lg:grid-cols-4" : ""}`} >
               <TabsTrigger value="anexos">Anexos</TabsTrigger>
               <TabsTrigger value="nuevoAnexo">Nuevo Anexo</TabsTrigger>
               {userrole === "ADMIN" && (
                 <TabsTrigger value="anexosPorUsuario">Anexos por usuario</TabsTrigger>
+              )}
+              {userrole === "ADMIN" && (
+                <TabsTrigger value="habilitarAnexos">Habilitar anexos · Prueba</TabsTrigger>
               )}
             </TabsList>
 
@@ -2382,7 +2387,7 @@ export default function AnexosPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
 
-                                {!verHistorialUnidad && puedeEliminarAnexo(anexo) && (
+                                {puedeEliminarAnexo(anexo) && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -3180,11 +3185,12 @@ export default function AnexosPage() {
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    {/* Filtro por usuario */}
-                    <div className="mb-4 flex flex-col md:flex-row md:items-center gap-4">
-                      <div className="w-full md:w-1/3">
+                    {/* Filtros de anexos */}
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="min-w-0 space-y-2">
+                        <Label htmlFor="filtro-usuario-anexos">Usuario</Label>
                         <Select value={usuarioSeleccionado} onValueChange={setUsuarioSeleccionado}>
-                          <SelectTrigger className="w-full" aria-label="Filtrar por usuario">
+                          <SelectTrigger id="filtro-usuario-anexos" className="w-full" aria-label="Filtrar por usuario">
                             <SelectValue placeholder="Selecciona un usuario" />
                           </SelectTrigger>
                           <SelectContent>
@@ -3193,7 +3199,7 @@ export default function AnexosPage() {
                               new Set(
                                 todosLosAnexos
                                   .map(anexo => anexo.creador?.username)
-                                  .filter(username => typeof username === "string" && username.trim() !== "")
+                                  .filter((username): username is string => typeof username === "string" && username.trim() !== "")
                               )
                             ).map(username => (
                               <SelectItem key={username} value={username}>{username}</SelectItem>
@@ -3201,35 +3207,70 @@ export default function AnexosPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="w-full md:w-1/3">
+                      <div className="min-w-0 space-y-2">
+                        <Label htmlFor="filtro-unidad-anexos">Unidad Responsable</Label>
+                        <Select value={unidadSeleccionada} onValueChange={setUnidadSeleccionada}>
+                          <SelectTrigger id="filtro-unidad-anexos" className="w-full" aria-label="Filtrar por unidad responsable">
+                            <SelectValue placeholder="Selecciona una unidad" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">Todas las unidades</SelectItem>
+                            {Array.from(new Set(todosLosAnexos.map(anexo => anexo.unidad_responsable_id)))
+                              .sort((a, b) => (nombresUnidades[Number(a)] || `ID: ${a}`).localeCompare(nombresUnidades[Number(b)] || `ID: ${b}`, "es"))
+                              .map(unidadId => (
+                                <SelectItem key={unidadId} value={String(unidadId)}>
+                                  {nombresUnidades[Number(unidadId)] || `ID: ${unidadId}`}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="min-w-0 space-y-2">
+                        <Label htmlFor="filtro-clave-anexos">Clave</Label>
                         <Input
+                          id="filtro-clave-anexos"
                           type="search"
-                          aria-label="Buscar anexos por usuario o clave"
-                          placeholder="Buscar por usuario o clave"
-                          value={busquedaAnexos}
-                          onChange={(event) => setBusquedaAnexos(event.target.value)}
+                          aria-label="Buscar anexos por clave"
+                          placeholder="Buscar por clave"
+                          value={busquedaClave}
+                          onChange={(event) => setBusquedaClave(event.target.value)}
                         />
                       </div>
-                      {/* Contador y barra de progreso */}
-                      <div className={isLoading ? "hidden" : "flex flex-1 flex-col gap-2"}>
-                        <div className="text-sm text-gray-700">
-                          {usuarioSeleccionado === "__all__" && !busquedaAnexos.trim()
-                            ? `Total de anexos: ${todosLosAnexos.length}`
-                            : `Anexos encontrados: ${anexosFiltrados.length}`}
-                        </div>
-                        {/* Barra de progreso simple */}
-                        <div className="w-full bg-gray-200 rounded-full h-4">
-                          <div
-                            className="bg-blue-600 h-4 rounded-full transition-all"
-                            style={{
-                              width: `${todosLosAnexos.length > 0
-                                ? (anexosFiltrados.length / todosLosAnexos.length) * 100
-                                : 0
-                                }%`
-                            }}
-                          />
-                        </div>
+                      <div className="min-w-0 space-y-2">
+                        <Label htmlFor="filtro-estado-anexos">Estado</Label>
+                        <Select value={estadoSeleccionado} onValueChange={setEstadoSeleccionado}>
+                          <SelectTrigger id="filtro-estado-anexos" className="w-full" aria-label="Filtrar por estado">
+                            <SelectValue placeholder="Selecciona un estado" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">Todos los estados</SelectItem>
+                            {Array.from(new Set(todosLosAnexos.map(anexo => anexo.estado).filter(estado => estado.trim() !== "")))
+                              .sort((a, b) => a.localeCompare(b, "es"))
+                              .map(estado => (
+                                <SelectItem key={estado} value={estado}>{estado}</SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </div>
+                    </div>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                      {!isLoading && (
+                        <p className="text-sm text-gray-700">
+                          {hayFiltrosAnexos
+                            ? `Anexos encontrados: ${anexosFiltrados.length}`
+                            : `Total de anexos: ${todosLosAnexos.length}`}
+                        </p>
+                      )}
+                      {hayFiltrosAnexos && (
+                        <Button variant="outline" size="sm" onClick={() => {
+                          setUsuarioSeleccionado("__all__");
+                          setUnidadSeleccionada("__all__");
+                          setEstadoSeleccionado("__all__");
+                          setBusquedaClave("");
+                        }}>
+                          Limpiar filtros
+                        </Button>
+                      )}
                     </div>
                     <div className="overflow-x-auto">
                       <Table>
@@ -3342,6 +3383,11 @@ export default function AnexosPage() {
                   </CardContent>
                 </Card>
 
+              </TabsContent>
+            )}
+            {userrole === "ADMIN" && (
+              <TabsContent value="habilitarAnexos" className="mt-4 sm:mt-6 md:mt-8">
+                <HabilitacionAnexos adminId={userid} role={userrole} anexos={todosLosAnexos} cargandoAnexos={isLoading} />
               </TabsContent>
             )}
             <Dialog
