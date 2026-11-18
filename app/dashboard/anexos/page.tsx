@@ -8,11 +8,12 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import PdfUploader from "@/components/PdfUploader"
 import ExcelUploader from "@/components/ExcelUploader"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Edit, Download, Eye, Check, Trash2 } from "lucide-react"
+import { Plus, Edit, Download, Eye, Check, Trash2, Save, Loader2 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
@@ -39,6 +40,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 
 /*
@@ -1358,6 +1360,19 @@ export const validarDatosAnexo = (
 
 
 
+function AnexosLoadingRow({ colSpan }: { colSpan: number }) {
+  return (
+    <TableRow>
+      <TableCell colSpan={colSpan} className="py-8 text-center text-muted-foreground">
+        <span role="status" className="inline-flex items-center gap-2">
+          <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" />
+          Cargando anexos…
+        </span>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export default function AnexosPage() {
   // =====================================================
   // Estado principal del componente
@@ -1430,16 +1445,28 @@ export default function AnexosPage() {
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [anexoParaActualizar, setAnexoParaActualizar] = useState<Anexo | null>(null);
   const [anexoParaEliminar, setAnexoParaEliminar] = useState<Anexo | null>(null);
+  const [eliminandoAnexo, setEliminandoAnexo] = useState(false);
   const [todosLosAnexos, setTodosLosAnexos] = useState<Anexo[]>([]); // Estado para todos los anexos
   const [nombresUnidades, setNombresUnidades] = useState<Record<number, string>>({});
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [cargaInicialPendiente, setCargaInicialPendiente] = useState(true);
+  const [recargasPendientes, setRecargasPendientes] = useState(0);
+  const isLoading = cargaInicialPendiente || recargasPendientes > 0;
 
   // Estado para usuario seleccionado y anexos filtrados (ADMIN - Anexos por Usuario)
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("__all__");
+  const [busquedaAnexos, setBusquedaAnexos] = useState("");
   const anexosFiltrados = useMemo(() => {
-    if (usuarioSeleccionado === "__all__") return todosLosAnexos;
-    return todosLosAnexos.filter(a => a.creador?.username === usuarioSeleccionado);
-  }, [usuarioSeleccionado, todosLosAnexos]);
+    const busqueda = normalizarDatos(busquedaAnexos);
+    return todosLosAnexos.filter((anexo) => {
+      const username = anexo.creador?.username ?? "";
+      const coincideUsuario = usuarioSeleccionado === "__all__" || username === usuarioSeleccionado;
+      return coincideUsuario && (
+        !busqueda ||
+        normalizarDatos(username).includes(busqueda) ||
+        normalizarDatos(anexo.clave).includes(busqueda)
+      );
+    });
+  }, [busquedaAnexos, usuarioSeleccionado, todosLosAnexos]);
 
   // Función para filtrar anexos por categoría
   const [filterCategory, setFilterCategory] = useState<string>("__all__");
@@ -1566,8 +1593,13 @@ export default function AnexosPage() {
 
   // Función para recargar anexos según contexto del usuario
   const recargarAnexos = async () => {
-    const data = await getAnexos();
-    setTodosLosAnexos(data);
+    setRecargasPendientes((pendientes) => pendientes + 1);
+    try {
+      const data = await getAnexos();
+      setTodosLosAnexos(data);
+    } finally {
+      setRecargasPendientes((pendientes) => pendientes - 1);
+    }
   };
 
   const visibleAnexos = useMemo(() => {
@@ -1587,7 +1619,7 @@ export default function AnexosPage() {
   }, [todosLosAnexos, userid, unidadResponsable, unidadesHistorialIds, verHistorialUnidad, selectedCategory]);
 
   useEffect(() => {
-    if (activeTab === "anexos" && userid > 0) {
+    if (activeTab === "anexos" && userid > 0 && !cargaInicialPendiente) {
       recargarAnexos();
     }
     // eslint-disable-next-line
@@ -1603,6 +1635,7 @@ export default function AnexosPage() {
     const roleString = localStorage.getItem("role");
 
     if (!token) {
+      setCargaInicialPendiente(false);
       router.push("/");
       return;
     }
@@ -1624,11 +1657,13 @@ export default function AnexosPage() {
         setUserName("");
         setUserid(0);
         setUserrole("USER");
+        setCargaInicialPendiente(false);
         return;
       }
     } else {
       setUserid(0);
       setUserrole("USER");
+      setCargaInicialPendiente(false);
       return;
     }
 
@@ -1709,10 +1744,14 @@ export default function AnexosPage() {
         } catch (error) {
           console.error("Error al cargar datos iniciales:", error);
           toast.error("No se pudieron cargar los anexos");
+        } finally {
+          setCargaInicialPendiente(false);
         }
       };
 
       cargarDatosIniciales();
+    } else {
+      setCargaInicialPendiente(false);
     }
 
   }, []); // Dependencia vacía: se ejecuta una vez
@@ -1887,24 +1926,41 @@ export default function AnexosPage() {
     )
   }
 
-  const handleEliminarAnexo = async () => {
-    if (!anexoParaEliminar) return;
+  const puedeEliminarAnexo = (anexo: Anexo) =>
+    anexo.estado === "Borrador" &&
+    anexo.acta_id == null &&
+    !anexo.is_deleted &&
+    (userrole === "ADMIN" || (userid > 0 && Number(anexo.creador_id) === userid));
 
+  const handleEliminarAnexo = async () => {
+    if (!anexoParaEliminar || !puedeEliminarAnexo(anexoParaEliminar) || eliminandoAnexo) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Inicia sesión de nuevo para eliminar el anexo");
+      return;
+    }
+
+    setEliminandoAnexo(true);
     try {
       const response = await fetch(`${API_URL}/anexos/${anexoParaEliminar.id}`, {
         method: "DELETE",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "No fue posible eliminar el anexo");
+        const detalle = typeof errorData?.detail === "string" ? errorData.detail : response.statusText;
+        throw new Error(`HTTP ${response.status}${detalle ? `: ${detalle}` : ""}`);
       }
 
-      await registrarEventoAuditoria({
+      const quitarAnexo = (lista: Anexo[]) => lista.filter((anexo) => anexo.id !== anexoParaEliminar.id);
+      setTodosLosAnexos(quitarAnexo);
+      setAnexos(quitarAnexo);
+
+      void registrarEventoAuditoria({
         actor_id: userid,
         action: "delete_anexo",
         object_type: "anexo",
@@ -1916,10 +1972,10 @@ export default function AnexosPage() {
       toast.success("Anexo eliminado", {
         description: `El anexo ${anexoParaEliminar.clave} fue enviado a eliminados.`,
       });
-      await recargarAnexos();
+      setAnexoParaEliminar(null);
     } catch (error: any) {
       console.error("Error al eliminar anexo:", error);
-      await registrarEventoAuditoria({
+      void registrarEventoAuditoria({
         actor_id: userid,
         action: "delete_anexo",
         object_type: "anexo",
@@ -1931,7 +1987,7 @@ export default function AnexosPage() {
         description: error.message || "Verifica tus permisos e inténtalo de nuevo.",
       });
     } finally {
-      setAnexoParaEliminar(null);
+      setEliminandoAnexo(false);
     }
   };
 
@@ -2011,9 +2067,12 @@ export default function AnexosPage() {
       }
 
       const updatedAnexo = await response.json();
-      setAnexos((prev) =>
-        prev.map((a) => (a.id === updatedAnexo.id ? updatedAnexo : a))
-      );
+      const actualizarEstado = (lista: Anexo[]) =>
+        lista.map((anexo) => anexo.id === updatedAnexo.id
+          ? { ...anexo, estado: updatedAnexo.estado }
+          : anexo);
+      setAnexos(actualizarEstado);
+      setTodosLosAnexos(actualizarEstado);
 
       toast.success("✅ Estado actualizado", {
         description: `El anexo ahora está en "${nuevoEstado}".`,
@@ -2242,7 +2301,7 @@ export default function AnexosPage() {
 
                         {/* Cuerpo de tabla / tarjetas responsivas */}
                         <TableBody className="divide-y divide-gray-200">
-                          {visibleAnexos.map((anexo) => (
+                          {isLoading ? <AnexosLoadingRow colSpan={5} /> : visibleAnexos.map((anexo) => (
                             <TableRow
                               key={anexo.id}
                               className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
@@ -2323,7 +2382,7 @@ export default function AnexosPage() {
                                   <Eye className="h-4 w-4" />
                                 </Button>
 
-                                {userrole === "ADMIN" && canEdit(anexo) && (
+                                {!verHistorialUnidad && puedeEliminarAnexo(anexo) && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -2602,6 +2661,24 @@ export default function AnexosPage() {
                                     {/* Botón para agregar fila */}
                                     <div className="flex justify-between items-center mb-2">
                                       <span>Tabla de datos</span>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={!datos.length}
+                                        onClick={() => {
+                                          const confirmar = window.confirm(
+                                            "¿Seguro que deseas eliminar todas las filas de la tabla? Esta acción no se puede deshacer."
+                                          );
+
+                                          if (!confirmar) return;
+
+                                          setDatos([]);
+                                          setValue("datos", []);
+                                          setCurrentPage(1);
+                                        }}
+                                      >
+                                        Vaciar tabla
+                                      </Button>
                                       <Button
                                         type="button"
                                         variant="outline"
@@ -2999,27 +3076,47 @@ export default function AnexosPage() {
                           </Button>
 
                           {!editingAnexo && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                const draft = {
-                                  clave: watch("clave"),
-                                  categoria: watch("categoria"),
-                                  fecha_creacion: watch("fecha_creacion"),
-                                  estado: watch("estado"),
-                                  datos,
-                                  timestamp: new Date().toISOString(),
-                                };
-                                localStorage.setItem(
-                                  `draft_anexo_${userid}`,
-                                  JSON.stringify(draft)
-                                );
-                                toast.success("✅ Borrador guardado");
-                              }}
-                            >
-                              Guardar Borrador
-                            </Button>
+
+
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const draft = {
+                                        clave: watch("clave"),
+                                        categoria: watch("categoria"),
+                                        fecha_creacion: watch("fecha_creacion"),
+                                        estado: watch("estado"),
+                                        datos,
+                                        timestamp: new Date().toISOString(),
+                                      };
+
+                                      localStorage.setItem(
+                                        `draft_anexo_${userid}`,
+                                        JSON.stringify(draft)
+                                      );
+
+                                      toast.success("Avance guardado correctamente");
+                                    }}
+                                  >
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Guardar avance
+                                  </Button>
+                                </TooltipTrigger>
+
+                                <TooltipContent side="top">
+                                  Guarda temporalmente tu captura
+                                  <br />
+                                  para continuar
+                                  <br />
+                                  con el anexo más adelante.
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+
                           )}
                         </div>
                       </>
@@ -3063,7 +3160,7 @@ export default function AnexosPage() {
                       style={{ minWidth: 44 }}
                       onClick={() => {
                         // Exportar a Excel la tabla filtrada
-                        const dataExport = (usuarioSeleccionado === "__all__" ? todosLosAnexos : anexosFiltrados).map(anexo => ({
+                        const dataExport = anexosFiltrados.map(anexo => ({
                           Creador: anexo.creador?.username,
                           Clave: anexo.clave,
                           Estado: anexo.estado,
@@ -3076,6 +3173,7 @@ export default function AnexosPage() {
                         XLSX.writeFile(wb, "anexos_por_usuario.xlsx");
                       }}
                       title="Descargar Excel"
+                      disabled={isLoading || anexosFiltrados.length === 0}
                     >
                       <FileSpreadsheet className="w-5 h-5" />
                       <span className="hidden md:inline">Descargar Excel</span>
@@ -3085,8 +3183,8 @@ export default function AnexosPage() {
                     {/* Filtro por usuario */}
                     <div className="mb-4 flex flex-col md:flex-row md:items-center gap-4">
                       <div className="w-full md:w-1/3">
-                        <Select onValueChange={setUsuarioSeleccionado}>
-                          <SelectTrigger className="w-full">
+                        <Select value={usuarioSeleccionado} onValueChange={setUsuarioSeleccionado}>
+                          <SelectTrigger className="w-full" aria-label="Filtrar por usuario">
                             <SelectValue placeholder="Selecciona un usuario" />
                           </SelectTrigger>
                           <SelectContent>
@@ -3103,145 +3201,144 @@ export default function AnexosPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="w-full md:w-1/3">
+                        <Input
+                          type="search"
+                          aria-label="Buscar anexos por usuario o clave"
+                          placeholder="Buscar por usuario o clave"
+                          value={busquedaAnexos}
+                          onChange={(event) => setBusquedaAnexos(event.target.value)}
+                        />
+                      </div>
                       {/* Contador y barra de progreso */}
-                      <div className="flex-1 flex flex-col gap-2">
+                      <div className={isLoading ? "hidden" : "flex flex-1 flex-col gap-2"}>
                         <div className="text-sm text-gray-700">
-                          {usuarioSeleccionado === "__all__"
+                          {usuarioSeleccionado === "__all__" && !busquedaAnexos.trim()
                             ? `Total de anexos: ${todosLosAnexos.length}`
-                            : `Anexos de ${usuarioSeleccionado}: ${anexosFiltrados.length}`}
+                            : `Anexos encontrados: ${anexosFiltrados.length}`}
                         </div>
                         {/* Barra de progreso simple */}
                         <div className="w-full bg-gray-200 rounded-full h-4">
                           <div
                             className="bg-blue-600 h-4 rounded-full transition-all"
                             style={{
-                              width: `${usuarioSeleccionado !== "__all__" && todosLosAnexos.length > 0
+                              width: `${todosLosAnexos.length > 0
                                 ? (anexosFiltrados.length / todosLosAnexos.length) * 100
-                                : 100
+                                : 0
                                 }%`
                             }}
                           />
                         </div>
                       </div>
                     </div>
-                    {isLoading ? (
-                      // Skeleton mientras carga
-                      <div className="space-y-4">
-                        {[...Array(5)].map((_, i) => (
-                          <div
-                            key={i}
-                            className="h-16 animate-pulse bg-gray-100 rounded-lg"
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Creador</TableHead>
-                              <TableHead>Clave</TableHead>
-                              <TableHead>Estado</TableHead>
-                              <TableHead>Fecha de Creación</TableHead>
-                              <TableHead>Unidad Responsable</TableHead>
-                              <TableHead>Acciones</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody className="divide-y divide-gray-200">
-                            {(usuarioSeleccionado ? anexosFiltrados : todosLosAnexos).length > 0 ? (
-                              (usuarioSeleccionado ? anexosFiltrados : todosLosAnexos).map((anexo) => (
-                                <TableRow
-                                  key={anexo.id}
-                                  className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
-                                >
-                                  {/* Creador */}
-                                  <TableCell className="px-4 py-4 md:table-cell">
-                                    <div className="md:hidden font-semibold text-gray-500">Creador</div>
-                                    <div className="font-medium text-gray-900">{anexo.creador?.username}</div>
-                                  </TableCell>
-                                  {/* Clave */}
-                                  <TableCell className="px-4 py-4 md:table-cell">
-                                    <div className="md:hidden font-semibold text-gray-500">Clave</div>
-                                    <div className="text-gray-800">{anexo.clave}</div>
-                                  </TableCell>
-                                  {/* Estado */}
-                                  <TableCell className="px-4 py-4 md:table-cell">
-                                    <div className="md:hidden font-semibold text-gray-500">Estado</div>
-                                    <span
-                                      className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(
-                                        anexo.estado
-                                      )}`}
-                                    >
-                                      {anexo.estado}
-                                    </span>
-                                  </TableCell>
-                                  {/* Fecha */}
-                                  <TableCell className="px-4 py-4 md:table-cell">
-                                    <div className="md:hidden font-semibold text-gray-500">Fecha</div>
-                                    <div className="text-gray-800">
-                                      {new Date(anexo.fecha_creacion).toLocaleDateString('es-MX', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: true
-                                      })}
-                                    </div>
-                                  </TableCell>
-                                  {/* Unidad Responsable */}
-                                  <TableCell className="px-4 py-4 md:table-cell">
-                                    <div className="md:hidden font-semibold text-gray-500">Unidad Responsable</div>
-                                    <div className="text-gray-800">
-                                      {nombresUnidades[Number(anexo.unidad_responsable_id)] || `ID: ${anexo.unidad_responsable_id}`}
-                                    </div>
-                                  </TableCell>
-                                  {/* Acciones */}
-                                  <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
-                                    <div className="md:hidden font-semibold text-gray-500 mb-1">
-                                      Acciones
-                                    </div>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Creador</TableHead>
+                            <TableHead>Clave</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Fecha de Creación</TableHead>
+                            <TableHead>Unidad Responsable</TableHead>
+                            <TableHead>Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-gray-200">
+                          {isLoading ? (
+                            <AnexosLoadingRow colSpan={6} />
+                          ) : anexosFiltrados.length > 0 ? (
+                            anexosFiltrados.map((anexo) => (
+                              <TableRow
+                                key={anexo.id}
+                                className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
+                              >
+                                {/* Creador */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Creador</div>
+                                  <div className="font-medium text-gray-900">{anexo.creador?.username}</div>
+                                </TableCell>
+                                {/* Clave */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Clave</div>
+                                  <div className="text-gray-800">{anexo.clave}</div>
+                                </TableCell>
+                                {/* Estado */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Estado</div>
+                                  <span
+                                    className={`px-2 py-1 text-xs font-semibold rounded-full ${getEstadoColor(
+                                      anexo.estado
+                                    )}`}
+                                  >
+                                    {anexo.estado}
+                                  </span>
+                                </TableCell>
+                                {/* Fecha */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Fecha</div>
+                                  <div className="text-gray-800">
+                                    {new Date(anexo.fecha_creacion).toLocaleDateString('es-MX', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: true
+                                    })}
+                                  </div>
+                                </TableCell>
+                                {/* Unidad Responsable */}
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Unidad Responsable</div>
+                                  <div className="text-gray-800">
+                                    {nombresUnidades[Number(anexo.unidad_responsable_id)] || `ID: ${anexo.unidad_responsable_id}`}
+                                  </div>
+                                </TableCell>
+                                {/* Acciones */}
+                                <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500 mb-1">
+                                    Acciones
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDownload(anexo.id)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  {puedeEliminarAnexo(anexo) && (
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      onClick={() => handleDownload(anexo.id)}
-                                      className="text-blue-600 hover:text-blue-800"
+                                      onClick={() => setAnexoParaEliminar(anexo)}
+                                      className="text-red-600 hover:text-red-800"
+                                      title="Eliminar anexo"
                                     >
-                                      <Download className="h-4 w-4" />
+                                      <Trash2 className="h-4 w-4" />
                                     </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => router.push(`/dashboard/anexos/${anexo.id}`)}
-                                      className="text-blue-600 hover:text-blue-800"
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                    {canEdit(anexo) && userrole === "ADMIN" && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setAnexoParaEliminar(anexo)}
-                                        className="text-red-600 hover:text-red-800"
-                                        title="Eliminar anexo"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            ) : (
-                              <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                  No se encontraron anexos.
+                                  )}
                                 </TableCell>
                               </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                No se encontraron anexos.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -3249,23 +3346,23 @@ export default function AnexosPage() {
             )}
             <Dialog
               open={Boolean(anexoParaEliminar)}
-              onOpenChange={(open) => !open && setAnexoParaEliminar(null)}
+              onOpenChange={(open) => !open && !eliminandoAnexo && setAnexoParaEliminar(null)}
             >
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>¿Eliminar anexo?</DialogTitle>
                   <DialogDescription>
                     {anexoParaEliminar
-                      ? `Se eliminará el anexo ${anexoParaEliminar.clave}. Esta acción requiere autorización de administrador y el backend aplicará su borrado lógico.`
+                      ? `Se dará de baja el anexo ${anexoParaEliminar.clave} y dejará de aparecer en el listado.`
                       : ""}
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setAnexoParaEliminar(null)}>
+                  <Button variant="outline" disabled={eliminandoAnexo} onClick={() => setAnexoParaEliminar(null)}>
                     Cancelar
                   </Button>
-                  <Button variant="destructive" onClick={handleEliminarAnexo}>
-                    Eliminar
+                  <Button variant="destructive" disabled={eliminandoAnexo} onClick={handleEliminarAnexo}>
+                    {eliminandoAnexo ? "Eliminando…" : "Eliminar"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
