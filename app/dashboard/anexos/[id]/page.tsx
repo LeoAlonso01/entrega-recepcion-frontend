@@ -28,6 +28,7 @@ export interface Anexo {
   creado_en: string;
   actualizado_en: string;
   estado: string;
+  acta_id?: number | null;
   unidad_responsable_id: number;
   datos: Array<Record<string, any>> | Record<string, any> | null;
   is_deleted: boolean;
@@ -377,7 +378,9 @@ const AnexoDetail: React.FC = () => {
           <Button variant="outline" onClick={() => router.back()}>
             Volver
           </Button>
-          {currentUser?.role === "ADMIN" && (
+          {anexo.estado === "Borrador" && anexo.acta_id == null &&
+            (currentUser?.role === "ADMIN" ||
+              (Number(currentUser?.id) > 0 && Number(anexo.creador_id) === Number(currentUser?.id))) && (
             <Button
               variant="destructive"
               size="sm"
