@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_SERUMICH_STAGE_API_URL: process.env.SERUMICH_STAGE_API_URL || "",
+  },
+  compiler: {
+    // Quitar logs de depuración del código de producción; conservar errores y advertencias.
+    removeConsole: process.env.NODE_ENV === 'production'
+      ? { exclude: ['error', 'warn'] }
+      : false,
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -15,7 +24,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://148.216.25.183:8000/:path*',
+        destination: (process.env.SERUMICH_STAGE_API_URL || 'http://148.216.25.183:8000') + '/:path*',
       },
     ]
   },
