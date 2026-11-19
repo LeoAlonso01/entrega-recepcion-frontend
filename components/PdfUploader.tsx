@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { FileText, Trash2, Upload, X } from 'lucide-react';
 
 type PdfUploaderProps = {
+  clave?: string;
   onUploadSuccess: (data: { url: string }[]) => void; // Espera un array con { url }
 };
 
-const PdfUploader: React.FC<PdfUploaderProps> = ({ onUploadSuccess }) => {
+const PdfUploader: React.FC<PdfUploaderProps> = ({ onUploadSuccess, clave }) => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -18,6 +19,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onUploadSuccess }) => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!clave) { setError("Selecciona una clave habilitada antes de subir un PDF."); return; }
 
     if (file.type !== "application/pdf") {
       setError("Solo se permiten archivos PDF.");
@@ -41,10 +43,12 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onUploadSuccess }) => {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("clave", clave || "");
 
     try {
       const response = await fetch(`${API_URL}/pdf`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         body: formData,
         // No añadas 'Content-Type': fetch lo hace automáticamente con multipart
       });
@@ -61,7 +65,8 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({ onUploadSuccess }) => {
       // Esperar respuesta
       if (!response.ok) {
         clearInterval(interval);
-        throw new Error("Error al subir el archivo");
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(typeof detail.detail === "string" ? detail.detail : "No se pudo subir el archivo");
       }
 
       const result = await response.json();

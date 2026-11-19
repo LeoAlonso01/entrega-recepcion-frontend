@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { categoria_anexos } from "@/lib/anexosCatalogo";
-import { clavesHabilitables, contarAnexosUsuario, validarClavesHabilitadas } from "@/lib/habilitacionAnexos";
+import { contarAnexosUsuario } from "@/lib/habilitacionAnexos";
+import { permisosAnexosApi, ErrorPermisos, type ConfigAnexos, type CatalogoPermiso, type CambioPermisos } from "@/lib/permisosAnexosApi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,20 +12,24 @@ import { toast } from "sonner";
 
 type Usuario = { id: number; username: string };
 type Anexo = { creador_id: number; clave: string; estado: string; is_deleted?: boolean };
-type Props = { adminId: number; role: string; anexos: Anexo[]; cargandoAnexos: boolean };
+type Props = { adminId: number; role: string; anexos: Anexo[]; cargandoAnexos: boolean; onDirtyChange?: (dirty: boolean) => void };
 
-export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnexos }: Props) {
+export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnexos, onDirtyChange }: Props) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [recarga, setRecarga] = useState(0);
   const [usuarioId, setUsuarioId] = useState("");
-  const [asignaciones, setAsignaciones] = useState<Record<string, string[]>>({});
+  const [config, setConfig] = useState<ConfigAnexos | null>(null);
+  const [catalogo, setCatalogo] = useState<CatalogoPermiso[]>([]);
+  const [historial, setHistorial] = useState<CambioPermisos[]>([]);
+  const [motivo, setMotivo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [conflicto, setConflicto] = useState(false);
   const [claves, setClaves] = useState<string[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [categoriaId, setCategoriaId] = useState("__all__");
   const [listo, setListo] = useState(false);
-  const storageKey = `anexos-habilitados-prueba:v1:${process.env.NEXT_PUBLIC_API_URL}:${adminId}`;
   const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
   useEffect(() => {
@@ -33,39 +37,19 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
     const controller = new AbortController();
     setCargando(true);
     setError("");
-    setListo(false);
     setUsuarioId("");
     setClaves([]);
-    setAsignaciones({});
-    try {
-      const guardado = localStorage.getItem(storageKey);
-      if (guardado) {
-        const data: unknown = JSON.parse(guardado);
-        if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Formato inválido");
-        const entries = Object.entries(data).map(([id, lista]) => {
-          if (!/^[1-9]\d*$/.test(id)) throw new Error("Usuario inválido");
-          return [id, validarClavesHabilitadas(lista)] as const;
-        });
-        setAsignaciones(Object.fromEntries(entries));
-      }
-      setListo(true);
-    } catch {
-      setError("No se pudo leer la configuración local. Revisa el almacenamiento del navegador antes de guardar.");
-    }
+    setConfig(null);
     async function cargarUsuarios() {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("Inicia sesión nuevamente para consultar usuarios.");
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
-          headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(`No se pudieron cargar los usuarios (${response.status}).`);
-        const data: unknown = await response.json();
-        if (!Array.isArray(data) || !data.every(user => Number.isInteger(Number(user.id)) && Number(user.id) > 0 && typeof user.username === "string")) {
-          throw new Error("La respuesta de usuarios no es válida.");
+        const [data, lista] = await Promise.all([
+          permisosAnexosApi<Usuario[]>("/usuarios", { signal: controller.signal }),
+          permisosAnexosApi<CatalogoPermiso[]>("/catalogo", { signal: controller.signal }),
+        ]);
+        if (!controller.signal.aborted) {
+          setUsuarios(data);
+          setCatalogo(lista);
         }
-        if (!controller.signal.aborted) setUsuarios(data.map(user => ({ id: Number(user.id), username: user.username }))
-          .sort((a, b) => a.username.localeCompare(b.username, "es")));
       } catch (cause) {
         if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Error al cargar usuarios.");
       } finally {
@@ -74,12 +58,45 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
     }
     void cargarUsuarios();
     return () => controller.abort();
-  }, [adminId, role, storageKey, recarga]);
+  }, [adminId, role, recarga]);
+
+  const [recargaConfig, setRecargaConfig] = useState(0);
+  useEffect(() => {
+    if (!usuarioId || role !== "ADMIN") return;
+    const controller = new AbortController();
+    setListo(false);
+    setError("");
+    setConflicto(false);
+    setConfig(null);
+    setHistorial([]);
+    setMotivo("");
+    Promise.all([
+      permisosAnexosApi<ConfigAnexos>(`/usuarios/${usuarioId}`, { signal: controller.signal }),
+      permisosAnexosApi<CambioPermisos[]>(`/usuarios/${usuarioId}/historial`, { signal: controller.signal }),
+    ]).then(([data, cambios]) => {
+      if (controller.signal.aborted) return;
+      setConfig(data);
+      setClaves(data.claves);
+      setHistorial(cambios);
+      setListo(true);
+    }).catch(cause => {
+      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "No se pudo cargar la configuración.");
+    });
+    return () => controller.abort();
+  }, [usuarioId, role, recargaConfig]);
 
   const resumen = useMemo(() => contarAnexosUsuario(Number(usuarioId), claves, anexos), [usuarioId, claves, anexos]);
-  const modificada = JSON.stringify([...claves].sort()) !== JSON.stringify([...(asignaciones[usuarioId] ?? [])].sort());
-  const listaVisible = clavesHabilitables.filter(item =>
-    (categoriaId === "__all__" || item.id_categoria === categoriaId) &&
+  const modificada = JSON.stringify([...claves].sort()) !== JSON.stringify([...(config?.claves ?? [])].sort()) || !!motivo;
+  useEffect(() => {
+    onDirtyChange?.(modificada);
+    const prevenirSalida = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    if (modificada) window.addEventListener("beforeunload", prevenirSalida);
+    return () => { onDirtyChange?.(false); window.removeEventListener("beforeunload", prevenirSalida); };
+  }, [modificada, onDirtyChange]);
+  const categorias = Array.from(new Map(catalogo.map(item => [item.categoria_id, { id: item.categoria_id, nombre_categoria: item.categoria }])).values())
+    .sort((a, b) => Number(a.id) - Number(b.id));
+  const listaVisible = catalogo.filter(item =>
+    (categoriaId === "__all__" || item.categoria_id === categoriaId) &&
     normalizar(`${item.clave} ${item.descripcion}`).includes(normalizar(busqueda))
   );
   const cambiarClaves = (lista: string[], habilitar: boolean) => setClaves(actuales =>
@@ -88,18 +105,40 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
   function seleccionarUsuario(id: string) {
     if (modificada && !window.confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de usuario?")) return;
     setUsuarioId(id);
-    setClaves(asignaciones[id] ?? []);
+    setListo(false);
+    setClaves([]);
   }
-  function guardar() {
-    if (role !== "ADMIN" || !listo || error || !usuarios.some(user => String(user.id) === usuarioId)) return;
+  async function guardar() {
+    if (role !== "ADMIN" || !listo || !config || guardando || conflicto || error) return;
+    if (!claves.length && !window.confirm("Esta configuración dejará al usuario sin claves de captura. Los anexos existentes se conservarán. ¿Continuar?")) return;
+    setGuardando(true);
     try {
-      const nuevas = { ...asignaciones, [usuarioId]: validarClavesHabilitadas(claves) };
-      localStorage.setItem(storageKey, JSON.stringify(nuevas));
-      setAsignaciones(nuevas);
-      toast.success("Configuración de prueba guardada en este navegador");
-    } catch {
-      toast.error("No se pudo guardar la configuración local");
+      const data = await permisosAnexosApi<ConfigAnexos>(`/usuarios/${usuarioId}`, {
+        method: "PUT", body: JSON.stringify({ revision: config.revision, claves, motivo: motivo.trim() }),
+      });
+      setConfig(data);
+      setClaves(data.claves);
+      setMotivo("");
+      toast.success("Permisos guardados y aplicados al usuario");
+      try { setHistorial(await permisosAnexosApi<CambioPermisos[]>(`/usuarios/${usuarioId}/historial`)); }
+      catch { toast.warning("Los permisos sí se guardaron, pero no se pudo actualizar el historial. Recarga para consultarlo."); }
+    } catch (cause) {
+      if (cause instanceof ErrorPermisos && cause.status === 409) setConflicto(true);
+      toast.error(cause instanceof Error ? cause.message : "No se pudo guardar la configuración");
+    } finally {
+      setGuardando(false);
     }
+  }
+
+  async function cargarPropuesta() {
+    setGuardando(true);
+    try {
+      const data = await permisosAnexosApi<{ claves: string[]; desconocidas: string[] }>(`/usuarios/${usuarioId}/propuesta`);
+      setClaves(actuales => Array.from(new Set([...actuales, ...data.claves])));
+      if (data.desconocidas.length) toast.warning(`Claves anteriores fuera del catálogo: ${data.desconocidas.join(", ")}`);
+      toast.info("Propuesta cargada. Revisa y guarda para aplicarla.");
+    } catch (cause) { toast.error(cause instanceof Error ? cause.message : "No se pudo obtener la propuesta"); }
+    finally { setGuardando(false); }
   }
 
   if (role !== "ADMIN") return null;
@@ -107,16 +146,16 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
     <Card>
       <CardHeader>
         <CardTitle>Habilitar anexos por usuario</CardTitle>
-        <CardDescription>Prueba local: selecciona las claves que aplican a cada usuario. Esta configuración no modifica los permisos de captura ni se comparte con otros navegadores.</CardDescription>
+        <CardDescription>Las configuraciones guardadas limitan la captura y el listado personal, también para ADMIN. Los anexos existentes conservan su autoría y sus archivos. ADMIN puede seguir administrando permisos.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {error && <div role="alert" className="rounded border border-red-300 p-3 text-red-700">{error}
-          <Button variant="outline" className="ml-3" onClick={() => setRecarga(valor => valor + 1)}>Reintentar</Button>
+          <Button variant="outline" className="ml-3" onClick={() => usuarioId ? setRecargaConfig(valor => valor + 1) : setRecarga(valor => valor + 1)}>Reintentar</Button>
         </div>}
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="usuario-habilitacion">Usuario</Label>
-            <Select value={usuarioId} onValueChange={seleccionarUsuario} disabled={cargando || !listo || !!error}>
+            <Select value={usuarioId} onValueChange={seleccionarUsuario} disabled={cargando || guardando}>
               <SelectTrigger id="usuario-habilitacion"><SelectValue placeholder={cargando ? "Cargando usuarios…" : "Selecciona un usuario"} /></SelectTrigger>
               <SelectContent>{usuarios.map(user => <SelectItem key={user.id} value={String(user.id)}>{user.username} · ID {user.id}</SelectItem>)}</SelectContent>
             </Select>
@@ -126,7 +165,7 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
             <Select value={categoriaId} onValueChange={setCategoriaId}>
               <SelectTrigger id="categoria-habilitacion"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="__all__">Todas las categorías</SelectItem>
-                {categoria_anexos.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.nombre_categoria}</SelectItem>)}
+                {categorias.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.nombre_categoria}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -136,8 +175,13 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
           </div>
         </div>
         {!cargando && !error && usuarios.length === 0 && <p>No hay usuarios disponibles.</p>}
-        {!usuarioId ? <p className="text-sm text-gray-600">Selecciona un usuario para configurar sus anexos, incluso si aún no ha creado ninguno.</p> : <>
-          <p className="text-sm text-gray-600">{modificada ? "Vista previa con cambios sin guardar." : "Configuración de prueba guardada."} Pendientes = claves habilitadas que aún no están completadas. Los conteos por clave no duplican registros y excluyen anexos eliminados.</p>
+        {!usuarioId ? <p className="text-sm text-gray-600">Selecciona un usuario para configurar sus anexos, incluso si aún no ha creado ninguno.</p> : !listo ? <p role="status">{error ? "No se puede editar hasta cargar la configuración." : "Cargando configuración…"}</p> : <>
+          <p className="text-sm text-gray-600">{config?.configurado ? `Configuración confirmada · revisión ${config.revision}.` : "Pendiente de configurar."} {config?.modo === "gradual" ? "En modo gradual, los usuarios pendientes conservan la captura; guardar activa la restricción para este usuario." : "Modo estricto: los usuarios sin configuración no pueden capturar."} {modificada && "Hay cambios sin guardar."} Pendientes = claves habilitadas que aún no están completadas. Los conteos por clave no duplican registros y excluyen anexos eliminados.</p>
+          {conflicto && <div role="alert" className="rounded border border-amber-400 p-3">Otro administrador guardó cambios. Tu selección sigue visible; recarga la versión vigente antes de continuar.
+            <Button variant="outline" className="ml-3" onClick={() => {
+              if (window.confirm("¿Descartar tus cambios y cargar la configuración vigente?")) setRecargaConfig(value => value + 1);
+            }}>Recargar configuración</Button>
+          </div>}
           {cargandoAnexos ? <p role="status">Cargando conteos de anexos…</p> : <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
             {[
               ["Registros del usuario", resumen.registros], ["Claves habilitadas", resumen.habilitadas],
@@ -146,12 +190,12 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
             ].map(([label, value]) => <div key={label} className="rounded border p-3"><p className="text-sm text-gray-600">{label}</p><p className="text-2xl font-semibold">{value}</p></div>)}
           </div>}
           <div className="flex flex-wrap gap-3">
-            <Button onClick={guardar} disabled={!modificada || !listo || !!error}>Guardar prueba</Button>
-            <Button variant="outline" disabled={!modificada} onClick={() => setClaves(asignaciones[usuarioId] ?? [])}>Descartar cambios</Button>
+            <Button variant="outline" onClick={cargarPropuesta} disabled={guardando || conflicto}>Sugerir desde anexos existentes</Button>
+            <Button variant="outline" disabled={!modificada || guardando} onClick={() => { setClaves(config?.claves ?? []); setMotivo(""); }}>Descartar cambios</Button>
           </div>
-          <div className="max-h-[600px] space-y-4 overflow-y-auto pr-2">
-            {categoria_anexos.map(categoria => {
-              const items = listaVisible.filter(item => item.id_categoria === categoria.id);
+          <fieldset disabled={guardando || conflicto} className="max-h-[600px] space-y-4 overflow-y-auto pr-2">
+            {categorias.map(categoria => {
+              const items = listaVisible.filter(item => item.categoria_id === categoria.id);
               if (!items.length) return null;
               const seleccionadas = items.filter(item => claves.includes(item.clave)).length;
               return <fieldset key={categoria.id} className="rounded border p-4">
@@ -170,7 +214,22 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
               </fieldset>;
             })}
             {!listaVisible.length && <p>No hay claves con estructura para estos filtros.</p>}
+          </fieldset>
+          <div className="space-y-2">
+            <Label htmlFor="motivo-permisos">Motivo de la configuración</Label>
+            <Input id="motivo-permisos" value={motivo} maxLength={500} disabled={guardando || conflicto} onChange={event => setMotivo(event.target.value)} placeholder="Explica la asignación o el cambio (mínimo 5 caracteres)" />
+            <Button onClick={guardar} disabled={guardando || conflicto || !listo || !!error || motivo.trim().length < 5 || (!modificada && !!config?.configurado)}>
+              {guardando ? "Guardando…" : "Guardar y aplicar permisos"}
+            </Button>
           </div>
+          <details>
+            <summary className="cursor-pointer font-medium">Historial de cambios (últimos 20)</summary>
+            {!historial.length ? <p className="mt-2 text-sm">Sin configuraciones confirmadas.</p> : <ul className="mt-3 space-y-3 text-sm">{historial.map(cambio => <li className="rounded border p-3" key={cambio.revision}>
+              <p>Revisión {cambio.revision} · ADMIN ID {cambio.actor_id} · {new Date(cambio.fecha).toLocaleString("es-MX")}</p>
+              <p>{cambio.motivo}</p><p>Agregadas: {cambio.nuevas.filter(clave => !cambio.anteriores.includes(clave)).join(", ") || "Ninguna"}</p>
+              <p>Retiradas: {cambio.anteriores.filter(clave => !cambio.nuevas.includes(clave)).join(", ") || "Ninguna"}</p>
+            </li>)}</ul>}
+          </details>
         </>}
       </CardContent>
     </Card>

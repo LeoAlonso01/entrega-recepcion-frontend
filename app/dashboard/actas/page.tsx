@@ -394,7 +394,6 @@ export default function ActasPage() {
             "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
-            ...anexo,
             acta_id: acta.id,
           }),
         })

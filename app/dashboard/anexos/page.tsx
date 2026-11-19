@@ -2,6 +2,7 @@
 
 import { categoria_anexos, claves_anexos, obtenerCategoriaPorClave } from "@/lib/anexosCatalogo"
 import HabilitacionAnexos from "@/components/HabilitacionAnexos"
+import { usePermisosAnexos, clavePermitida, filtrarAnexosAsignados } from "@/lib/usePermisosAnexos"
 import type React from "react"
 import { useForm, SubmitHandler } from "react-hook-form"
 import { useState, useEffect, useMemo } from "react"
@@ -1427,6 +1428,8 @@ export default function AnexosPage() {
   // (tabs, selección de categoría, archivo cargado, vista previa, filtrado, paginación, diálogo, etc.)
   ///////////////////////////////////////////////////////////////////////////////////////////
   const [activeTab, setActiveTab] = useState<string>("anexos")
+  const [permisosSinGuardar, setPermisosSinGuardar] = useState(false);
+  const permisosCaptura = usePermisosAnexos(userid, activeTab);
   const router = useRouter()
   const [selectedCategory, setSelectedCategory] = useState<string>("__all__")
   const [categoryResetKey, setCategoryResetKey] = useState<number>(0)
@@ -1451,7 +1454,7 @@ export default function AnexosPage() {
   const [nombresUnidades, setNombresUnidades] = useState<Record<number, string>>({});
   const [cargaInicialPendiente, setCargaInicialPendiente] = useState(true);
   const [recargasPendientes, setRecargasPendientes] = useState(0);
-  const isLoading = cargaInicialPendiente || recargasPendientes > 0;
+  const isLoading = cargaInicialPendiente || recargasPendientes > 0 || permisosCaptura.cargando;
 
   // Filtros combinables (ADMIN - Anexos por Usuario)
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("__all__");
@@ -1607,7 +1610,7 @@ export default function AnexosPage() {
 
   const visibleAnexos = useMemo(() => {
     const filtrados = filtrarAnexosPorContexto(
-      todosLosAnexos,
+      filtrarAnexosAsignados(todosLosAnexos, permisosCaptura.permisos),
       userid,
       unidadResponsable,
       unidadesHistorialIds,
@@ -1619,7 +1622,7 @@ export default function AnexosPage() {
     }
 
     return filtrados;
-  }, [todosLosAnexos, userid, unidadResponsable, unidadesHistorialIds, verHistorialUnidad, selectedCategory]);
+  }, [todosLosAnexos, userid, unidadResponsable, unidadesHistorialIds, verHistorialUnidad, selectedCategory, permisosCaptura.permisos]);
 
   useEffect(() => {
     if (activeTab === "anexos" && userid > 0 && !cargaInicialPendiente) {
@@ -1766,6 +1769,11 @@ export default function AnexosPage() {
   // - decide POST o PUT según modo edición
   // - sincroniza estado local con la respuesta
   const onSubmit: SubmitHandler<IFormInput> = async (data) => {
+    const vigentes = await permisosCaptura.refrescar();
+    if (!clavePermitida(vigentes, data.clave) || (editingAnexo && !clavePermitida(vigentes, editingAnexo.clave))) {
+      toast.error("No tienes permiso para capturar esta clave o no fue posible comprobarlo. Tus datos siguen en el formulario.");
+      return;
+    }
     // Aseguramos que `datos` sea un array válido
     const datosArray = Array.isArray(data.datos) ? data.datos : [data.datos];
     const datosValidos = datosArray.length > 0 && (
@@ -1808,8 +1816,8 @@ export default function AnexosPage() {
     const payload = {
       clave: data.clave,
       categoria: data.categoria,
-      creador_id: userid,
-      unidad_responsable_id: unidadResponsable,
+      creador_id: editingAnexo?.creador_id ?? userid,
+      unidad_responsable_id: editingAnexo?.unidad_responsable_id ?? unidadResponsable,
       fecha_creacion: new Date(data.fecha_creacion).toISOString(),
       estado: data.estado,
       datos: datosArray,
@@ -2025,6 +2033,8 @@ export default function AnexosPage() {
 
   // manejar el cambio de pestaña Tab
   const handleTabChange = (value: string) => {
+    if (activeTab === "habilitarAnexos" && value !== activeTab && permisosSinGuardar &&
+      !window.confirm("Hay cambios de permisos sin guardar. ¿Salir y descartarlos?")) return;
     setActiveTab(value)
   }
 
@@ -2060,7 +2070,7 @@ export default function AnexosPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
-        body: JSON.stringify({ ...anexoParaActualizar, estado: nuevoEstado }),
+        body: JSON.stringify({ estado: nuevoEstado }),
       });
 
       if (!response.ok) {
@@ -2095,6 +2105,8 @@ export default function AnexosPage() {
 
   // manejo de edicion de anexos por usuario y por unidad responsable
   const canEdit = (anexo: Anexo): boolean => {
+    if (!permisosCaptura.puedeCapturar(anexo.clave)) return false;
+    if (userrole !== "ADMIN" && Number(anexo.creador_id) !== Number(userid)) return false;
     // Si el anexo ya está cerrado, nadie puede editar
     if (anexo.estado === "Completado") return false;
 
@@ -2140,11 +2152,15 @@ export default function AnexosPage() {
                 <TabsTrigger value="anexosPorUsuario">Anexos por usuario</TabsTrigger>
               )}
               {userrole === "ADMIN" && (
-                <TabsTrigger value="habilitarAnexos">Habilitar anexos · Prueba</TabsTrigger>
+                <TabsTrigger value="habilitarAnexos">Habilitar anexos</TabsTrigger>
               )}
             </TabsList>
 
             <TabsContent value="anexos" className="mt-4 sm:mt-6 md:mt-8">
+              {permisosCaptura.error && <div role="alert" className="mb-4 rounded border border-red-300 p-3 text-sm text-red-700">
+                No se pudo consultar tu configuración. El listado permanecerá oculto hasta verificar tus claves asignadas.
+                <Button variant="outline" className="ml-2" onClick={() => { void permisosCaptura.refrescar(); }}>Reintentar</Button>
+              </div>}
 
               <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Stats Cards */}
@@ -2260,7 +2276,7 @@ export default function AnexosPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__all__">Todas las categorías</SelectItem>
-                        {categoria_anexos.map((categoria) => (
+                        {categoria_anexos.filter(categoria => claves_anexos.some(clave => clave.id_categoria === categoria.id && permisosCaptura.puedeCapturar(clave.clave))).map((categoria) => (
                           <SelectItem key={categoria.id} value={categoria.nombre_categoria}>
                             {categoria.nombre_categoria}
                           </SelectItem>
@@ -2481,7 +2497,18 @@ export default function AnexosPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  {permisosCaptura.error && <div role="alert" className="mb-4 rounded border border-red-300 p-3 text-sm text-red-700">
+                    No se pudieron verificar los permisos: {permisosCaptura.error}
+                    <Button type="button" variant="outline" className="ml-2" onClick={() => { void permisosCaptura.refrescar(); }}>Reintentar</Button>
+                  </div>}
+                  {!permisosCaptura.cargando && !permisosCaptura.error && !permisosCaptura.permisos?.sin_restriccion && !permisosCaptura.permisos?.claves.length && (
+                    <p role="status" className="mb-4 rounded border p-3 text-sm">No tienes claves habilitadas para capturar. Solicita la asignación al administrador. Tus anexos existentes siguen disponibles para consulta.</p>
+                  )}
+                  {editingAnexo && !permisosCaptura.cargando && !permisosCaptura.puedeCapturar(editingAnexo.clave) && (
+                    <p role="alert" className="mb-4 text-sm text-amber-700">Ya no tienes habilitada la clave de este anexo. Tus cambios siguen visibles, pero no puedes guardarlos.</p>
+                  )}
+                  <form onSubmit={handleSubmit(onSubmit)}>
+                    <fieldset className="space-y-6" disabled={permisosCaptura.cargando || !!permisosCaptura.error || (!!editingAnexo && !permisosCaptura.puedeCapturar(editingAnexo.clave))}>
                     {/* Categoría (selector) */}
                     <div className="space-y-2 col-span-6 grid-cols-3">
                       <Label>Categoría</Label>
@@ -2498,7 +2525,7 @@ export default function AnexosPage() {
                           }}
                         >
                           <option value="">Selecciona una categoría</option>
-                          {categoria_anexos.map((c) => (
+                          {categoria_anexos.filter(c => claves_anexos.some(k => k.id_categoria === c.id && permisosCaptura.puedeCapturar(k.clave))).map((c) => (
                             <option key={c.id} value={c.nombre_categoria}>
                               {c.nombre_categoria}
                             </option>
@@ -2533,7 +2560,7 @@ export default function AnexosPage() {
                         >
                           <option value="">Selecciona una clave</option>
                           {claves_anexos
-                            .filter(k => k.id_categoria === categoria_anexos.find(c => c.nombre_categoria === watch("categoria"))?.id)
+                            .filter(k => k.id_categoria === categoria_anexos.find(c => c.nombre_categoria === watch("categoria"))?.id && permisosCaptura.puedeCapturar(k.clave))
                             .map((k) => (
                               <option key={k.id} value={k.clave}>
                                 {k.clave} - {k.descripcion}
@@ -2634,6 +2661,7 @@ export default function AnexosPage() {
                                     Este anexo requiere un archivo PDF.
                                   </p>
                                   <PdfUploader
+                                    clave={watch("clave")}
                                     onUploadSuccess={(fileUrl) => {
                                       const datosPDF = [{ url: fileUrl }];
                                       setDatos(datosPDF);
@@ -3144,6 +3172,7 @@ export default function AnexosPage() {
 
                     {/* si el usuario no tiene unidad responsable asignada */}
 
+                    </fieldset>
                   </form>
                 </CardContent>
               </Card>
@@ -3387,7 +3416,7 @@ export default function AnexosPage() {
             )}
             {userrole === "ADMIN" && (
               <TabsContent value="habilitarAnexos" className="mt-4 sm:mt-6 md:mt-8">
-                <HabilitacionAnexos adminId={userid} role={userrole} anexos={todosLosAnexos} cargandoAnexos={isLoading} />
+                <HabilitacionAnexos adminId={userid} role={userrole} anexos={todosLosAnexos} cargandoAnexos={isLoading} onDirtyChange={setPermisosSinGuardar} />
               </TabsContent>
             )}
             <Dialog
