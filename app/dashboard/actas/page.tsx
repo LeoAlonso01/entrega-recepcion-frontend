@@ -4,7 +4,9 @@ import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import FormActa from "@/components/forms/FormActa"
+import { useActaUsuarios } from "@/lib/useActaUsuarios"
+import ActaPreviewDialog, { type ActaDraft } from "@/components/forms/ActaPreviewDialog"
+import FormActa, { type ActaComision } from "@/components/forms/FormActa"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Plus, Edit, Trash2, Eye, FileSpreadsheet, FileText, Download, RotateCw, Search, Filter, Paperclip } from "lucide-react"
@@ -54,6 +56,10 @@ interface ActaForm {
     fecha: string;
     hora: string;
     comisionado?: string;
+    comisionados?: number[];
+    comisiones?: ActaComision[];
+    entrante_id?: number | null;
+    saliente_id?: number | null;
     oficio_comision?: string;
     fecha_oficio_comision?: string;
     entrante: string;
@@ -95,6 +101,8 @@ export default function ActasPage() {
   const [filteredActas, setFilteredActas] = useState<ActaForm[]>([])
   const [showForm, setShowForm] = useState(false)
   const [unidades, setUnidades] = useState<Unidad[]>([])
+  const { usuarios, usuariosCargando, usuariosError, getUsuarios } = useActaUsuarios(showForm)
+  const [pendingActa, setPendingActa] = useState<ActaDraft | null>(null)
   const [editingActa, setEditingActa] = useState<ActaForm | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -327,90 +335,15 @@ export default function ActasPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || 'Error al crear acta');
+        throw Object.assign(new Error(typeof errorData.detail === 'string' ? errorData.detail : errorData.message || 'Error al crear acta'), { status: response.status });
       }
 
       return await response.json();
     } catch (error: any) {
       console.error("Error al crear acta:", error);
-      toast.error(error.message || "Error al guardar el acta");
       throw error;
     }
   };
-
-  const getCurrentUserId = () => {
-    try {
-      const userRaw = localStorage.getItem("user")
-      if (!userRaw) return null
-
-      const parsedUser = JSON.parse(userRaw)
-      const userId = Number(parsedUser?.id)
-      return Number.isFinite(userId) ? userId : null
-    } catch {
-      return null
-    }
-  }
-
-  const vincularAnexosSinActa = async (acta: ActaForm) => {
-    const token = localStorage.getItem("token")
-    const userId = getCurrentUserId()
-
-    if (!token || !userId) {
-      return { vinculados: 0, errores: 0 }
-    }
-
-    const anexosResponse = await fetch(`${API_URL}/anexos`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-    })
-
-    if (!anexosResponse.ok) {
-      throw new Error("No se pudieron consultar anexos para vinculación automática")
-    }
-
-    const anexosData: Anexo[] = await anexosResponse.json()
-
-    const anexosParaVincular = anexosData.filter((anexo) => {
-      const coincideCreador = Number(anexo.creador_id) === userId
-      const coincideUnidad = Number(anexo.unidad_responsable_id) === Number(acta.unidad_responsable)
-      const sinActaAsignada = anexo.acta_id === null || anexo.acta_id === undefined
-
-      return coincideCreador && coincideUnidad && sinActaAsignada
-    })
-
-    if (anexosParaVincular.length === 0) {
-      return { vinculados: 0, errores: 0 }
-    }
-
-    const resultados = await Promise.allSettled(
-      anexosParaVincular.map(async (anexo) => {
-        const updateResponse = await fetch(`${API_URL}/anexos/${anexo.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            acta_id: acta.id,
-          }),
-        })
-
-        if (!updateResponse.ok) {
-          throw new Error(`No se pudo vincular anexo ${anexo.id}`)
-        }
-
-        return anexo.id
-      })
-    )
-
-    const vinculados = resultados.filter((resultado) => resultado.status === "fulfilled").length
-    const errores = resultados.length - vinculados
-
-    return { vinculados, errores }
-  }
 
   const handleSaveActa = async (formData: any) => {
     try {
@@ -422,23 +355,9 @@ export default function ActasPage() {
         setActas(actas.map(a => a.id === formData.id ? savedActa : a));
         toast.success("Acta actualizada correctamente");
       } else {
-        // Creación: elimina `id` si existe
         const { id, ...createData } = formData;
-        console.log("datos: ", createData);
-        savedActa = await createActa(createData);
-        const { vinculados, errores } = await vincularAnexosSinActa(savedActa)
-
-        setActas([...actas, savedActa]);
-
-        if (vinculados > 0) {
-          toast.success(`Acta creada y ${vinculados} anexo(s) vinculados automáticamente`)
-        } else {
-          toast.success("Acta creada correctamente")
-        }
-
-        if (errores > 0) {
-          toast.warning(`Se creo la acta, pero ${errores} anexo(s) no pudieron vincularse`)
-        }
+        setPendingActa(createData);
+        return;
       }
 
       setShowForm(false);
@@ -447,6 +366,17 @@ export default function ActasPage() {
       console.error("Error al guardar acta:", error);
       toast.error(error.message || "Error al guardar el acta");
     }
+  };
+
+  const confirmarCreacionActa = async (revision: string) => {
+    if (!pendingActa) return;
+    const savedActa: ActaForm = await createActa({ ...pendingActa, anexos_revision: revision });
+    setActas(prev => [...prev, savedActa]);
+    const vinculados = savedActa.anexos?.length || 0;
+    toast.success(vinculados > 0 ? `Acta creada y ${vinculados} anexo(s) asociados` : "Acta creada sin anexos");
+    setPendingActa(null);
+    setShowForm(false);
+    setEditingActa(null);
   };
 
   const getEstadoColor = (estado: string) => {
@@ -526,6 +456,8 @@ export default function ActasPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavbarWithBreadcrumb role="ADMIN" />
+      {pendingActa && <ActaPreviewDialog datos={pendingActa}
+        onCancel={() => setPendingActa(null)} onConfirm={confirmarCreacionActa} />}
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 lg:py-8">
         {/* Header Section */}
@@ -595,6 +527,10 @@ export default function ActasPage() {
           <FormActa
             acta={editingActa || undefined}
             unidades={unidades}
+            usuarios={usuarios}
+            usuariosCargando={usuariosCargando}
+            usuariosError={usuariosError}
+            onRetryUsuarios={getUsuarios}
             onCancel={() => {
               setShowForm(false);
               setEditingActa(null);

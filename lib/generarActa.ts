@@ -3,446 +3,175 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { imageToDataUrl } from "./helpPngPdf";
+import { normalizarActaPdf } from "./actaPdfData";
+import { textoInstitucional } from "./actaTextoInstitucional";
 
-const fechaActa = new Date().toLocaleDateString("es-MX", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-});
+export async function crearActaPdf(raw: Record<string, any>): Promise<jsPDF> {
+    const acta = normalizarActaPdf(raw);
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter", compress: true });
+    doc.setProperties({ title: `Acta ${acta.folio}`, subject: "Acta administrativa de entrega-recepción", author: "Universidad Michoacana de San Nicolás de Hidalgo" });
+    const logo = await imageToDataUrl("/logos/ESCUDO-UMSNH.jpg");
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
+    const margin = 18;
+    const usable = width - margin * 2;
+    const top = 39;
+    const bottom = height - 21;
+    const lineHeight = 5;
+    let y = top;
 
-// helper de cambio de página
-function checkPageBreak(doc: jsPDF, y: number) {
-
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const bottomMargin = 20;
-
-    if (y > pageHeight - bottomMargin) {
-        doc.addPage();
-        return 20;
-    }
-
-    return y;
-}
-
-function ensureSpaceForBlock(doc: jsPDF, y: number, requiredHeight: number) {
-
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const bottomMargin = 20;
-
-    if (y + requiredHeight > pageHeight - bottomMargin) {
-        doc.addPage();
-        return 25;
-    }
-
-    return y;
-}
-
-function drawSignatureBlock(
-    doc: jsPDF,
-    x: number,
-    y: number,
-    width: number,
-    title: string,
-    name: string
-) {
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-
-    const titleLines = doc.splitTextToSize(title, width);
-    doc.text(titleLines, x, y, { align: "center" });
-
-    const titleHeight = Array.isArray(titleLines) ? titleLines.length * 5 : 5;
-    const lineY = y + titleHeight + 6;
-    doc.line(x - width / 2, lineY, x + width / 2, lineY);
-
-    doc.setFontSize(11);
-    doc.text(name || "", x, lineY + 6, { align: "center" });
-}
-
-// motor de escritor de parrafos, tablas y demás contenido del acta
-function writeParagraph(
-    doc: jsPDF,
-    text: string,
-    x: number,
-    y: number,
-    maxWidth: number
-) {
-
-    const pageHeight = doc.internal.pageSize.getHeight()
-    const bottomMargin = 20
-
-    // calcular altura del texto
-    const textHeight = doc.getTextDimensions(text, { maxWidth }).h
-
-    // salto de página si es necesario
-    if (y + textHeight > pageHeight - bottomMargin) {
-        doc.addPage()
-        y = 25
-    }
-
-    doc.text(text, x, y, {
-        maxWidth: maxWidth,
-        align: "justify"
-    })
-
-    return y + textHeight + 4
-}
-
-function drawAnexoTable(doc: jsPDF, anexo: any, y: number, marginLeft: number, usableWidth: number) {
-
-    const pageHeight = doc.internal.pageSize.getHeight()
-
-    if (y > pageHeight - 40) {
-        doc.addPage()
-        y = 25
-    }
-
-    const col1 = marginLeft
-    const col2 = marginLeft + usableWidth * 0.60
-    const col3 = marginLeft + usableWidth * 0.75
-    const col4 = marginLeft + usableWidth * 0.85
-
-    const rowHeight = 8
-
-    doc.setFont("helvetica", "bold")
-    doc.rect(marginLeft, y, usableWidth, rowHeight)
-
-    doc.text("ANEXOS", col1 + 2, y + 5)
-    doc.text("CLAVE", col2 + 2, y + 5)
-    doc.text("NO.FOJAS", col3 + 2, y + 5)
-    doc.text("OBSERVACIONES", col4 + 2, y + 5)
-
-    y += rowHeight
-
-    doc.setFont("helvetica", "normal")
-
-    doc.rect(marginLeft, y, usableWidth, rowHeight)
-
-    doc.text(anexo.nombre, col1 + 2, y + 5)
-    doc.text(anexo.clave, col2 + 2, y + 5)
-
-    const fojas = anexo.datos ? anexo.datos.length : 0
-    doc.text(String(fojas), col3 + 2, y + 5)
-
-    doc.text(anexo.estado ?? "", col4 + 2, y + 5)
-
-    y += rowHeight + 6
-
-    return y
-}
-
-function resolveAnexoCategoria(anexo: any) {
-    const categoria = String(anexo?.categoria ?? "").trim();
-    if (categoria) return categoria;
-
-    const clave = String(anexo?.clave ?? "").trim().toUpperCase();
-    const prefijo = clave.replace(/\d+$/, "");
-
-    const categoriasPorPrefijo: Record<string, string> = {
-        ADI: "ARCHIVOS DOCUMENTALES E INFORMÁTICOS",
-        AG: "ASUNTOS GENERALES",
-        AR: "ASUNTOS RELEVANTES",
-        CF: "CONTROL Y FISCALIZACIÓN",
-        EO: "ORGANIZACIÓN",
-        IG: "INFORME DE GESTIÓN",
-        MJ: "MARCO JURÍDICO",
-        PPA: "TRANSPARENCIA",
-        PP: "PLANEACIÓN",
-        RF: "RECURSOS FINANCIEROS",
-        RH: "RECURSOS HUMANOS",
-        RRH: "RECURSOS HUMANOS",
-        RM: "RECURSOS MATERIALES",
+    const font = (bold = false, size = 10.5) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(size);
+        doc.setTextColor(25, 25, 25);
+    };
+    const nextPage = () => { doc.addPage(); y = top; };
+    const space = (required: number) => { if (y + required > bottom) nextPage(); };
+    const paragraph = (text: string, justify = true) => {
+        if (!text.trim()) return;
+        font();
+        const lines: string[] = doc.splitTextToSize(text, usable);
+        let offset = 0;
+        while (offset < lines.length) {
+            let available = Math.floor((bottom - y) / lineHeight);
+            if (available < Math.min(2, lines.length - offset)) { nextPage(); available = Math.floor((bottom - y) / lineHeight); }
+            let count = Math.min(available, lines.length - offset);
+            if (lines.length - offset - count === 1 && count > 2) count--;
+            doc.text(lines.slice(offset, offset + count), margin, y, { lineHeightFactor: lineHeight / (10.5 * 25.4 / 72), align: justify ? "justify" : "left", maxWidth: usable });
+            y += count * lineHeight;
+            offset += count;
+            if (offset < lines.length) nextPage();
+        }
+        y += 3;
+    };
+    const section = (title: string) => {
+        space(19);
+        font(true, 10.5);
+        doc.text(title, margin, y);
+        y += 9;
+    };
+    const identificacion = (ine: string) => ine ? `, quien se identifica con credencial del Instituto Nacional Electoral número ${ine}` : "";
+    const fecha = (value: string) => value ? ` de fecha ${value}` : "";
+    const hora = (value: string) => value ? `, a las ${value} horas` : "";
+    const rowsFirmas = (items: { title: string; name: string }[]) => {
+        const columnWidth = (usable - 16) / 2;
+        for (let i = 0; i < items.length; i += 2) {
+            const pair = items.slice(i, i + 2);
+            font();
+            const measured = pair.map(item => ({ ...item, lines: doc.splitTextToSize(item.name, columnWidth - 4) as string[] }));
+            const rowHeight = 34 + Math.max(...measured.map(item => item.lines.length)) * 4.8;
+            if (y + rowHeight > bottom) {
+                nextPage();
+                font(true);
+                doc.text("V. FIRMAS (CONTINUACIÓN)", margin, y);
+                y += 9;
+            }
+            measured.forEach((item, column) => {
+                const center = pair.length === 1 ? width / 2 : margin + columnWidth / 2 + column * (columnWidth + 16);
+                font(true, 9.5);
+                doc.text(item.title, center, y, { align: "center" });
+                doc.setDrawColor(70);
+                doc.setLineWidth(0.25);
+                doc.line(center - columnWidth / 2, y + 22, center + columnWidth / 2, y + 22);
+                font(false, 10);
+                doc.text(item.lines, center, y + 28, { align: "center", lineHeightFactor: 1.35 });
+            });
+            y += rowHeight + 4;
+        }
     };
 
-    return categoriasPorPrefijo[prefijo] ?? "";
+    paragraph(`Folio: ${acta.folio}`, false);
+    section("I. COMPARECENCIA");
+    paragraph(`Se levanta la presente Acta Administrativa de Entrega-Recepción de la unidad responsable denominada ${acta.unidad}, el día ${acta.fecha}${hora(acta.hora)}.`);
+    paragraph(`Comparece ${acta.saliente}, en su carácter de persona servidora pública saliente${identificacion(acta.ineSaliente)}${acta.domicilioSaliente ? `, con domicilio para notificaciones en ${acta.domicilioSaliente}` : ""}, quien hace entrega de la unidad${acta.finLabores ? ` y concluye sus labores el ${acta.finLabores}` : ""}.`);
+    paragraph(`Asimismo comparece ${acta.entrante}, en su carácter de persona servidora pública entrante${identificacion(acta.ineEntrante)}${acta.domicilioEntrante ? `, con domicilio para notificaciones en ${acta.domicilioEntrante}` : ""}, quien recibe la unidad${acta.inicioLabores ? ` e inicia sus labores el ${acta.inicioLabores}` : ""}.${acta.telefonoEntrante ? ` Teléfono de contacto: ${acta.telefonoEntrante}.` : ""}`);
+    const asignaciones: Record<string, string> = { nombramiento: "nombramiento", designacion: "designación", jerarquia: "jerarquía" };
+    const autoridades: Record<string, string> = { rectoria: "Rectoría", h_consejo: "H. Consejo" };
+    if (acta.nombramiento || acta.asignacion || acta.asignadoPor || acta.fechaNombramiento) {
+        paragraph(`La persona entrante asume las funciones de la unidad${acta.asignacion ? ` mediante ${asignaciones[acta.asignacion] || acta.asignacion}` : ""}${acta.nombramiento ? `, según documento número ${acta.nombramiento}` : ""}${fecha(acta.fechaNombramiento)}${acta.asignadoPor ? `, emitido por ${autoridades[acta.asignadoPor] || acta.asignadoPor}` : ""}.`);
+    }
+    if (acta.testigoSaliente) paragraph(`${acta.saliente} designa como testigo de entrega a ${acta.testigoSaliente}${identificacion(acta.ineTestigoSaliente)}.`);
+    if (acta.testigoEntrante) paragraph(`${acta.entrante} designa como testigo de recepción a ${acta.testigoEntrante}${identificacion(acta.ineTestigoEntrante)}.`);
+    acta.comisiones.forEach(comision => paragraph(`Interviene en este acto ${comision.nombre}, como persona comisionada por la Contraloría${comision.oficio ? ` mediante oficio ${comision.oficio}` : ""}${fecha(comision.fecha)}, para auxiliar en la formalización de la presente Acta Administrativa.`));
+
+    section("II. ENTREGA-RECEPCIÓN Y RELACIÓN DE ANEXOS");
+    paragraph(textoInstitucional[7].replace("el auditor comisionado", "la representación comisionada"));
+    paragraph(textoInstitucional[8].replace("del auditor comisionado", "de la representación comisionada"));
+    paragraph(`${acta.saliente} hace entrega de ${acta.unidad} a ${acta.entrante}, con la información, los recursos y los documentos que se relacionan en esta acta.`);
+    paragraph(textoInstitucional[10]);
+    paragraph(textoInstitucional[11]);
+    if (acta.anexos.length === 0) paragraph("No hay anexos asociados a esta acta.");
+    for (const [categoria, anexos] of acta.gruposAnexos) {
+        space(33);
+        autoTable(doc, {
+            startY: y,
+            margin: { top, bottom: height - bottom, left: margin, right: margin },
+            tableWidth: usable,
+            theme: "grid",
+            styles: { font: "helvetica", fontSize: 9, cellPadding: 2.5, lineColor: [185, 185, 185], lineWidth: 0.15, textColor: [25, 25, 25], overflow: "linebreak" },
+            headStyles: { fillColor: [240, 240, 240], textColor: [25, 25, 25], fontStyle: "bold" },
+            columnStyles: { 0: { cellWidth: 21 }, 1: { cellWidth: usable - 52 }, 2: { cellWidth: 31 } },
+            head: [[{ content: categoria, colSpan: 3 }], ["CLAVE", "DESCRIPCIÓN", "ESTADO"]],
+            body: anexos.map(anexo => [anexo.clave, anexo.descripcion, anexo.estado]),
+            rowPageBreak: "avoid",
+            showHead: "everyPage",
+        });
+        y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+    }
+    paragraph(`${acta.saliente}, persona servidora pública saliente, da curso a la entrega de ${acta.unidad} a ${acta.entrante}, persona servidora pública entrante.`);
+    paragraph(textoInstitucional[13]);
+    paragraph(`${acta.entrante} recibe, con las reservas de ley, de ${acta.saliente}, la información, los recursos y los documentos precisados en esta acta y sus anexos.`);
+    paragraph(`La documentación contable, financiera, administrativa y los expedientes generados durante cada administración deben quedar bajo resguardo y conservación en ${acta.unidad}, para los fines a que haya lugar.`);
+    paragraph(`Se deja asentado que la documentación para la integración del presente instrumento fue proporcionada por ${acta.saliente}, quien señala que los documentos originales y la información de soporte obran en las áreas administrativas de ${acta.unidad} para su cotejo y validación.`);
+    for (const key of [17, 18, 19, 20, 21] as const) paragraph(textoInstitucional[key]);
+
+    section("III. OBSERVACIONES");
+    paragraph(acta.observaciones || "No se registraron observaciones en el acta.", false);
+    section("IV. CIERRE DEL ACTA");
+    paragraph(`Leída la presente acta y enteradas las personas participantes de su contenido y alcance, se da por terminado el acto${acta.fechaCierre ? ` el día ${acta.fechaCierre}` : ""}${hora(acta.horaCierre)}, firmando al margen y al calce quienes intervinieron.${!acta.fechaCierre || !acta.horaCierre ? " No se registró la fecha o la hora de cierre completa en el acta." : ""}`);
+
+    const firmasPrincipales = [{ title: "ENTREGA", name: acta.saliente }, { title: "RECIBE", name: acta.entrante }];
+    const firmasTestigos = [
+        ...(acta.testigoSaliente ? [{ title: "TESTIGO DE ENTREGA", name: acta.testigoSaliente }] : []),
+        ...(acta.testigoEntrante ? [{ title: "TESTIGO DE RECEPCIÓN", name: acta.testigoEntrante }] : []),
+    ];
+    const firmasComisiones = acta.comisiones.map(comision => ({ title: "POR LA CONTRALORÍA", name: comision.nombre }));
+    font();
+    let espacioFirmas = 9;
+    for (const bloque of [firmasPrincipales, firmasTestigos, firmasComisiones]) {
+        for (let i = 0; i < bloque.length; i += 2) {
+            const lineas = bloque.slice(i, i + 2).map(item => doc.splitTextToSize(item.name, (usable - 16) / 2 - 4).length);
+            espacioFirmas += 38 + Math.max(...lineas) * 4.8;
+        }
+    }
+    space(espacioFirmas <= bottom - top ? espacioFirmas : 63);
+    section("V. FIRMAS");
+    rowsFirmas(firmasPrincipales);
+    rowsFirmas(firmasTestigos);
+    rowsFirmas(firmasComisiones);
+
+    const pages = doc.getNumberOfPages();
+    for (let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.addImage(logo, "JPEG", margin, 10, 16, 16);
+        font(true, 9.5);
+        doc.text("UNIVERSIDAD MICHOACANA DE SAN NICOLÁS DE HIDALGO", width / 2 + 9, 15, { align: "center" });
+        font(true, 10.5);
+        doc.text("ACTA ADMINISTRATIVA DE ENTREGA-RECEPCIÓN", width / 2 + 9, 22, { align: "center" });
+        doc.setDrawColor(145);
+        doc.setLineWidth(0.2);
+        doc.line(margin, 31, width - margin, 31);
+        doc.line(margin, height - 16, width - margin, height - 16);
+        font(false, 8.5);
+        const folioLines: string[] = doc.splitTextToSize(`Folio: ${acta.folio}`, usable - 42);
+        doc.text(folioLines.slice(0, 2), margin, height - 11, { lineHeightFactor: 1.15 });
+        doc.text(`Página ${i} de ${pages}`, width - margin, height - 11, { align: "right" });
+    }
+    return doc;
 }
 
-export const generarActa = async (actaData: any, options?: { preview?: boolean }) => {
-
-    const doc = new jsPDF("p", "mm", "letter");
-
-    // Cargar logos
-    const [logoIzq] = await Promise.all([
-        imageToDataUrl("/logos/ESCUDO-UMSNH.jpg"),
-    ]);
-
-    // Dibujar logos
-    doc.addImage(logoIzq, "JPEG", 15, 12, 22, 22);
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    const marginLeft = 18;
-    const marginRight = 18;
-
-    const usableWidth = pageWidth - marginLeft - marginRight;
-
-    let y = 20;
-
-    // TITULO
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-
-    doc.text(
-        "UNIVERSIDAD MICHOACANA DE SAN NICOLÁS DE HIDALGO",
-        pageWidth / 2,
-        y,
-        { align: "center" }
-    );
-
-    y += 10;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-
-    doc.text(
-        "ACTA ADMINISTRATIVA DE ENTREGA RECEPCIÓN",
-        pageWidth / 2,
-        y,
-        { align: "center" }
-    );
-
-    y += 10;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-
-    const nombreEntrante = actaData.entrante || actaData.entrante?.nombre || actaData.entrante?.name || "";
-    const nombreSaliente = actaData.saliente || actaData.saliente?.nombre || actaData.saliente?.name || "";
-    const nombreTestigoEntrante = actaData.testigo_entrante || actaData.testigo_entrante?.nombre || actaData.testigo_entrante?.name || "";
-    const nombreTestigoSaliente = actaData.testigo_saliente || actaData.testigo_saliente?.nombre || actaData.testigo_saliente?.name || "";
-    const nombreComisionado = actaData.comisionado || actaData.comisionado?.nombre || actaData.comisionado?.name || "";
-    const nombreUnidad = actaData.unidad_responsable || actaData.unidad_responsable?.nombre || actaData.unidad_responsable?.name || actaData.unidad || "";
-    const oficioComision = actaData.oficio_comision || "";
-    const fechaOficioComision = actaData.fecha_oficio_comision || "";
-    const nombramiento = actaData.nombramiento || "";
-    const fechaNombramiento = actaData.fecha_nombramiento || "";
-    const asignacion = actaData.asignacion || "";
-    const asignadoPor = actaData.asignado_por || "";
-    const fechaInicioLabores = actaData.fecha_inicio_labores || "";
-    const fechaFinLabores = actaData.fecha_fin_labores || "";
-    const domicilioEntrante = actaData.domicilio_entrante || "";
-    const domicilioSaliente = actaData.domicilio_saliente || "";
-    const ineEntrante = actaData.ine_entrante || "";
-    const ineSaliente = actaData.ine_saliente || "";
-    const ineTestigoEntrante = actaData.ine_testigo_entrante || "";
-    const ineTestigoSaliente = actaData.ine_testigo_saliente || "";
-    const ineComisionado = actaData.ine_comisionado || "";
-    const fechaCierre = actaData.fecha_cierre_acta || actaData.fecha || "";
-    const horaCierre = actaData.hora_cierre_acta || actaData.hora || "";
-
-    const p1 = `Se levanta la presente Acta Administrativa con motivo de la Entrega-Recepción de la Unidad Académica denominada ${nombreUnidad}, en la ciudad de Morelia, siendo las ${horaCierre} horas del día ${fechaActa}. Para tal efecto se reunieron en las oficinas que ocupa el Departamento de Auditoría Interna, ubicadas en Av. Francisco J. Mújica s/n, Antigua Torre de Rectoría, colonia Felícitas del Río, código postal 58040, en la ciudad de Morelia, Michoacán.`
-
-    const p2 = `Comparecen el C. ${nombreEntrante}, quien se identifica con credencial expedida por el Instituto Nacional Electoral número ${ineEntrante} y señala como domicilio para recibir notificaciones o documentos relacionados con la presente acta el ubicado en ${domicilioEntrante}, quien al día ${fechaInicioLabores || ""} deja de ocupar el cargo de Secretario Académico.`
-
-    const p3 = `Asimismo comparece el C. ${nombreSaliente}, quien se identifica con credencial expedida por el Instituto Nacional Electoral número ${ineSaliente} y señala como domicilio para recibir notificaciones o documentos relacionados con la presente acta el ubicado en ${domicilioSaliente}, quien a partir del día ${fechaFinLabores || ""} recibe el área en calidad de Secretario Académico.`
-
-    const p4 = `Lo anterior en atención a la designación de que fue objeto por parte de la autoridad correspondiente, a través del nombramiento ${nombramiento || ""}${fechaNombramiento ? ` de fecha ${fechaNombramiento}` : ""}, para asumir las funciones que le han sido conferidas, con fundamento en lo dispuesto por la normatividad aplicable, con actividades propias de un trabajador de confianza en términos de lo dispuesto en la legislación vigente.`
-
-    const p5 = `Acto seguido, el C. ${nombreTestigoEntrante} y el C. ${nombreTestigoSaliente}, en su carácter de servidor público saliente y entrante respectivamente, designan como testigos de asistencia a las personas que se identificaron con credencial oficial número ${ineTestigoEntrante} y ${ineTestigoSaliente} expedidas por el Instituto Nacional Electoral.`
-
-    const p6 = `También se encuentra presente en este acto la C. ${nombreComisionado}, quien se identifica con credencial oficial número ${ineComisionado} expedida por el Instituto Nacional Electoral, en su carácter de auditor comisionado por el Departamento de Auditoría Interna, mediante oficio ${oficioComision || ""}${fechaOficioComision ? ` de fecha ${fechaOficioComision}` : ""}, para intervenir en la presente Acta Administrativa.`
-
-    const p7 = `Continuando con la parte principal de esta Acta y con fundamento en lo dispuesto por los artículos 1, 3 fracción XXI, 8, 9 fracción II, 10, 49 fracciones V y VII, 63 y 71 segundo párrafo de la Ley General de Responsabilidades Administrativas, el auditor comisionado exhorta a los que en ella intervienen a cumplir con la función pública y con las responsabilidades que como servidores públicos les corresponden.`
-
-    const p8 = `Asimismo se hace del conocimiento que la presencia del auditor comisionado no implica la realización de una revisión, teniendo únicamente como finalidad auxiliar en la formalización del acto administrativo de Entrega-Recepción.`
-
-    const p9 = `El C. ${nombreEntrante} hace entrega de la ${nombreUnidad}, área en la que fungió como titular, por lo que de conformidad hace entrega y se compromete a realizar las acciones que contempla la normatividad señalada respecto de su cargo en la administración de dicha secretaría.`
-
-    const p10 = `Para efectos de la presente Acta se entenderá que el servidor público entrante es la persona que recibe y el servidor público saliente es quien realiza la entrega.`
-
-    const p11 = `Acreditadas las personalidades con que comparecen los participantes en la presente Acta, se procede a entregar los anexos que contienen la información relacionada con los asuntos de su competencia, así como los recursos asignados para el ejercicio de sus atribuciones legales, por lo que para estos efectos se hace entrega conforme al siguiente orden.`
-
-    const p12 = `Acto seguido, el C. ${nombreSaliente}, Servidor Público Saliente, dio curso a la entrega de la ${nombreUnidad} al C. ${nombreEntrante}, Servidor Público Entrante.`
-
-    const p13 = `Los informes, anexos y documentos que se mencionan son parte integrante de la misma y se firman en todas sus fojas para su identificación y efectos legales a que haya lugar, las cuales están foliadas en forma consecutiva por la persona designada para elaborarla y verificarla.`
-
-    const p14 = `El C. ${nombreEntrante}, recibe con las reservas de la Ley, del C. ${nombreSaliente}, toda la información, recursos y documentos que se precisan en el contenido de la presente Acta y sus anexos.`
-
-    const p15 = `Respecto a la propiedad de documentación y expedientes: Tomando la palabra el Auditor comisionado hace del conocimiento a las partes que la documentación contable, financiera, administrativa y expedientes generados durante cada administración deben quedar bajo resguardo y conservación en la ${nombreUnidad}, para los fines a que haya lugar.`
-
-    const p16 = `Origen de la documentación soporte y de evidencia para integración del Acta de Entrega-Recepción: Se deja asentado que la documentación para la integración del presente instrumento fue proporcionada por el C. ${nombreSaliente}, quien en uso de la palabra señala que los documentos originales e información contenida en diversos documentos que se formularon para integrarlos en esta Acta obran en las áreas administrativas de la ${nombreUnidad} para su cotejo y validación.`
-
-    const p17 = `Seguimiento del servidor público saliente derivado de su función pública: De conformidad con la normatividad aplicable, el servidor público saliente que haya sido responsable de la ejecución financiera y del control de los ingresos y egresos del gasto público que deja de ocupar su cargo universitario deberá ser informado por la autoridad correspondiente para la atención y seguimiento de las auditorías dentro de los plazos señalados.`
-
-    const p18 = `De la verificación física y validación de información: El servidor público que recibe tiene la obligación de revisar la información contenida en los rubros y anexos inherentes a su nuevo encargo, de la cual podrá solicitar por escrito las aclaraciones o precisiones que considere pertinentes a quien le entregó dentro de los treinta días hábiles siguientes al de la firma del Acta; el servidor público que entregó tendrá la obligación de dar respuesta a las mismas en un plazo igual contado a partir del requerimiento.`
-
-    const p19 = `Término prudencial establecido para las observaciones y aclaraciones de la verificación física de la información: El Departamento de Auditoría Interna establece un término prudencial de treinta días hábiles contados a partir de la conclusión de los plazos señalados anteriormente; en caso de existir observaciones o aclaraciones sobre la información y documentación soporte del Acta deberá hacerse del conocimiento por escrito a las oficinas que se consideren competentes para los efectos conducentes.`
-
-    const p20 = `El presente instrumento no libera a las partes que aquí intervienen de su responsabilidad por los actos u omisiones en que hubieran incurrido en el ejercicio de sus funciones, mismas que con posterioridad pudieran llegar a determinarse por la autoridad competente.`
-
-    const p21 = `Los términos y condiciones que en el Acta se establecen quedan bajo la aceptación y responsabilidad de quien entrega y de quien recibe.`
-
-    const p22 = `No habiendo otro hecho que hacer constar, leída que fue la presente Acta y enterados de su contenido y alcance, siendo las ${horaCierre} horas del día ${fechaCierre}, se da por terminada, firmando al margen y al calce cada una de sus hojas todos los que en ella intervinieron y quisieron hacerlo.`
-    // -------- PARRAFO 1 --------
-
-    y = writeParagraph(doc, p1, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 2 --------
-
-    y = writeParagraph(doc, p2, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 3 --------
-
-    y = writeParagraph(doc, p3, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 4 --------
-    y = writeParagraph(doc, p4, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 5 --------
-    y = writeParagraph(doc, p5, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 6 --------
-    y = writeParagraph(doc, p6, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 7 --------
-    y = writeParagraph(doc, p7, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 8 --------
-    y = writeParagraph(doc, p8, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 9 --------
-    y = writeParagraph(doc, p9, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 10 --------
-    y = writeParagraph(doc, p10, marginLeft, y, usableWidth);
-
-    // -------- PARRAFO 11 --------
-    y = writeParagraph(doc, p11, marginLeft, y, usableWidth);
-
-  // -------- TABLAS DE ANEXOS --------
-
-const rowHeight = 8
-
-actaData.anexos?.forEach((anexo: any) => {
-
-    y = checkPageBreak(doc, y)
-
-    const fojas = anexo.datos ? anexo.datos.length : 0
-
-    // ----- TITULO DEL ANEXO (FUERA DE TABLA) -----
-
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(11)
-
-    doc.text(resolveAnexoCategoria(anexo), marginLeft, y)
-
-    y += 6
-    y = checkPageBreak(doc, y)
-
-    // columnas
-    const colClave = marginLeft
-    const colFojas = marginLeft + usableWidth * 0.35
-    const colObs = marginLeft + usableWidth * 0.55
-
-    // ----- ENCABEZADO TABLA -----
-
-    doc.setFont("helvetica", "bold")
-
-    doc.rect(marginLeft, y, usableWidth, rowHeight)
-
-    doc.text("CLAVE", colClave + 2, y + 5)
-    doc.text("NO.FOJAS", colFojas + 2, y + 5)
-    doc.text("OBSERVACIONES", colObs + 2, y + 5)
-
-    y += rowHeight
-    y = checkPageBreak(doc, y)
-
-    // ----- FILA DATOS -----
-
-    doc.setFont("helvetica", "normal")
-
-    doc.rect(marginLeft, y, usableWidth, rowHeight)
-
-    doc.text(anexo.clave || "-", colClave + 2, y + 5)
-    doc.text(String(fojas), colFojas + 2, y + 5)
-    doc.text(anexo.estado || "", colObs + 2, y + 5)
-
-    y += rowHeight + 10
-
-})
-
-y = checkPageBreak(doc, y)
-
-    // -------- Parrafos despues de las tablas --------
-
-    y = writeParagraph(doc, p12, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p13, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p14, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p15, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p16, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p17, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p18, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p19, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p20, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p21, marginLeft, y, usableWidth);
-
-    y = writeParagraph(doc, p22, marginLeft, y, usableWidth);
-
-
-    // -------- FIRMAS --------
-
-    y = ensureSpaceForBlock(doc, y, 65);
-
-    const firmaY = y;
-
-    const leftCenterX = marginLeft + 30;
-    const rightCenterX = pageWidth - marginRight - 30;
-    const signatureWidth = 60;
-
-    drawSignatureBlock(doc, leftCenterX, firmaY, signatureWidth, "ENTREGA:", actaData.saliente || "");
-    drawSignatureBlock(doc, rightCenterX, firmaY, signatureWidth, "RECIBE:", actaData.entrante || "");
-    drawSignatureBlock(doc, leftCenterX, firmaY + 34, signatureWidth, "TESTIGO DE ENTREGA:", actaData.testigo_saliente || "");
-    drawSignatureBlock(doc, rightCenterX, firmaY + 34, signatureWidth, "TESTIGO DE RECEPCIÓN:", actaData.testigo_entrante || "");
-
-    y = firmaY + 74;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text("POR LA CONTRALORÍA", pageWidth / 2, y, { align: "center" });
-
-    y += 15;
-
-    doc.line(pageWidth / 2 - 45, y, pageWidth / 2 + 45, y);
-
-    y += 6;
-
-    doc.setFontSize(11);
-    doc.text(actaData.comisionado || "", pageWidth / 2, y, { align: "center" });
-
-    // -------- NUMERACIÓN DE PÁGINAS --------
-
-    const totalPages = doc.getNumberOfPages();
-
-    for (let i = 1; i <= totalPages; i++) {
-
-        doc.setPage(i);
-
-        doc.setFontSize(10);
-
-        doc.text(
-            `Página ${i} de ${totalPages}`,
-            pageWidth - 20,
-            pageHeight - 10,
-            { align: "right" }
-        );
-    }
-
-    // -------- DESCARGA / PREVIEW --------
-
-    if (options?.preview) {
-        return doc.output("blob");
-    }
-
-    doc.save(`acta_${actaData.folio}.pdf`);
+export const generarActa = async (actaData: Record<string, any>, options?: { preview?: boolean }) => {
+    const doc = await crearActaPdf(actaData);
+    if (options?.preview) return doc.output("blob");
+    doc.save(`acta_${String(actaData.folio).replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`);
 };
