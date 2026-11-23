@@ -92,3 +92,12 @@ it("normaliza nombres antiguos, claves heredadas y excluye anexos eliminados o d
   expect(() => normalizarActaPdf({ ...data, unidad_nombre: "", unidad_responsable: 49 })).toThrow("Completa");
   expect(() => fechaPdf("2026-02-30")).toThrow("Fecha");
 });
+
+it("usa únicamente fojas confirmadas y vigentes en el inventario del acta", () => {
+  const acta = normalizarActaPdf({ ...data, anexos: [
+    { ...data.anexos[0], fojas_reporte: 3, reporte_vigente: true },
+    { ...data.anexos[1], fojas_reporte: 9, reporte_vigente: false },
+  ] });
+  expect(acta.anexos.find(item => item.clave === "SGC01")?.fojas).toBe(3);
+  expect(acta.anexos.find(item => item.clave === "RM01")?.fojas).toBeNull();
+});

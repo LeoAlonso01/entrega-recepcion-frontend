@@ -12,6 +12,7 @@ export interface AnexoPdf {
   categoria: string;
   descripcion: string;
   estado: string;
+  fojas: number | null;
 }
 
 export function textoPdf(value: unknown): string {
@@ -71,7 +72,8 @@ export function normalizarActaPdf(raw: Record<string, any>) {
       const catalogKey = clave.replace(/^RRH(?=\d)/, "RH");
       const entrada = claves_anexos.find(entry => entry.clave === catalogKey);
       return { id: item.id as number | undefined, clave: clave || "Sin clave", categoria: obtenerCategoriaPorClave(clave) || textoPdf(item.categoria) || "Sin categoría",
-        descripcion: textoPdf(item.descripcion) || entrada?.descripcion || "Anexo asociado al acta", estado: textoPdf(item.estado) || "No registrado" };
+        descripcion: textoPdf(item.descripcion) || entrada?.descripcion || "Anexo asociado al acta", estado: textoPdf(item.estado) || "No registrado",
+        fojas: item.reporte_vigente === true && Number.isInteger(item.fojas_reporte) && Number(item.fojas_reporte) > 0 ? Number(item.fojas_reporte) : null };
     });
   const grupos = new Map<string, AnexoPdf[]>();
   for (const anexo of anexos) grupos.set(anexo.categoria, [...(grupos.get(anexo.categoria) || []), anexo]);

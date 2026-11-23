@@ -110,9 +110,9 @@ export async function crearActaPdf(raw: Record<string, any>): Promise<jsPDF> {
             theme: "grid",
             styles: { font: "helvetica", fontSize: 9, cellPadding: 2.5, lineColor: [185, 185, 185], lineWidth: 0.15, textColor: [25, 25, 25], overflow: "linebreak" },
             headStyles: { fillColor: [240, 240, 240], textColor: [25, 25, 25], fontStyle: "bold" },
-            columnStyles: { 0: { cellWidth: 21 }, 1: { cellWidth: usable - 52 }, 2: { cellWidth: 31 } },
-            head: [[{ content: categoria, colSpan: 3 }], ["CLAVE", "DESCRIPCIÓN", "ESTADO"]],
-            body: anexos.map(anexo => [anexo.clave, anexo.descripcion, anexo.estado]),
+            columnStyles: { 0: { cellWidth: 21 }, 1: { cellWidth: usable - 84 }, 2: { cellWidth: 31 }, 3: { cellWidth: 32 } },
+            head: [[{ content: categoria, colSpan: 4 }], ["CLAVE", "DESCRIPCIÓN", "ESTADO", "FOJAS"]],
+            body: anexos.map(anexo => [anexo.clave, anexo.descripcion, anexo.estado, anexo.fojas === null ? "Pendiente de generar" : String(anexo.fojas)]),
             rowPageBreak: "avoid",
             showHead: "everyPage",
         });

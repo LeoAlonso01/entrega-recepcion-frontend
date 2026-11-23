@@ -1,16 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { obtenerCategoriaPorClave } from '@/lib/anexosCatalogo';
 import { useParams, useRouter } from 'next/navigation';
 import NavbarWithBreadcrumb from '@/components/NavbarBreadcrumb';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Download, Trash2 } from 'lucide-react';
+import { FileText, FileSpreadsheet, Trash2 } from 'lucide-react';
 import VisualizadorDatos from '@/components/visualizadorDatos'; // Lo crearemos
-import { generarAnexoPdf, type PdfMeta } from '@/lib/exports/pdf';
-import { showIntermedioModal } from '@/lib/exports/pdf';
+import { crearReporteAnexo, FORMATO_REPORTE_ANEXO, type PdfMeta } from '@/lib/exports/pdf';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,47 +31,37 @@ export interface Anexo {
   unidad_responsable_id: number;
   datos: Array<Record<string, any>> | Record<string, any> | null;
   is_deleted: boolean;
+  unidad_responsable_nombre: string;
+  unidad_padre_id?: number | null;
+  unidad_padre_nombre?: string | null;
+  creador_nombre: string;
+  creador?: { username?: string | null } | null;
+  fojas_reporte?: number | null;
+  reporte_generado_en?: string | null;
+  reporte_vigente?: boolean;
+  reporte_revision_actual: string;
+  reporte_formato_actual: string;
 }
 
-type UnidadParaPdf = {
-  id_unidad: number;
-  nombre: string;
-  unidad_padre_id?: number | null;
-  dependientes?: UnidadParaPdf[];
-};
+type PieReporte = Pick<PdfMeta, "fechaElaboracion" | "elaboro" | "superviso" | "entrego">;
 
-function resolverMetadataUnidad(unidades: UnidadParaPdf[], unidadId: number): Pick<PdfMeta, "dependenciaClave" | "dependenciaNombre" | "urClave" | "urNombre"> {
-  const unidadesPorId = new Map<number, UnidadParaPdf>();
-  const padrePorId = new Map<number, number>();
+const filasAnexo = (anexo: Anexo) => Array.isArray(anexo.datos) ? anexo.datos : anexo.datos ? [anexo.datos] : [];
+const metaReporte = (anexo: Anexo, pie: PieReporte): PdfMeta => ({
+  ...pie,
+  dependenciaClave: String(anexo.unidad_responsable_id), dependenciaNombre: anexo.unidad_responsable_nombre || "",
+  urClave: anexo.unidad_padre_id ? String(anexo.unidad_padre_id) : "", urNombre: anexo.unidad_padre_nombre || "",
+  categoriaNombre: obtenerCategoriaPorClave(anexo.clave) || anexo.categoria,
+  claveAnexo: anexo.clave, infoActualizadaAl: anexo.actualizado_en || anexo.creado_en || anexo.fecha_creacion,
+  revisionDatos: anexo.reporte_revision_actual,
+});
 
-  const registrarUnidad = (unidad: UnidadParaPdf, padreAnidadoId?: number) => {
-    const id = Number(unidad.id_unidad);
-    if (!Number.isFinite(id)) return;
-
-    unidadesPorId.set(id, { ...unidadesPorId.get(id), ...unidad });
-
-    const padreExplicitoId = Number(unidad.unidad_padre_id);
-    if (Number.isFinite(padreExplicitoId) && padreExplicitoId > 0 && padreExplicitoId !== id) {
-      padrePorId.set(id, padreExplicitoId);
-    } else if (padreAnidadoId && !padrePorId.has(id)) {
-      padrePorId.set(id, padreAnidadoId);
-    }
-
-    unidad.dependientes?.forEach((dependiente) => registrarUnidad(dependiente, id));
-  };
-
-  unidades.forEach((unidad) => registrarUnidad(unidad));
-
-  const dependencia = unidadesPorId.get(Number(unidadId));
-  const urId = padrePorId.get(Number(unidadId));
-  const ur = urId ? unidadesPorId.get(urId) : undefined;
-
-  return {
-    dependenciaClave: String(unidadId),
-    dependenciaNombre: dependencia?.nombre || "",
-    urClave: ur ? String(ur.id_unidad) : "",
-    urNombre: ur?.nombre || "",
-  };
+async function consultarAnexo(id: string | number) {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Inicia sesión nuevamente para consultar el anexo.");
+  const response = await fetch(`${API_URL}/anexos/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!response.ok) throw new Error(response.status === 401 ? "Tu sesión venció. Inicia sesión nuevamente." : "No se pudo consultar el anexo.");
+  const data: Anexo = await response.json();
+  return { ...data, categoria: obtenerCategoriaPorClave(data.clave) || data.categoria || "" };
 }
 
 const AnexoDetail: React.FC = () => {
@@ -84,12 +73,18 @@ const AnexoDetail: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; username: string; role: string } | null>(null);
   const [modalPdf, setModalPdf] = useState(false);
+  const [exportandoExcel, setExportandoExcel] = useState(false);
+  const excelEnCurso = useRef(false);
+  const [fojasEstimadas, setFojasEstimadas] = useState<number | null>(null);
+  const [calculandoFojas, setCalculandoFojas] = useState(false);
+  const [generandoReporte, setGenerandoReporte] = useState(false);
+  const reporteEnCurso = useRef(false);
 
   const [pdfFooter, setPdfFooter] = useState({
-    fechaElaboracion: new Date().toISOString(),
-    elaboro: "Desconocido",
-    superviso: "Desconocido",
-    entrego: "Desconocido",
+    fechaElaboracion: new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Mexico_City" }).format(new Date()),
+    elaboro: "",
+    superviso: "",
+    entrego: "",
   });
 
   // Obtener usuario desde localStorage
@@ -122,7 +117,7 @@ const AnexoDetail: React.FC = () => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -137,10 +132,8 @@ const AnexoDetail: React.FC = () => {
       }
 
       const data: Anexo = await response.json();
-      setAnexo({
-        ...data,
-        categoria: obtenerCategoriaPorClave(data.clave) || data.categoria || "",
-      });
+      setAnexo({ ...data, categoria: obtenerCategoriaPorClave(data.clave) || data.categoria || "" });
+      setPdfFooter(pie => ({ ...pie, elaboro: data.creador_nombre || data.creador?.username || "" }));
     } catch (error) {
       console.error("Error:", error);
       toast.error((error as Error).message);
@@ -161,6 +154,20 @@ const AnexoDetail: React.FC = () => {
     fetchAnexo();
   }, [id]);
 
+  useEffect(() => {
+    let activo = true;
+    setFojasEstimadas(null);
+    if (!anexo) return;
+    setCalculandoFojas(true);
+    const timer = window.setTimeout(() => {
+      void crearReporteAnexo(anexo.clave, metaReporte(anexo, pdfFooter), filasAnexo(anexo), { incluirLogos: false })
+        .then(({ fojas }) => { if (activo) setFojasEstimadas(fojas); })
+        .catch(() => { if (activo) setFojasEstimadas(null); })
+        .finally(() => { if (activo) setCalculandoFojas(false); });
+    }, 200);
+    return () => { activo = false; window.clearTimeout(timer); };
+  }, [anexo, pdfFooter]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -178,7 +185,7 @@ const AnexoDetail: React.FC = () => {
   }
 
   // Asegurarnos de que filas sea un array para el PDF
-  const filas = Array.isArray(anexo?.datos) ? anexo.datos : [];
+  const filas = filasAnexo(anexo);
 
 
   // Función para manejar la descarga del PDF
@@ -187,16 +194,63 @@ const AnexoDetail: React.FC = () => {
 
   };
 
-  // Preparar los metadatos para el PDF
-  const meta: PdfMeta = {
-    fechaElaboracion: pdfFooter.fechaElaboracion,
-    elaboro: pdfFooter.elaboro,
-    superviso: pdfFooter.superviso,
-    entrego: pdfFooter.entrego,
+  const onDownloadExcel = async () => {
+    if (excelEnCurso.current) return;
+    excelEnCurso.current = true;
+    setExportandoExcel(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Inicia sesión nuevamente para descargar el anexo.");
+      const response = await fetch(`${API_URL}/anexos/${anexo.id}`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      if (!response.ok) {
+        if (response.status === 401) throw new Error("Tu sesión venció. Inicia sesión nuevamente.");
+        throw new Error("No se pudieron consultar los datos guardados del anexo.");
+      }
+      const guardado: Anexo = await response.json();
+      const { exportAnexoToExcel } = await import("@/lib/exports/excel");
+      exportAnexoToExcel(guardado);
+      toast.success("Excel descargado con clave y sello de fecha de descarga");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo exportar el anexo a Excel.");
+    } finally {
+      excelEnCurso.current = false;
+      setExportandoExcel(false);
+    }
   };
 
-
-
+  const onGenerarReporte = async () => {
+    if (reporteEnCurso.current) return;
+    reporteEnCurso.current = true; setGenerandoReporte(true);
+    try {
+      const guardado = await consultarAnexo(anexo.id);
+      if (!guardado.reporte_revision_actual || guardado.reporte_formato_actual !== FORMATO_REPORTE_ANEXO) {
+        throw new Error("Actualiza la aplicación para generar el reporte con el formato vigente.");
+      }
+      const { doc, fojas } = await crearReporteAnexo(guardado.clave, metaReporte(guardado, pdfFooter), filasAnexo(guardado));
+      const formulario = new FormData();
+      formulario.append("file", doc.output("blob"), `Reporte_${guardado.clave}.pdf`);
+      formulario.append("revision", guardado.reporte_revision_actual);
+      formulario.append("formato", FORMATO_REPORTE_ANEXO);
+      const response = await fetch(`${API_URL}/anexos/${guardado.id}/reporte`, {
+        method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }, body: formulario,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        if (response.status === 409) setAnexo(await consultarAnexo(anexo.id));
+        throw new Error(typeof error.detail === "string" ? error.detail : "No se pudieron confirmar las fojas del reporte.");
+      }
+      const confirmado: Anexo = await response.json();
+      if (confirmado.fojas_reporte !== fojas) throw new Error("El conteo de fojas del reporte no coincide. Genera el reporte nuevamente.");
+      setAnexo({ ...confirmado, categoria: obtenerCategoriaPorClave(confirmado.clave) || confirmado.categoria || "" });
+      doc.save(`Reporte_${guardado.clave.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`);
+      setModalPdf(false);
+      toast.success(`Reporte generado: ${fojas} foja(s) confirmadas`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo generar el reporte.");
+    } finally { reporteEnCurso.current = false; setGenerandoReporte(false); }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -219,25 +273,25 @@ const AnexoDetail: React.FC = () => {
               className="gap-2"
             >
               <FileText className="h-4 w-4" />
-              Exportar PDF
+              Generar reporte
             </Button>
             <Button
-              variant="outline"
               size="sm"
-              onClick={() => toast.success("Funcionalidad en desarrollo")}
-              className="gap-2"
+              onClick={() => void onDownloadExcel()}
+              disabled={exportandoExcel}
+              className="gap-2 bg-[#107C41] text-white hover:bg-[#0c6032]"
             >
-              <Download className="h-4 w-4" />
-              Exportar Excel
+              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+              {exportandoExcel ? "Exportando..." : "Exportar Excel"}
             </Button>
 
 
           </div>
         </div>
-        <Dialog open={modalPdf} onOpenChange={setModalPdf}>
+        <Dialog open={modalPdf} onOpenChange={open => { if (!reporteEnCurso.current) setModalPdf(open); }}>
           <DialogContent>
 
-            <DialogTitle>Datos Importantes</DialogTitle>
+            <DialogTitle>Generar reporte del anexo {anexo.clave}</DialogTitle>
 
             <div className="my-4 p-4 bg-yellow-100 text-yellow-800 rounded grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -275,51 +329,12 @@ const AnexoDetail: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setModalPdf(false)}>
+              <Button variant="outline" disabled={generandoReporte} onClick={() => setModalPdf(false)}>
                 Cancelar
               </Button>
 
-              <Button
-                onClick={async () => {
-                  let metadataUnidad: Pick<PdfMeta, "dependenciaClave" | "dependenciaNombre" | "urClave" | "urNombre"> = {
-                    dependenciaClave: String(anexo.unidad_responsable_id),
-                  };
-
-                  try {
-                    const token = localStorage.getItem("token");
-                    const response = await fetch(`${API_URL}/unidades_responsables`, {
-                      method: "GET",
-                      headers: {
-                        "Content-Type": "application/json",
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                      },
-                    });
-                    if (!response.ok) throw new Error("No se pudieron consultar las unidades responsables");
-                    const unidades: UnidadParaPdf[] = await response.json();
-                    metadataUnidad = resolverMetadataUnidad(unidades, anexo.unidad_responsable_id);
-                  } catch (error) {
-                    console.error("Error al resolver Dependencia y UR para el PDF:", error);
-                    toast.error("No se pudieron consultar la Dependencia y la UR; el PDF se generará con los datos disponibles.");
-                  }
-
-                  const metaFinal: PdfMeta = {
-                    ...metadataUnidad,
-                    categoriaNombre: obtenerCategoriaPorClave(anexo.clave),
-                    claveAnexo: anexo.clave,
-                    infoActualizadaAl: anexo.actualizado_en || anexo.creado_en || anexo.fecha_creacion,
-                    fechaElaboracion: pdfFooter.fechaElaboracion,
-                    elaboro: pdfFooter.elaboro,
-                    superviso: pdfFooter.superviso,
-                    entrego: pdfFooter.entrego,
-                  };
-
-                  await generarAnexoPdf(anexo.clave, metaFinal, filas);
-
-                  showIntermedioModal("Generando PDF...");
-                  setModalPdf(false);
-                }}
-              >
-                Generar PDF
+              <Button onClick={() => void onGenerarReporte()} disabled={generandoReporte}>
+                {generandoReporte ? "Generando reporte..." : "Generar reporte"}
               </Button>
             </div>
 
@@ -355,8 +370,13 @@ const AnexoDetail: React.FC = () => {
               <strong>Fecha de Creación:</strong> {new Date(anexo.fecha_creacion).toLocaleDateString()}
             </div>
             <div>
-              <strong>Unidad Responsable ID:</strong> {anexo.unidad_responsable_id}
+              <strong>Unidad Responsable:</strong> {anexo.unidad_responsable_nombre || "No disponible"}
             </div>
+            <div><strong>Creador:</strong> {anexo.creador_nombre || anexo.creador?.username || "No disponible"}</div>
+            <div><strong>Registros:</strong> {filas.length}</div>
+            <div><strong>Fojas estimadas:</strong> {calculandoFojas ? "Calculando..." : fojasEstimadas === null ? "No disponibles" : `Aproximadamente ${fojasEstimadas}`}</div>
+            <div><strong>Fojas del reporte:</strong> {anexo.reporte_vigente ? `${anexo.fojas_reporte} confirmadas` : anexo.fojas_reporte ? "Pendiente de regenerar" : "Pendiente de generar"}</div>
+            {anexo.reporte_vigente && anexo.reporte_generado_en && <div><strong>Reporte generado el:</strong> {new Date(anexo.reporte_generado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}</div>}
             <div>
               <strong>Actualizado el:</strong> {new Date(anexo.actualizado_en).toLocaleString()}
             </div>

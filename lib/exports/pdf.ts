@@ -3,7 +3,8 @@ import autoTable from "jspdf-autotable";
 import { ESTRUCTURA_DATOS_POR_CLAVE } from "../estructuraPorClave"; // ajusta ruta si es distinta
 import { imageToDataUrl } from "../helpPngPdf";
 
-const TOTAL_PAGES_PLACEHOLDER = "{total_pages_count_string}";
+export const FORMATO_REPORTE_ANEXO = "anexo-carta-v1";
+
 
 function getNombreCategoria(clave: string): string {
     // Note: The structure doesn't have a 'categoria' property.
@@ -58,6 +59,7 @@ export interface PdfMeta {
     elaboro?: string;
     superviso?: string;
     entrego?: string;
+    revisionDatos?: string;
 }
 
 function fmtDate(d?: string) {
@@ -73,31 +75,32 @@ function fmtDate(d?: string) {
     return `${dd}-${mm}-${yy}`;
 }
 
-export async function generarAnexoPdf(
+export async function crearReporteAnexo(
     clave: string,
     meta: PdfMeta,
-    filas: Array<Record<string, any>>
+    filas: Array<Record<string, any>>,
+    opciones: { incluirLogos?: boolean } = {}
 ) {
     const doc = new jsPDF("p", "mm", "letter");
 
     // Logos (public/logos)
-    const [logoIzq, logoDer] = await Promise.all([
+    const [logoIzq, logoDer] = opciones.incluirLogos === false ? [null, null] : await Promise.all([
         imageToDataUrl("/logos/ESCUDO-UMSNH.jpg"),
         imageToDataUrl("/logos/logo_contraloria.jpg"),
     ]);
+    doc.setProperties({ title: `Reporte de anexo ${clave}`, subject: meta.revisionDatos || "", creator: FORMATO_REPORTE_ANEXO });
 
     // Columnas/tabla según clave
-    const cols = ESTRUCTURA_DATOS_POR_CLAVE[clave] ?? ESTRUCTURA_DATOS_POR_CLAVE.default;
+    const normalizarCampo = (campo: string) => campo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const claveCatalogo = clave.trim().toUpperCase().replace(/^RRH(?=\d)/, "RH");
+    const cols = ESTRUCTURA_DATOS_POR_CLAVE[claveCatalogo] ?? ESTRUCTURA_DATOS_POR_CLAVE.default;
     const head = [cols.map((c) => c.campo)];
 
     const body = filas.map((row) =>
         cols.map((c) => {
-            const v =
-                row?.[c.campo] ??
-                row?.[c.campo.toLowerCase()] ??
-                row?.[c.campo.replaceAll(" ", "_")] ??
-                "";
-            return v === null || v === undefined || v === "" ? "-" : String(v);
+            const original = Object.keys(row).find(campo => normalizarCampo(campo) === normalizarCampo(c.campo));
+            const v = original === undefined ? "" : row[original];
+            return v === null || v === undefined || v === "" ? "-" : typeof v === "object" ? JSON.stringify(v) : String(v);
         })
     );
 
@@ -106,7 +109,10 @@ export async function generarAnexoPdf(
     const pageH = doc.internal.pageSize.getHeight();
 
     const marginX = 10;
-    const footerH = 22;
+    const anchoNombre = pageW * 0.19;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+    const nombresPie = [meta.elaboro || "", meta.superviso || "", meta.entrego || ""].map(nombre => doc.splitTextToSize(nombre, anchoNombre) as string[]);
+    const footerH = Math.max(22, 14 + Math.max(...nombresPie.map(lineas => lineas.length)) * 3);
 
     // Header layout (mm)
     const logoY = 6;
@@ -122,12 +128,16 @@ export async function generarAnexoPdf(
     const rowGap = 6;
 
     // La tabla debe iniciar después del bloque
-    const headerH = blockY + rowGap + 8;
+    const anchoDependencia = pageW - marginX * 2 - 114;
+    const lineasDependencia = doc.splitTextToSize(meta.dependenciaNombre || "", anchoDependencia) as string[];
+    const lineasUr = doc.splitTextToSize(meta.urNombre || "", anchoDependencia) as string[];
+    const urY = blockY + Math.max(rowGap, lineasDependencia.length * 3 + 2);
+    const headerH = urY + Math.max(8, lineasUr.length * 3 + 4);
 
     function drawHeader() {
         // Logos
-        doc.addImage(logoIzq, "JPEG", logoLeftX, logoY, logoW, logoH);
-        doc.addImage(logoDer, "JPEG", logoRightX, logoY, logoW, logoH);
+        if (logoIzq) doc.addImage(logoIzq, "JPEG", logoLeftX, logoY, logoW, logoH);
+        if (logoDer) doc.addImage(logoDer, "JPEG", logoRightX, logoY, logoW, logoH);
 
         // Título
         doc.setFont("helvetica", "bold");
@@ -153,23 +163,23 @@ export async function generarAnexoPdf(
         doc.setFontSize(7);
 
         doc.text("DEPENDENCIA", marginX, blockY);
-        doc.text("UR", marginX, blockY + rowGap);
+        doc.text("UR", marginX, urY);
 
         doc.setFont("helvetica", "normal");
         doc.text(meta.dependenciaClave ?? "", marginX + 24, blockY);
-        doc.text(meta.dependenciaNombre ?? "", marginX + 48, blockY);
+        doc.text(lineasDependencia, marginX + 40, blockY, { lineHeightFactor: 1.2 });
 
-        doc.text(meta.urClave ?? "", marginX + 24, blockY + rowGap);
-        doc.text(meta.urNombre ?? "", marginX + 48, blockY + rowGap);
+        doc.text(meta.urClave ?? "", marginX + 24, urY);
+        doc.text(lineasUr, marginX + 40, urY, { lineHeightFactor: 1.2 });
 
         // Caja derecha
         doc.setFont("helvetica", "bold");
         doc.text("CLAVE DE ANEXO", pageW - marginX - 46, blockY);
-        doc.text("INFORMACIÓN ACTUALIZADA AL", pageW - marginX - 70, blockY + rowGap);
+        doc.text("INFORMACIÓN ACTUALIZADA AL", pageW - marginX - 70, urY);
 
         doc.setFont("helvetica", "normal");
         doc.text(meta.claveAnexo || clave, pageW - marginX, blockY, { align: "right" });
-        doc.text(fmtDate(meta.infoActualizadaAl), pageW - marginX, blockY + rowGap, {
+        doc.text(fmtDate(meta.infoActualizadaAl), pageW - marginX, urY, {
             align: "right",
         });
     }
@@ -182,7 +192,7 @@ export async function generarAnexoPdf(
         hoja: pageW - marginX
     };
 
-    function drawFooter(pageNumber: number) {
+    function drawFooter(pageNumber: number, totalPages: number) {
         const y = pageH - footerH;
 
         doc.setLineWidth(0.3);
@@ -203,17 +213,17 @@ export async function generarAnexoPdf(
         doc.text("ENTREGA", col.entrega, y + 6, { align: "center" });
 
         doc.setFont("helvetica", "normal");
-        doc.text(meta.elaboro ?? "", col.elaboro , y + 16, { align: "center" });
-        doc.text(meta.superviso ?? "", col.superviso , y + 16, { align: "center" });
-        doc.text(meta.entrego ?? "", col.entrega , y + 16, { align: "center" });
+        doc.text(nombresPie[0], col.elaboro, y + 13, { align: "center", lineHeightFactor: 1.2 });
+        doc.text(nombresPie[1], col.superviso, y + 13, { align: "center", lineHeightFactor: 1.2 });
+        doc.text(nombresPie[2], col.entrega, y + 13, { align: "center", lineHeightFactor: 1.2 });
 
         // hoja X de Y
         doc.setFont("helvetica", "bold");
         doc.text("HOJA", col.hoja, y + 6, { align: "right" });
 
         doc.setFont("helvetica", "normal");
-        doc.text(`${pageNumber} de ${TOTAL_PAGES_PLACEHOLDER}`, col.hoja, y + 16, {
-            align: "center",
+        doc.text(`${pageNumber} de ${totalPages}`, col.hoja, y + 16, {
+            align: "right",
         });
     }
 
@@ -239,17 +249,21 @@ export async function generarAnexoPdf(
         headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: "bold" },
         didDrawPage: (data) => {
             drawHeader();
-            drawFooter(data.pageNumber);
             drawEmptyTableAreaX(data.cursor?.y ?? undefined);
         },
     });
 
-    // Total pages placeholder
-    // @ts-ignore
-    if (typeof doc.putTotalPages === "function") {
-        // @ts-ignore
-        doc.putTotalPages(TOTAL_PAGES_PLACEHOLDER);
+    const totalPages = doc.getNumberOfPages();
+    for (let pagina = 1; pagina <= totalPages; pagina++) {
+        doc.setPage(pagina);
+        drawFooter(pagina, totalPages);
     }
 
-    doc.save(`Anexo_${clave}.pdf`);
+    return { doc, fojas: doc.getNumberOfPages() };
+}
+
+export async function generarAnexoPdf(clave: string, meta: PdfMeta, filas: Array<Record<string, any>>) {
+    const { doc, fojas } = await crearReporteAnexo(clave, meta, filas);
+    doc.save(`Reporte_${clave}.pdf`);
+    return fojas;
 }
