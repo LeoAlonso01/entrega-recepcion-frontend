@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { ArrowLeft, Download, Edit, Trash2, Eye, ExternalLink } from "lucide-rea
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import FormActa from "@/components/forms/FormActa";
+import { useActaUsuarios } from "@/lib/useActaUsuarios";
+import FormActa, { type ActaComision } from "@/components/forms/FormActa";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,13 +24,9 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { generarActa } from "@/lib/generarActa";
-import { mergeAnexosConCategorias } from "@/lib/anexos";
-
-const generarPDF = async () =>{
-    const {generarActa} = await import('@/lib/generarActa');
-    return generarActa;
-}
-
+import { cargarDatosActaPdf } from "@/lib/actaPdfData";
+import PdfDocumentViewer from "@/components/pdf/PdfDocumentViewer";
+import { categoria_anexos, obtenerCategoriaPorClave } from "@/lib/anexosCatalogo";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -56,10 +53,15 @@ interface Anexo {
 interface ActaForm {
     id: number;
     unidad_responsable: number;
+    unidad_nombre?: string;
     folio?: string;
     fecha: string;
     hora: string;
     comisionado?: string;
+    comisionados?: number[];
+    comisiones?: ActaComision[];
+    entrante_id?: number | null;
+    saliente_id?: number | null;
     oficio_comision?: string;
     fecha_oficio_comision?: string;
     entrante: string;
@@ -106,19 +108,6 @@ const getUnidadNombre = (unidades: Unidad[], id?: number) => {
     return unidad ? unidad.nombre : `Unidad ${id}`;
 };
 
-const enrichActaForExport = (acta: ActaForm | null, unidades: Unidad[]) => {
-    if (!acta) return null;
-
-    const unidadNombre = getUnidadNombre(unidades, acta.unidad_responsable);
-
-    return {
-        ...acta,
-        // Solo para exportación: mantener flujo original y evitar que el PDF muestre el ID.
-        unidad: unidadNombre,
-        unidad_responsable: unidadNombre,
-    };
-};
-
 export default function ViewActaPage() {
     const router = useRouter();
     const params = useParams();
@@ -127,6 +116,7 @@ export default function ViewActaPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const { usuarios, usuariosCargando, usuariosError, getUsuarios } = useActaUsuarios(editDialogOpen);
 
     // Normalize params.id to a string (if it's an array take the first element) before parsing
     const idParam = params?.id;
@@ -153,15 +143,15 @@ export default function ViewActaPage() {
 
                 // Obtener unidades
                 const unidadesRes = await fetch(`${API_URL}/unidades_responsables`, {
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 });
                 if (!unidadesRes.ok) throw new Error('Error cargando unidades');
                 const unidadesData = await unidadesRes.json();
                 setUnidades(unidadesData);
 
                 // Obtener acta específica
-                const actaRes = await fetch(`${API_URL}/actas/${actaId}`, {
-                    headers: { 'Content-Type': 'application/json' },
+                const actaRes = await fetch(`${API_URL}/actas/${actaId}/datos-pdf`, {
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 });
                 if (!actaRes.ok) {
                     if (actaRes.status === 404) {
@@ -173,26 +163,11 @@ export default function ViewActaPage() {
                 }
                 const actaData = await actaRes.json();
 
-                let anexosCatalogo: Anexo[] = [];
-                try {
-                    const anexosRes = await fetch(`${API_URL}/anexos`, {
-                        headers: { 'Content-Type': 'application/json' },
-                    });
-                    if (anexosRes.ok) {
-                        anexosCatalogo = await anexosRes.json();
-                    }
-                } catch (error) {
-                    console.warn("No se pudo recuperar el catálogo de anexos para enriquecer categorías", error);
-                }
-
-                const anexosEnriquecidos = mergeAnexosConCategorias(
-                    Array.isArray(actaData.anexos) ? actaData.anexos : [],
-                    anexosCatalogo
-                );
-
                 setActa({
                     ...actaData,
-                    anexos: anexosEnriquecidos,
+                    anexos: (Array.isArray(actaData.anexos) ? actaData.anexos : []).map((anexo: Anexo) => ({
+                        ...anexo, categoria: obtenerCategoriaPorClave(anexo.clave) || anexo.categoria || "",
+                    })),
                 });
             } catch (error) {
                 console.error(error);
@@ -275,30 +250,63 @@ export default function ViewActaPage() {
         }
     };
 
-    const handleCreateActa = async () => {
-        const actaParaExportar = enrichActaForExport(acta, unidades);
-        if (!actaParaExportar) return;
-
-        generarActa(actaParaExportar);
-        toast.success("Generando PDF del acta...");
-
-        const unidad = unidades.find(u => u.id_unidad === acta?.unidad_responsable);
-        if (!unidad) return toast.error("No se encontró la unidad responsable");
-
-        const anexos = []; // Aquí podrías agregar la lógica para manejar anexos si es necesario
-    }
+    const pdfBusy = useRef(false);
+    const [pdfAction, setPdfAction] = useState<"preview" | "download" | null>(null);
+    const [previewFilename, setPreviewFilename] = useState("Documento.pdf");
+    const prepararDocumento = async (action: "preview" | "download") => {
+        if (pdfBusy.current) return;
+        pdfBusy.current = true;
+        setPdfAction(action);
+        try {
+            const data = await cargarDatosActaPdf(actaId);
+            const blob = await generarActa(data, { preview: true });
+            if (!(blob instanceof Blob)) throw new Error("No se pudo generar el PDF del acta.");
+            setActa(data as ActaForm);
+            const filename = `acta_${String(data.folio).replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf`;
+            const url = URL.createObjectURL(blob);
+            if (action === "preview") {
+                setPreviewFilename(filename);
+                setPreviewUrl(url);
+                setPreviewOpen(true);
+            } else {
+                const link = document.createElement("a");
+                link.href = url; link.download = filename;
+                document.body.appendChild(link); link.click(); link.remove();
+                window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+                toast.success("PDF generado con los datos guardados del acta");
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "No se pudo generar el acta.");
+        } finally {
+            pdfBusy.current = false;
+            setPdfAction(null);
+        }
+    };
 
     // Estados y funciones para paginación, preview y descarga de anexos
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [previewLoading, setPreviewLoading] = useState(false);
     const [downloadLoadingId, setDownloadLoadingId] = useState<number | null>(null);
 
     // Valores derivados para evitar errores de "posiblemente undefined"
     const totalAnexos = acta?.anexos?.length || 0;
-    const totalPages = Math.max(1, Math.ceil(totalAnexos / pageSize));
+    const categorias = new Map<string, Anexo[]>();
+    for (const anexo of acta?.anexos || []) {
+        const categoria = obtenerCategoriaPorClave(anexo.clave) || anexo.categoria || "Sin categoría";
+        const grupo = categorias.get(categoria) || [];
+        grupo.push(anexo);
+        categorias.set(categoria, grupo);
+    }
+    const ordenCategoria = (nombre: string) => {
+        const index = categoria_anexos.findIndex(categoria => categoria.nombre_categoria === nombre);
+        return index === -1 ? categoria_anexos.length : index;
+    };
+    const gruposAnexos = [...categorias.entries()].sort(([a], [b]) => ordenCategoria(a) - ordenCategoria(b));
+    const totalCategorias = gruposAnexos.length;
+    const totalPages = Math.max(1, Math.ceil(totalCategorias / pageSize));
+    const paginaActual = Math.min(currentPage, totalPages);
 
     const getAnexoUrls = (anexo: Anexo) => {
         if (!anexo?.datos) return [] as string[];
@@ -315,44 +323,14 @@ export default function ViewActaPage() {
         return Array.from(urls);
     };
 
+    useEffect(() => () => {
+        if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    }, [previewUrl]);
+
     const handlePreview = (url: string) => {
-        setPreviewLoading(true);
+        setPreviewFilename(url.split("?")[0].split("/").pop() || "Documento.pdf");
         setPreviewUrl(url);
         setPreviewOpen(true);
-    };
-
-    const handlePreviewActa = async () => {
-        const actaParaExportar = enrichActaForExport(acta, unidades);
-        if (!actaParaExportar) return;
-
-        try {
-            setPreviewLoading(true);
-            setPreviewOpen(true);
-
-            const pdfBlob = await generarActa(actaParaExportar, { preview: true });
-            const blobUrl = URL.createObjectURL(pdfBlob as Blob);
-            setPreviewUrl(blobUrl);
-        } catch (error) {
-            console.error(error);
-            toast.error("No se pudo generar la vista previa del acta");
-            setPreviewOpen(false);
-            setPreviewUrl(null);
-            setPreviewLoading(false);
-        }
-    };
-
-    const handleIframeLoad = () => {
-        setPreviewLoading(false);
-    };
-
-    const handleIframeError = () => {
-        if (previewUrl?.startsWith("blob:")) {
-            URL.revokeObjectURL(previewUrl);
-        }
-        setPreviewLoading(false);
-        toast.error("No se pudo cargar el documento para vista previa");
-        setPreviewOpen(false);
-        setPreviewUrl(null);
     };
 
     const handleDownload = async (url: string, anexoId?: number) => {
@@ -404,6 +382,8 @@ export default function ViewActaPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <NavbarWithBreadcrumb role="ADMIN" />
+            {previewOpen && previewUrl && <PdfDocumentViewer url={previewUrl} filename={previewFilename}
+                onClose={() => { setPreviewOpen(false); setPreviewUrl(null); }} />}
 
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Encabezado */}
@@ -468,13 +448,13 @@ export default function ViewActaPage() {
                     </AlertDialog>
                     )}
 
-                    <Button variant="secondary" onClick={() => handleCreateActa()} className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm">
+                    <Button variant="secondary" onClick={() => void prepararDocumento("download")} disabled={pdfAction !== null} className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm">
                         <Download className="h-4 w-4 shrink-0 mr-2" />
-                        Descargar Acta PDF
+                        {pdfAction === "download" ? "Generando PDF..." : "Descargar Acta PDF"}
                     </Button>
-                    <Button onClick={handlePreviewActa} className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm">
+                    <Button onClick={() => void prepararDocumento("preview")} disabled={pdfAction !== null} className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm">
                         <Eye className="h-4 w-4 shrink-0 mr-2" />
-                        Vista Previa Acta PDF
+                        {pdfAction === "preview" ? "Preparando documento..." : "Vista Previa Acta PDF"}
                     </Button>
                 </div>
 
@@ -485,7 +465,7 @@ export default function ViewActaPage() {
                             <DialogDescription>Actualiza los datos del acta y guarda los cambios.</DialogDescription>
                         </DialogHeader>
                         {editDialogOpen && (
-                            <FormActa key={acta.id} acta={acta} unidades={unidades} onCancel={() => setEditDialogOpen(false)} onSave={handleUpdateActa} />
+                            <FormActa key={acta.id} acta={acta} unidades={unidades} usuarios={usuarios} usuariosCargando={usuariosCargando} usuariosError={usuariosError} onRetryUsuarios={getUsuarios} onCancel={() => setEditDialogOpen(false)} onSave={handleUpdateActa} />
                         )}
                     </DialogContent>
                 </Dialog>
@@ -508,7 +488,7 @@ export default function ViewActaPage() {
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-500">Unidad Responsable</label>
-                                <p className="mt-1">{getUnidadNombre(unidades, acta.unidad_responsable)}</p>
+                                <p className="mt-1">{acta.unidad_nombre || getUnidadNombre(unidades, acta.unidad_responsable)}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -665,19 +645,19 @@ export default function ViewActaPage() {
                         {acta.anexos && acta.anexos.length > 0 ? (
                             <>
                                 {/* Paginación y controles */}
-                                <div className="flex items-center justify-between mb-3 w-full">
-                                    <div className="text-sm text-gray-600">Mostrando {Math.min((currentPage - 1) * pageSize + 1, acta.anexos.length)} - {Math.min(currentPage * pageSize, acta.anexos.length)} de {acta.anexos.length}</div>
+                                <div className="flex flex-wrap items-center justify-between gap-3 mb-3 w-full">
+                                    <div className="text-sm text-gray-600">Categorías {Math.min((paginaActual - 1) * pageSize + 1, totalCategorias)} - {Math.min(paginaActual * pageSize, totalCategorias)} de {totalCategorias} · {totalAnexos} anexos</div>
                                     <div className="flex items-center gap-3">
-                                        <label className="text-sm text-gray-600">Filas</label>
-                                        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="text-sm border rounded px-2 py-1 bg-white">
+                                        <label htmlFor="categorias-por-pagina" className="text-sm text-gray-600">Categorías por página</label>
+                                        <select id="categorias-por-pagina" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="text-sm border rounded px-2 py-1 bg-white">
                                             <option value={5}>5</option>
                                             <option value={10}>10</option>
                                             <option value={25}>25</option>
                                         </select>
                                         <div className="flex items-center gap-2">
-                                            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Anterior</Button>
-                                            <div className="text-sm text-gray-700">{currentPage} / {Math.max(1, Math.ceil(acta.anexos.length / pageSize))}</div>
-                                            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Siguiente</Button>
+                                            <Button variant="outline" size="sm" onClick={() => setCurrentPage(Math.max(1, paginaActual - 1))} disabled={paginaActual === 1}>Anterior</Button>
+                                            <div className="text-sm text-gray-700">{paginaActual} / {totalPages}</div>
+                                            <Button variant="outline" size="sm" onClick={() => setCurrentPage(Math.min(totalPages, paginaActual + 1))} disabled={paginaActual === totalPages}>Siguiente</Button>
                                         </div>
                                     </div>
                                 </div>
@@ -694,8 +674,15 @@ export default function ViewActaPage() {
                                                 <th className="py-2">Acciones</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            {acta.anexos.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((anexo: any) => {
+                                        {gruposAnexos.slice((paginaActual - 1) * pageSize, paginaActual * pageSize).map(([categoria, anexos]) => (
+                                        <tbody key={categoria} aria-label={categoria}>
+                                            <tr className="border-y bg-[#751518]/5">
+                                                <th colSpan={5} scope="rowgroup" className="px-3 py-3 text-left text-sm font-semibold text-[#751518]">
+                                                    <div className="flex items-center justify-between gap-2"><span>{categoria}</span>
+                                                        <span className="text-xs font-normal text-gray-500">{anexos.length} anexo(s)</span></div>
+                                                </th>
+                                            </tr>
+                                            {anexos.map((anexo) => {
                                                 const urls = getAnexoUrls(anexo as Anexo);
                                                 return (
                                                     <tr key={anexo.id} className="border-b last:border-b-0">
@@ -758,41 +745,11 @@ export default function ViewActaPage() {
                                                 )
                                             })}
                                         </tbody>
+                                        ))}
                                     </table>
                                 </div>
 
-                                {/* Dialog para vista previa */}
-                                <Dialog
-                                    open={previewOpen}
-                                    onOpenChange={(open) => {
-                                        if (!open) {
-                                            if (previewUrl?.startsWith("blob:")) {
-                                                URL.revokeObjectURL(previewUrl);
-                                            }
-                                            setPreviewUrl(null);
-                                            setPreviewOpen(false);
-                                            setPreviewLoading(false);
-                                        }
-                                    }}
-                                >
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Vista previa del documento</DialogTitle>
-                                            <DialogDescription>{previewUrl}</DialogDescription>
-                                        </DialogHeader>
-                                        <div className="h-[70vh] w-full bg-white">
-                                            {previewLoading && (
-                                                <div className="flex items-center justify-center h-full">
-                                                    <Download className="h-6 w-6 animate-spin text-gray-500" />
-                                                </div>
-                                            )}
-                                            {previewUrl && (
-                                                // iframe puede fallar por CORS, se maneja en onError
-                                                <iframe src={previewUrl} className="w-full h-full border" onLoad={handleIframeLoad} onError={handleIframeError} />
-                                            )}
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
+
                             </>
                         ) : (
                             <p className="text-sm text-gray-700">No hay anexos disponibles para este acta.</p>

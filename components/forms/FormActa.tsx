@@ -1,10 +1,33 @@
 // components/FormActaSimple.tsx
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import ActaSearch from "./ActaSearch";
+import ActaPersonSearch from "./ActaPersonSearch";
 import { Textarea } from "@/components/ui/textarea";
+
+export interface ActaUsuario {
+  id: number;
+  username: string;
+  nombre_completo?: string | null;
+  nombre?: string | null;
+  full_name?: string | null;
+  email: string;
+  role: "ADMIN" | "AUDITOR" | "USER";
+  is_deleted?: boolean;
+}
+
+export const nombreUsuarioParaActa = (usuario?: ActaUsuario) =>
+  usuario?.nombre_completo?.trim() || usuario?.full_name?.trim() || usuario?.nombre?.trim() || "";
+
+export interface ActaComision {
+  usuario_id: number | null;
+  nombre?: string;
+  mismo_oficio: boolean;
+  oficio_comision: string;
+  fecha_oficio_comision: string;
+}
 
 interface FormActaSimpleProps {
   acta?: Partial<{
@@ -14,6 +37,10 @@ interface FormActaSimpleProps {
     fecha: string;
     hora: string;
     comisionado: string;
+    comisionados: number[];
+    comisiones: ActaComision[];
+    entrante_id: number | null;
+    saliente_id: number | null;
     oficio_comision: string;
     fecha_oficio_comision: string;
     entrante: string;
@@ -37,6 +64,10 @@ interface FormActaSimpleProps {
     estado: "Pendiente" | "Completada" | "Revisión";
   }>;
   unidades: Array<{ id_unidad: number; nombre: string }>;
+  usuarios: ActaUsuario[];
+  usuariosCargando?: boolean;
+  usuariosError?: string;
+  onRetryUsuarios?: () => void;
   onCancel: () => void;
   onSave: (data: any) => void;
 }
@@ -52,18 +83,25 @@ const folioNuevo = () => {
 export default function FormActa({
   acta = {},
   unidades,
+  usuarios,
+  usuariosCargando = false,
+  usuariosError = "",
+  onRetryUsuarios,
   onCancel,
   onSave,
 }: FormActaSimpleProps) {
   const [formData, setFormData] = useState({
     // Datos generales
-    unidad_responsable: acta.unidad_responsable || unidades[0]?.id_unidad || "",
+    unidad_responsable: acta.unidad_responsable || "",
     folio: acta.folio || folioNuevo(),
     fecha: acta.fecha || new Date().toISOString().split("T")[0],
     hora: acta.hora || "",
     
     // Comisionado
     comisionado: acta.comisionado || "",
+    comisionados: acta.comisionados ?? acta.comisiones?.flatMap(comision => comision.usuario_id === null ? [] : [comision.usuario_id]) ?? [],
+    entrante_id: acta.entrante_id,
+    saliente_id: acta.saliente_id,
     oficio_comision: acta.oficio_comision || "",
     fecha_oficio_comision: acta.fecha_oficio_comision || "",
 
@@ -95,18 +133,107 @@ export default function FormActa({
     estado: acta.estado || "Pendiente",
   });
 
+  const [comisionadosManuales, setComisionadosManuales] = useState(() =>
+    (acta.comisiones || []).filter(comision => comision.usuario_id === null)
+      .map((comision, index) => ({ key: `manual-${index}`, datos: comision })));
+  const siguienteManual = useRef(comisionadosManuales.length);
+  const [nombreComisionadoManual, setNombreComisionadoManual] = useState("");
+  const [capturaComisionadoManual, setCapturaComisionadoManual] = useState(false);
+  const agregarComisionadoManual = () => {
+    const nombre = nombreComisionadoManual.trim();
+    if (!nombre) return;
+    const key = `manual-${siguienteManual.current++}`;
+    setComisionadosManuales(prev => [...prev, {
+      key,
+      datos: { usuario_id: null, nombre, mismo_oficio: true, oficio_comision: "", fecha_oficio_comision: "" },
+    }]);
+    setNombreComisionadoManual("");
+  };
+  const [comisiones, setComisiones] = useState<ActaComision[]>(acta.comisiones || []);
+  const actualizarComision = (id: number, cambios: Partial<ActaComision>) => {
+    setComisiones(prev => {
+      const actual = prev.find(comision => comision.usuario_id === id) || {
+        usuario_id: id, mismo_oficio: true, oficio_comision: "", fecha_oficio_comision: "",
+      };
+      return [...prev.filter(comision => comision.usuario_id !== id), { ...actual, ...cambios }];
+    });
+  };
+  const quitarComisionado = (id: number) => {
+    actualizarComisionados(formData.comisionados.filter(selected => selected !== id));
+    setComisiones(prev => prev.filter(comision => comision.usuario_id !== id));
+  };
+  const [unidadBusqueda, setUnidadBusqueda] = useState<string | null>(null);
+  const [comisionadoBusqueda, setComisionadoBusqueda] = useState("");
+  const [errorSeleccion, setErrorSeleccion] = useState("");
+  const usuariosActivos = usuarios.filter(usuario => !usuario.is_deleted);
+  const opcionesUsuario = (lista: ActaUsuario[]) => lista.map(usuario => ({
+    id: usuario.id, label: usuario.username, nombre: nombreUsuarioParaActa(usuario),
+    description: [nombreUsuarioParaActa(usuario), usuario.email, usuario.role].filter(Boolean).join(" · "),
+  }));
+  const comisionadosDisponibles = usuariosActivos.filter(usuario =>
+    (usuario.role === "ADMIN" || usuario.role === "AUDITOR") && !formData.comisionados.includes(usuario.id));
+  const nombreComisionado = (id: number) =>
+    comisiones.find(item => item.usuario_id === id)?.nombre ?? nombreUsuarioParaActa(usuarios.find(usuario => usuario.id === id));
+  const actualizarComisionados = (ids: number[]) => setFormData(prev => ({
+    ...prev, comisionados: ids,
+    comisionado: ids.map(id => nombreComisionado(id).trim()).filter(Boolean).join(", "),
+  }));
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const prepararDatosActa = () => {
+    // Solo incluir ID si existe (para edición)
+    const payload = {
+      ...formData,
+      entrante: formData.entrante.trim(),
+      saliente: formData.saliente.trim(),
+      comisionado: [
+        ...(formData.comisionados.length || acta.comisiones?.length
+          ? formData.comisionados.map(id => nombreComisionado(id).trim())
+          : [formData.comisionado]),
+        ...comisionadosManuales.map(item => item.datos.nombre),
+      ].filter(Boolean).join(", "),
+      comisiones: formData.comisionados.map((usuario_id): ActaComision => {
+        const comision = comisiones.find(item => item.usuario_id === usuario_id);
+        const mismo_oficio = comision?.mismo_oficio ?? true;
+        return {
+          usuario_id,
+          nombre: nombreComisionado(usuario_id).trim(),
+          mismo_oficio,
+          oficio_comision: mismo_oficio ? formData.oficio_comision : comision?.oficio_comision || "",
+          fecha_oficio_comision: mismo_oficio ? formData.fecha_oficio_comision : comision?.fecha_oficio_comision || "",
+        };
+      }).concat(comisionadosManuales.map(({ datos }) => ({
+        ...datos,
+        nombre: datos.nombre?.trim(),
+        oficio_comision: datos.mismo_oficio ? formData.oficio_comision : datos.oficio_comision,
+        fecha_oficio_comision: datos.mismo_oficio ? formData.fecha_oficio_comision : datos.fecha_oficio_comision,
+      }))),
+    };
+    return acta.id ? { ...payload, id: acta.id } : payload;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.confirm("¿Guardar cambios?")) return;
+    if (!formData.unidad_responsable || !formData.entrante.trim() || !formData.saliente.trim()) {
+      setErrorSeleccion("Selecciona una unidad responsable y selecciona o captura el nombre de los funcionarios entrante y saliente.");
+      return;
+    }
+    if (formData.comisionados.some(id => !nombreComisionado(id).trim())) {
+      setErrorSeleccion("Captura el nombre completo para el acta de cada comisionado seleccionado.");
+      return;
+    }
+    if (capturaComisionadoManual && nombreComisionadoManual.trim()) {
+      setErrorSeleccion("Pulsa Agregar comisionado manual para incluir el nombre capturado antes de guardar.");
+      return;
+    }
+    setErrorSeleccion("");
+    if (acta.id && !window.confirm("¿Guardar cambios?")) return;
 
-    // Solo incluir ID si existe (para edición)
-    const dataToSend = acta.id ? { ...formData, id: acta.id } : formData;
-    onSave(dataToSend);
+    onSave(prepararDatosActa());
   };
 
   return (
@@ -115,22 +242,22 @@ export default function FormActa({
         {acta.id ? "Editar Acta" : "Nueva Acta"}
       </h2>
 
+      {usuariosCargando && <p role="status" className="text-sm text-gray-600">Cargando usuarios...</p>}
+      {usuariosError && <div role="alert" className="text-sm text-red-700">
+        {usuariosError} <button type="button" className="underline" onClick={onRetryUsuarios}>Reintentar</button>
+      </div>}
+      {errorSeleccion && <p role="alert" className="text-sm text-red-700">{errorSeleccion}</p>}
+
       {/* --- DATOS GENERALES --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Unidad</label>
-          <select
-            name="unidad_responsable"
-            value={formData.unidad_responsable}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded px-3 py-2 mt-1"
-          >
-            {unidades.map((u) => (
-              <option key={u.id_unidad} value={u.id_unidad}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
+          <ActaSearch
+            label="Unidad Responsable"
+            value={unidadBusqueda ?? unidades.find(unidad => unidad.id_unidad === Number(formData.unidad_responsable))?.nombre ?? ""}
+            options={unidades.map(unidad => ({ id: unidad.id_unidad, label: unidad.nombre }))}
+            onChange={value => { setUnidadBusqueda(value); setFormData(prev => ({ ...prev, unidad_responsable: "" })); }}
+            onSelect={option => { setUnidadBusqueda(null); setFormData(prev => ({ ...prev, unidad_responsable: option.id })); }}
+          />
         </div>
 
         <div>
@@ -183,31 +310,94 @@ export default function FormActa({
 
       {/* --- COMISIONADO --- */}
       <div className="border-t pt-4">
-        <h3 className="font-semibold text-gray-600">Comisionado</h3>
+        <h3 className="font-semibold text-gray-600">Comisionados</h3>
+        <p className="mt-1 text-sm text-gray-500">Busca y selecciona cada comisionado que desees agregar. Cada uno puede usar el oficio común o uno diferente.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          <input
-            type="text"
-            name="comisionado"
-            placeholder="Nombre del comisionado"
-            value={formData.comisionado}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <input
-            type="text"
-            name="oficio_comision"
-            placeholder="Oficio de comisión"
-            value={formData.oficio_comision}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <input
-            type="date"
-            name="fecha_oficio_comision"
-            value={formData.fecha_oficio_comision}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
+          <div>
+            {capturaComisionadoManual ? <div>
+              <label htmlFor="comisionado-manual" className="block text-sm font-medium text-gray-700">Nombre del comisionado manual</label>
+              <input id="comisionado-manual" value={nombreComisionadoManual} placeholder="Nombre completo"
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                onChange={event => setNombreComisionadoManual(event.target.value)} />
+              <Button type="button" variant="outline" className="mt-2" disabled={!nombreComisionadoManual.trim()}
+                onClick={agregarComisionadoManual}>Agregar comisionado manual</Button>
+            </div> : <ActaSearch label="Comisionados" value={comisionadoBusqueda}
+              disabled={usuariosCargando || !!usuariosError}
+              options={opcionesUsuario(comisionadosDisponibles)}
+              onChange={setComisionadoBusqueda}
+              onSelect={option => { actualizarComisionados([...formData.comisionados, option.id]); setComisionadoBusqueda(""); }}
+            />}
+            <label className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={capturaComisionadoManual}
+                aria-label="Capturar nombre manualmente de Comisionado"
+                onChange={event => { setCapturaComisionadoManual(event.target.checked); setNombreComisionadoManual(""); }} />
+              Capturar nombre manualmente
+            </label>
+            {formData.comisionados.length === 0 && formData.comisionado &&
+              <p className="mt-1 text-sm text-gray-600">Registrado anteriormente: {formData.comisionado}</p>}
+          </div>
+          <div>
+            <label htmlFor="oficio-comun" className="block text-sm font-medium text-gray-700">Oficio de comisión común</label>
+            <input id="oficio-comun" type="text" name="oficio_comision"
+              value={formData.oficio_comision} onChange={handleChange}
+              className="w-full border border-gray-300 rounded px-3 py-2 mt-1" />
+          </div>
+          <div>
+            <label htmlFor="fecha-oficio-comun" className="block text-sm font-medium text-gray-700">Fecha del oficio común</label>
+            <input id="fecha-oficio-comun" type="date" name="fecha_oficio_comision"
+              value={formData.fecha_oficio_comision} onChange={handleChange}
+              className="w-full border border-gray-300 rounded px-3 py-2 mt-1" />
+          </div>
+        </div>
+        <div className="mt-4 space-y-3">
+          {[
+            ...formData.comisionados.map(id => ({ key: `usuario-${id}`, id,
+              nombre: usuarios.find(usuario => usuario.id === id)?.username || `Usuario #${id}`,
+              comision: comisiones.find(item => item.usuario_id === id) })),
+            ...comisionadosManuales.map(item => ({ key: item.key, id: null,
+              nombre: item.datos.nombre || "", comision: item.datos })),
+          ].map(({ key, id, nombre, comision }) => {
+            const actualizar = (cambios: Partial<ActaComision>) => {
+              if (id !== null) actualizarComision(id, cambios);
+              else setComisionadosManuales(prev => prev.map(item => item.key === key ? { ...item, datos: { ...item.datos, ...cambios } } : item));
+            };
+            const mismoOficio = comision?.mismo_oficio ?? true;
+            return <fieldset key={key} className="rounded-lg border border-gray-200 p-4">
+              <legend className="px-1 text-sm font-semibold text-gray-700">{nombre}</legend>
+              {id !== null && <div className="mb-3">
+                <label htmlFor={`nombre-${key}`} className="block text-sm font-medium text-gray-700">Nombre para el acta de {nombre}</label>
+                <input id={`nombre-${key}`} value={nombreComisionado(id)} placeholder="Captura el nombre completo"
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  onChange={event => actualizar({ nombre: event.target.value })} />
+              </div>}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input type="checkbox" checked={mismoOficio}
+                    aria-label={`Usar oficio común para ${nombre}`}
+                    onChange={event => actualizar({ mismo_oficio: event.target.checked })} />
+                  Usar el mismo oficio de comisión común
+                </label>
+                <button type="button" className="text-sm text-red-700 hover:underline"
+                  aria-label={`Quitar comisionado ${nombre}`} onClick={() => { if (id !== null) quitarComisionado(id); else setComisionadosManuales(prev => prev.filter(item => item.key !== key)); }}>Quitar</button>
+              </div>
+              {mismoOficio ? <p className="mt-2 text-sm text-gray-500">
+                Oficio: {formData.oficio_comision || "Sin capturar"} · Fecha: {formData.fecha_oficio_comision || "Sin capturar"}
+              </p> : <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <label htmlFor={`oficio-${key}`} className="block text-sm font-medium text-gray-700">Oficio de comisión de {nombre}</label>
+                  <input id={`oficio-${key}`} type="text" value={comision?.oficio_comision || ""}
+                    onChange={event => actualizar({ oficio_comision: event.target.value })}
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
+                </div>
+                <div>
+                  <label htmlFor={`fecha-oficio-${key}`} className="block text-sm font-medium text-gray-700">Fecha del oficio de {nombre}</label>
+                  <input id={`fecha-oficio-${key}`} type="date" value={comision?.fecha_oficio_comision || ""}
+                    onChange={event => actualizar({ fecha_oficio_comision: event.target.value })}
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2" />
+                </div>
+              </div>}
+            </fieldset>;
+          })}
         </div>
       </div>
 
@@ -215,13 +405,10 @@ export default function FormActa({
       <div className="border-t pt-4">
         <h3 className="font-semibold text-gray-600">Funcionario Entrante</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          <input
-            type="text"
-            name="entrante"
-            placeholder="Nombre"
-            value={formData.entrante}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
+          <ActaPersonSearch label="Funcionario Entrante" nombre={formData.entrante} usuarioId={formData.entrante_id}
+            disabled={usuariosCargando || !!usuariosError}
+            options={opcionesUsuario(usuariosActivos)}
+            onChange={(nombre, id) => setFormData(prev => ({ ...prev, entrante: nombre, entrante_id: id }))}
           />
           <input
             type="text"
@@ -297,13 +484,10 @@ export default function FormActa({
       <div className="border-t pt-4">
         <h3 className="font-semibold text-gray-600">Funcionario Saliente</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-          <input
-            type="text"
-            name="saliente"
-            placeholder="Nombre"
-            value={formData.saliente}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
+          <ActaPersonSearch label="Funcionario Saliente" nombre={formData.saliente} usuarioId={formData.saliente_id}
+            disabled={usuariosCargando || !!usuariosError}
+            options={opcionesUsuario(usuariosActivos.filter(usuario => usuario.role === "USER"))}
+            onChange={(nombre, id) => setFormData(prev => ({ ...prev, saliente: nombre, saliente_id: id }))}
           />
           <input
             type="date"
@@ -377,6 +561,11 @@ export default function FormActa({
             placeholder="Observaciones"
             value={formData.observaciones}
             onChange={handleChange}
+            onBlur={event => {
+              if (process.env.NODE_ENV === "development" && event.currentTarget.value.trim()) {
+                console.log("[Acta local] Datos preparados para guardar:", JSON.parse(JSON.stringify(prepararDatosActa())));
+              }
+            }}
             className="border border-gray-300 rounded px-3 py-2 resize-none h-24"
           />
         </div>

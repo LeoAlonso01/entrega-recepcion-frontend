@@ -1,8 +1,8 @@
 // lib/export.ts
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import * as XLSX from "xlsx";
-import { Anexo } from "../app/dashboard/anexos/[id]/page"; // Asegúrate de tener el tipo
+export { exportAnexoToExcel } from "./exports/excel";
+import type { Anexo } from "../app/dashboard/anexos/[id]/page"; // Asegúrate de tener el tipo
 
 export const exportAnexoToPDF = (anexo: Anexo) => {
   const doc = new jsPDF();
@@ -29,12 +29,4 @@ export const exportAnexoToPDF = (anexo: Anexo) => {
   });
 
   doc.save(`anexo_${anexo.clave}_${Date.now()}.pdf`);
-};
-
-export const exportAnexoToExcel = (anexo: Anexo) => {
-  const data = Array.isArray(anexo.datos) ? anexo.datos : [anexo.datos];
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Datos");
-  XLSX.writeFile(workbook, `anexo_${anexo.clave}_${Date.now()}.xlsx`);
 };

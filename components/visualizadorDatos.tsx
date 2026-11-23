@@ -18,7 +18,7 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
   if (dataArray.length === 1 && typeof dataArray[0] === "object" && dataArray[0].url) {
     // Si url es un array (como en el caso de la base de datos)
     const urlField = dataArray[0].url;
-    let pdfUrl = null;
+    let pdfUrl: string | null = null;
     if (Array.isArray(urlField) && urlField.length > 0 && urlField[0].url) {
       pdfUrl = urlField[0].url;
     } else if (typeof urlField === "string") {
@@ -36,11 +36,12 @@ const VisualizadorDatos: React.FC<VisualizadorDatosProps> = ({ datos, clave }) =
         // Reemplazar cualquier referencia a localhost por el dominio real
         pdfUrl = pdfUrl.replace(/https?:\/\/localhost(:\d+)?/, apiUrl);
       }
+      const urlParaAbrir = pdfUrl;
       return (
         <div className="w-full">
           <button
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow"
-            onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
+            onClick={() => window.open(urlParaAbrir, '_blank', 'noopener,noreferrer')}
             type="button"
           >
             Ver PDF
