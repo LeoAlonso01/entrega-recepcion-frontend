@@ -5,6 +5,7 @@ import autoTable from "jspdf-autotable";
 import { imageToDataUrl } from "./helpPngPdf";
 import { normalizarActaPdf } from "./actaPdfData";
 import { textoInstitucional } from "./actaTextoInstitucional";
+import { parrafosComparecencia } from "./actaComparecencia";
 
 export async function crearActaPdf(raw: Record<string, any>): Promise<jsPDF> {
     const acta = normalizarActaPdf(raw);
@@ -82,14 +83,7 @@ export async function crearActaPdf(raw: Record<string, any>): Promise<jsPDF> {
 
     paragraph(`Folio: ${acta.folio}`, false);
     section("I. COMPARECENCIA");
-    paragraph(`Se levanta la presente Acta Administrativa de Entrega-Recepción de la unidad responsable denominada ${acta.unidad}, el día ${acta.fecha}${hora(acta.hora)}.`);
-    paragraph(`Comparece ${acta.saliente}, en su carácter de persona servidora pública saliente${identificacion(acta.ineSaliente)}${acta.domicilioSaliente ? `, con domicilio para notificaciones en ${acta.domicilioSaliente}` : ""}, quien hace entrega de la unidad${acta.finLabores ? ` y concluye sus labores el ${acta.finLabores}` : ""}.`);
-    paragraph(`Asimismo comparece ${acta.entrante}, en su carácter de persona servidora pública entrante${identificacion(acta.ineEntrante)}${acta.domicilioEntrante ? `, con domicilio para notificaciones en ${acta.domicilioEntrante}` : ""}, quien recibe la unidad${acta.inicioLabores ? ` e inicia sus labores el ${acta.inicioLabores}` : ""}.${acta.telefonoEntrante ? ` Teléfono de contacto: ${acta.telefonoEntrante}.` : ""}`);
-    const asignaciones: Record<string, string> = { nombramiento: "nombramiento", designacion: "designación", jerarquia: "jerarquía" };
-    const autoridades: Record<string, string> = { rectoria: "Rectoría", h_consejo: "H. Consejo" };
-    if (acta.nombramiento || acta.asignacion || acta.asignadoPor || acta.fechaNombramiento) {
-        paragraph(`La persona entrante asume las funciones de la unidad${acta.asignacion ? ` mediante ${asignaciones[acta.asignacion] || acta.asignacion}` : ""}${acta.nombramiento ? `, según documento número ${acta.nombramiento}` : ""}${fecha(acta.fechaNombramiento)}${acta.asignadoPor ? `, emitido por ${autoridades[acta.asignadoPor] || acta.asignadoPor}` : ""}.`);
-    }
+    parrafosComparecencia(acta).forEach(texto => paragraph(texto));
     if (acta.testigoSaliente) paragraph(`${acta.saliente} designa como testigo de entrega a ${acta.testigoSaliente}${identificacion(acta.ineTestigoSaliente)}.`);
     if (acta.testigoEntrante) paragraph(`${acta.entrante} designa como testigo de recepción a ${acta.testigoEntrante}${identificacion(acta.ineTestigoEntrante)}.`);
     acta.comisiones.forEach(comision => paragraph(`Interviene en este acto ${comision.nombre}, como persona comisionada por la Contraloría${comision.oficio ? ` mediante oficio ${comision.oficio}` : ""}${fecha(comision.fecha)}, para auxiliar en la formalización de la presente Acta Administrativa.`));

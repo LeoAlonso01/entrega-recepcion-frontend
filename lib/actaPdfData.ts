@@ -83,6 +83,7 @@ export function normalizarActaPdf(raw: Record<string, any>) {
   };
   return {
     folio, unidad: nombreUnidad, entrante, saliente,
+    lugar: textoPdf(raw.lugar_acta),
     fecha: fechaPdf(raw.fecha), hora: horaPdf(raw.hora),
     fechaCierre: fechaPdf(raw.fecha_cierre_acta), horaCierre: horaPdf(raw.hora_cierre_acta),
     inicioLabores: fechaPdf(raw.fecha_inicio_labores), finLabores: fechaPdf(raw.fecha_fin_labores),
@@ -90,6 +91,8 @@ export function normalizarActaPdf(raw: Record<string, any>) {
     asignacion: textoPdf(raw.asignacion), asignadoPor: textoPdf(raw.asignado_por),
     ineEntrante: textoPdf(raw.ine_entrante), domicilioEntrante: textoPdf(raw.domicilio_entrante), telefonoEntrante: textoPdf(raw.telefono_entrante),
     ineSaliente: textoPdf(raw.ine_saliente), domicilioSaliente: textoPdf(raw.domicilio_saliente),
+    telefonoSaliente: textoPdf(raw.telefono_saliente), nombramientoSaliente: textoPdf(raw.nombramiento_saliente),
+    asignacionSaliente: textoPdf(raw.asignacion_saliente), asignadoPorSaliente: textoPdf(raw.asignado_por_saliente),
     testigoEntrante: textoPdf(raw.testigo_entrante), testigoSaliente: textoPdf(raw.testigo_saliente),
     ineTestigoEntrante: textoPdf(raw.ine_testigo_entrante), ineTestigoSaliente: textoPdf(raw.ine_testigo_saliente),
     observaciones: textoPdf(raw.observaciones), comisiones, anexos,
