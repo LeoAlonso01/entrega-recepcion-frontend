@@ -4,6 +4,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import ActaSearch from "./ActaSearch";
+import { estadoActaEditable } from "@/lib/actaEdicion";
 import ActaPersonSearch from "./ActaPersonSearch";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -34,6 +35,7 @@ interface FormActaSimpleProps {
     id: number;
     unidad_responsable: number;
     folio: string;
+    lugar_acta: string;
     fecha: string;
     hora: string;
     comisionado: string;
@@ -53,6 +55,12 @@ interface FormActaSimpleProps {
     domicilio_entrante: string;
     telefono_entrante: string;
     saliente: string;
+    ine_saliente: string;
+    domicilio_saliente: string;
+    telefono_saliente: string;
+    nombramiento_saliente: string;
+    asignacion_saliente: string;
+    asignado_por_saliente: string;
     fecha_fin_labores: string;
     testigo_entrante: string;
     ine_testigo_entrante: string;
@@ -61,7 +69,8 @@ interface FormActaSimpleProps {
     fecha_cierre_acta: string;
     hora_cierre_acta: string;
     observaciones: string;
-    estado: "Pendiente" | "Completada" | "Revisión";
+    estado: "Pendiente" | "Completada" | "Revisión" | "Borrador";
+    anexos: Array<{ id: number; is_deleted?: boolean }>;
   }>;
   unidades: Array<{ id_unidad: number; nombre: string }>;
   usuarios: ActaUsuario[];
@@ -90,10 +99,12 @@ export default function FormActa({
   onCancel,
   onSave,
 }: FormActaSimpleProps) {
+  const contextoBloqueado = !!acta.id && !!acta.anexos?.some(anexo => anexo.is_deleted !== true);
   const [formData, setFormData] = useState({
     // Datos generales
     unidad_responsable: acta.unidad_responsable || "",
     folio: acta.folio || folioNuevo(),
+    lugar_acta: acta.lugar_acta || "",
     fecha: acta.fecha || new Date().toISOString().split("T")[0],
     hora: acta.hora || "",
     
@@ -118,6 +129,12 @@ export default function FormActa({
 
     // Saliente
     saliente: acta.saliente || "",
+    ine_saliente: acta.ine_saliente || "",
+    domicilio_saliente: acta.domicilio_saliente || "",
+    telefono_saliente: acta.telefono_saliente || "",
+    nombramiento_saliente: acta.nombramiento_saliente || "",
+    asignacion_saliente: acta.asignacion_saliente || "",
+    asignado_por_saliente: acta.asignado_por_saliente || "",
     fecha_fin_labores: acta.fecha_fin_labores || "",
 
     // Testigos
@@ -188,6 +205,7 @@ export default function FormActa({
     // Solo incluir ID si existe (para edición)
     const payload = {
       ...formData,
+      lugar_acta: formData.lugar_acta.trim(),
       entrante: formData.entrante.trim(),
       saliente: formData.saliente.trim(),
       comisionado: [
@@ -218,6 +236,10 @@ export default function FormActa({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (acta.id && acta.estado && !estadoActaEditable(acta.estado)) {
+      setErrorSeleccion("El acta está cerrada y no admite modificaciones.");
+      return;
+    }
     if (!formData.unidad_responsable || !formData.entrante.trim() || !formData.saliente.trim()) {
       setErrorSeleccion("Selecciona una unidad responsable y selecciona o captura el nombre de los funcionarios entrante y saliente.");
       return;
@@ -231,7 +253,9 @@ export default function FormActa({
       return;
     }
     setErrorSeleccion("");
-    if (acta.id && !window.confirm("¿Guardar cambios?")) return;
+    if (acta.id && !window.confirm(formData.estado === "Completada"
+      ? "¿Completar el acta? Después de guardar quedará cerrada y no podrá editarse."
+      : "¿Guardar cambios?")) return;
 
     onSave(prepararDatosActa());
   };
@@ -253,6 +277,7 @@ export default function FormActa({
         <div>
           <ActaSearch
             label="Unidad Responsable"
+            disabled={contextoBloqueado}
             value={unidadBusqueda ?? unidades.find(unidad => unidad.id_unidad === Number(formData.unidad_responsable))?.nombre ?? ""}
             options={unidades.map(unidad => ({ id: unidad.id_unidad, label: unidad.nombre }))}
             onChange={value => { setUnidadBusqueda(value); setFormData(prev => ({ ...prev, unidad_responsable: "" })); }}
@@ -301,10 +326,24 @@ export default function FormActa({
             onChange={handleChange}
             className="w-full border border-gray-300 rounded px-3 py-2 mt-1"
           >
+            {acta.estado === "Borrador" && <option value="Borrador">Borrador</option>}
             <option value="Pendiente">Pendiente</option>
             <option value="Revisión">Revisión</option>
             <option value="Completada">Completada</option>
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="lugar-acta" className="block text-sm font-medium text-gray-700">Lugar del acta</label>
+          <input
+            id="lugar-acta"
+            type="text"
+            name="lugar_acta"
+            placeholder="Ej. Uruapan, Michoacán"
+            value={formData.lugar_acta}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded px-3 py-2 mt-1"
+          />
         </div>
       </div>
 
@@ -401,103 +440,89 @@ export default function FormActa({
         </div>
       </div>
 
-      {/* --- FUNCIONARIO ENTRANTE --- */}
-      <div className="border-t pt-4">
-        <h3 className="font-semibold text-gray-600">Funcionario Entrante</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          <ActaPersonSearch label="Funcionario Entrante" nombre={formData.entrante} usuarioId={formData.entrante_id}
-            disabled={usuariosCargando || !!usuariosError}
-            options={opcionesUsuario(usuariosActivos)}
-            onChange={(nombre, id) => setFormData(prev => ({ ...prev, entrante: nombre, entrante_id: id }))}
-          />
-          <input
-            type="text"
-            name="ine_entrante"
-            placeholder="INE"
-            value={formData.ine_entrante}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <input
-            type="date"
-            name="fecha_inicio_labores"
-            value={formData.fecha_inicio_labores}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <input
-            type="text"
-            name="nombramiento"
-            placeholder="Nombramiento"
-            value={formData.nombramiento}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <input
-            type="date"
-            name="fecha_nombramiento"
-            value={formData.fecha_nombramiento}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <select
-            name="asignacion"
-            value={formData.asignacion}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          >
-            <option value="">Tipo de asignación</option>
-            <option value="nombramiento">Nombramiento</option>
-            <option value="designacion">Designación</option>
-            <option value="jerarquia">Jerarquía</option>
-          </select>
-          <select
-            name="asignado_por"
-            value={formData.asignado_por}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          >
-            <option value="">Asignado por</option>
-            <option value="rectoria">Rectoría</option>
-            <option value="h_consejo">H. Consejo</option>
-          </select>
-          <input
-            type="text"
-            name="domicilio_entrante"
-            placeholder="Domicilio"
-            value={formData.domicilio_entrante}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <input
-            type="text"
-            name="telefono_entrante"
-            placeholder="Teléfono"
-            value={formData.telefono_entrante}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-        </div>
-      </div>
+      {contextoBloqueado && <p className="text-sm text-gray-600">
+        Esta acta tiene anexos asociados: la unidad y la cuenta del saliente se conservan. Puedes corregir su nombre y los demás datos.
+      </p>}
 
-      {/* --- FUNCIONARIO SALIENTE --- */}
-      <div className="border-t pt-4">
-        <h3 className="font-semibold text-gray-600">Funcionario Saliente</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-          <ActaPersonSearch label="Funcionario Saliente" nombre={formData.saliente} usuarioId={formData.saliente_id}
-            disabled={usuariosCargando || !!usuariosError}
-            options={opcionesUsuario(usuariosActivos.filter(usuario => usuario.role === "USER"))}
-            onChange={(nombre, id) => setFormData(prev => ({ ...prev, saliente: nombre, saliente_id: id }))}
-          />
-          <input
-            type="date"
-            name="fecha_fin_labores"
-            value={formData.fecha_fin_labores}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-        </div>
-      </div>
+      {/* Ambos funcionarios usan la misma estructura y el mismo orden de captura. */}
+      {(["entrante", "saliente"] as const).map(rol => {
+        const esEntrante = rol === "entrante";
+        const titulo = esEntrante ? "Funcionario Entrante" : "Funcionario Saliente";
+        const campos = {
+          nombre: rol,
+          usuarioId: esEntrante ? "entrante_id" : "saliente_id",
+          ine: esEntrante ? "ine_entrante" : "ine_saliente",
+          domicilio: esEntrante ? "domicilio_entrante" : "domicilio_saliente",
+          telefono: esEntrante ? "telefono_entrante" : "telefono_saliente",
+          nombramiento: esEntrante ? "nombramiento" : "nombramiento_saliente",
+          asignacion: esEntrante ? "asignacion" : "asignacion_saliente",
+          autoridad: esEntrante ? "asignado_por" : "asignado_por_saliente",
+          fecha: esEntrante ? "fecha_inicio_labores" : "fecha_fin_labores",
+        } as const;
+        const inputClass = "mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#24356B] focus:outline-none focus:ring-1 focus:ring-[#24356B]";
+        const labelClass = "block text-sm font-medium text-gray-700";
+        return <fieldset key={rol} className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+          <legend className="px-2 font-semibold text-[#24356B]">{titulo}</legend>
+          <p className="mb-4 text-sm text-gray-500">Datos de identificación, contacto y nombramiento.</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="min-w-0 md:col-span-2">
+              <ActaPersonSearch bloquearCuenta={!esEntrante && contextoBloqueado} label={titulo} nombre={formData[campos.nombre]} usuarioId={formData[campos.usuarioId]}
+                disabled={usuariosCargando || !!usuariosError}
+                options={opcionesUsuario(esEntrante ? usuariosActivos : usuariosActivos.filter(usuario => usuario.role === "USER"))}
+                onChange={(nombre, id) => setFormData(prev => ({ ...prev, [campos.nombre]: nombre, [campos.usuarioId]: id }))}
+              />
+            </div>
+            <div>
+              <label htmlFor={`ine-${rol}`} className={labelClass}>Número de INE</label>
+              <input id={`ine-${rol}`} type="text" name={campos.ine} aria-label={`Número de INE de ${titulo}`}
+                placeholder="Captura el número de la credencial" value={formData[campos.ine]} onChange={handleChange} className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor={`telefono-${rol}`} className={labelClass}>Teléfono</label>
+              <input id={`telefono-${rol}`} type="tel" name={campos.telefono} aria-label={`Teléfono de ${titulo}`}
+                placeholder="Número de contacto" value={formData[campos.telefono]} onChange={handleChange} className={inputClass} />
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor={`domicilio-${rol}`} className={labelClass}>Domicilio para notificaciones</label>
+              <textarea id={`domicilio-${rol}`} name={campos.domicilio} aria-label={`Domicilio para notificaciones de ${titulo}`}
+                placeholder="Calle, número, colonia, código postal, municipio y estado" rows={2}
+                value={formData[campos.domicilio]} onChange={handleChange} className={`${inputClass} resize-y`} />
+            </div>
+            <div>
+              <label htmlFor={`nombramiento-${rol}`} className={labelClass}>Número de documento de nombramiento</label>
+              <input id={`nombramiento-${rol}`} type="text" name={campos.nombramiento} aria-label={`Número de documento de nombramiento de ${titulo}`}
+                placeholder="Número o folio del documento" value={formData[campos.nombramiento]} onChange={handleChange} className={inputClass} />
+            </div>
+            <div>
+              <label htmlFor={`asignacion-${rol}`} className={labelClass}>Tipo de asignación</label>
+              <select id={`asignacion-${rol}`} name={campos.asignacion} aria-label={`Tipo de asignación de ${titulo}`}
+                value={formData[campos.asignacion]} onChange={handleChange} className={inputClass}>
+                <option value="">Selecciona el tipo</option>
+                <option value="nombramiento">Nombramiento</option>
+                <option value="designacion">Designación</option>
+                <option value="jerarquia">Jerarquía</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor={`autoridad-${rol}`} className={labelClass}>Autoridad que lo asignó</label>
+              <select id={`autoridad-${rol}`} name={campos.autoridad} aria-label={`Autoridad que lo asignó de ${titulo}`}
+                value={formData[campos.autoridad]} onChange={handleChange} className={inputClass}>
+                <option value="">Selecciona la autoridad</option>
+                <option value="rectoria">Rectoría</option>
+                <option value="h_consejo">H. Consejo</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor={`fecha-efectos-${rol}`} className={labelClass}>Fecha de efectos</label>
+              <input id={`fecha-efectos-${rol}`} type="date" name={campos.fecha} aria-label={`Fecha de efectos de ${titulo}`}
+                aria-describedby={`fecha-ayuda-${rol}`} value={formData[campos.fecha]} onChange={handleChange} className={inputClass} />
+              <p id={`fecha-ayuda-${rol}`} className="mt-1 text-xs text-gray-500">
+                {esEntrante ? "Fecha en que inicia sus labores." : "Fecha en que concluye sus labores."}
+              </p>
+            </div>
+          </div>
+        </fieldset>;
+      })}
 
       {/* --- TESTIGOS --- */}
       <div className="border-t pt-4">
@@ -541,33 +566,45 @@ export default function FormActa({
       {/* --- CIERRE DEL ACTA --- */}
       <div className="border-t pt-4">
         <h3 className="font-semibold text-gray-600">Cierre del Acta</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          <input
-            type="date"
-            name="fecha_cierre_acta"
-            value={formData.fecha_cierre_acta}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <input
-            type="time"
-            name="hora_cierre_acta"
-            value={formData.hora_cierre_acta}
-            onChange={handleChange}
-            className="border border-gray-300 rounded px-3 py-2"
-          />
-          <Textarea
-            name="observaciones"
-            placeholder="Observaciones"
-            value={formData.observaciones}
-            onChange={handleChange}
-            onBlur={event => {
-              if (process.env.NODE_ENV === "development" && event.currentTarget.value.trim()) {
-                console.log("[Acta local] Datos preparados para guardar:", JSON.parse(JSON.stringify(prepararDatosActa())));
-              }
-            }}
-            className="border border-gray-300 rounded px-3 py-2 resize-none h-24"
-          />
+        <div className="mt-3 flex flex-wrap gap-4">
+          <div className="w-full sm:w-44">
+            <label htmlFor="fecha-cierre-acta" className="block text-sm font-medium text-gray-700">Fecha de cierre</label>
+            <input
+              id="fecha-cierre-acta"
+              type="date"
+              name="fecha_cierre_acta"
+              value={formData.fecha_cierre_acta}
+              onChange={handleChange}
+              className="mt-1 h-9 w-full rounded-md border border-gray-300 bg-white px-2.5 text-sm focus:border-[#24356B] focus:outline-none focus:ring-1 focus:ring-[#24356B]"
+            />
+          </div>
+          <div className="w-full sm:w-36">
+            <label htmlFor="hora-cierre-acta" className="block text-sm font-medium text-gray-700">Hora de cierre</label>
+            <input
+              id="hora-cierre-acta"
+              type="time"
+              name="hora_cierre_acta"
+              value={formData.hora_cierre_acta}
+              onChange={handleChange}
+              className="mt-1 h-9 w-full rounded-md border border-gray-300 bg-white px-2.5 text-sm focus:border-[#24356B] focus:outline-none focus:ring-1 focus:ring-[#24356B]"
+            />
+          </div>
+          <div className="w-full">
+            <label htmlFor="observaciones-acta" className="block text-sm font-medium text-gray-700">Observaciones</label>
+            <Textarea
+              id="observaciones-acta"
+              name="observaciones"
+              placeholder="Observaciones"
+              value={formData.observaciones}
+              onChange={handleChange}
+              onBlur={event => {
+                if (process.env.NODE_ENV === "development" && event.currentTarget.value.trim()) {
+                  console.log("[Acta local] Datos preparados para guardar:", JSON.parse(JSON.stringify(prepararDatosActa())));
+                }
+              }}
+              className="mt-1 min-h-32 border border-gray-300 rounded-md px-3 py-2 resize-y"
+            />
+          </div>
         </div>
       </div>
 

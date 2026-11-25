@@ -36,6 +36,7 @@ export interface Anexo {
   unidad_padre_nombre?: string | null;
   creador_nombre: string;
   creador?: { username?: string | null } | null;
+  fojas_por_defecto?: boolean;
   fojas_reporte?: number | null;
   reporte_generado_en?: string | null;
   reporte_vigente?: boolean;
@@ -158,6 +159,11 @@ const AnexoDetail: React.FC = () => {
     let activo = true;
     setFojasEstimadas(null);
     if (!anexo) return;
+    if (anexo.fojas_por_defecto) {
+      setFojasEstimadas(1);
+      setCalculandoFojas(false);
+      return;
+    }
     setCalculandoFojas(true);
     const timer = window.setTimeout(() => {
       void crearReporteAnexo(anexo.clave, metaReporte(anexo, pdfFooter), filasAnexo(anexo), { incluirLogos: false })
@@ -264,6 +270,7 @@ const AnexoDetail: React.FC = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Detalle del Anexo</h1>
           <div className="flex space-x-2">
+            {anexo.fojas_por_defecto ? <span className="self-center rounded-md bg-blue-50 px-3 py-2 text-sm text-[#24356B]">1 foja por defecto · PDF</span> : (
             <Button
               variant="outline"
               size="sm"
@@ -275,6 +282,7 @@ const AnexoDetail: React.FC = () => {
               <FileText className="h-4 w-4" />
               Generar reporte
             </Button>
+            )}
             <Button
               size="sm"
               onClick={() => void onDownloadExcel()}
@@ -374,9 +382,11 @@ const AnexoDetail: React.FC = () => {
             </div>
             <div><strong>Creador:</strong> {anexo.creador_nombre || anexo.creador?.username || "No disponible"}</div>
             <div><strong>Registros:</strong> {filas.length}</div>
+            {anexo.fojas_por_defecto ? <div><strong>Fojas para el acta:</strong> 1 por defecto (anexo PDF)</div> : <>
             <div><strong>Fojas estimadas:</strong> {calculandoFojas ? "Calculando..." : fojasEstimadas === null ? "No disponibles" : `Aproximadamente ${fojasEstimadas}`}</div>
             <div><strong>Fojas del reporte:</strong> {anexo.reporte_vigente ? `${anexo.fojas_reporte} confirmadas` : anexo.fojas_reporte ? "Pendiente de regenerar" : "Pendiente de generar"}</div>
             {anexo.reporte_vigente && anexo.reporte_generado_en && <div><strong>Reporte generado el:</strong> {new Date(anexo.reporte_generado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}</div>}
+            </>}
             <div>
               <strong>Actualizado el:</strong> {new Date(anexo.actualizado_en).toLocaleString()}
             </div>

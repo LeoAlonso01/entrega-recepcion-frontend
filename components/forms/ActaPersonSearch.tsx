@@ -3,12 +3,13 @@
 import { useId, useState } from "react";
 import ActaSearch from "./ActaSearch";
 
-export default function ActaPersonSearch({ label, nombre, usuarioId, options, disabled, onChange }: {
+export default function ActaPersonSearch({ label, nombre, usuarioId, options, disabled, bloquearCuenta = false, onChange }: {
   label: string;
   nombre: string;
   usuarioId?: number | null;
   options: { id: number; label: string; description?: string; nombre?: string }[];
   disabled: boolean;
+  bloquearCuenta?: boolean;
   onChange: (nombre: string, id: number | null) => void;
 }) {
   const id = useId();
@@ -20,7 +21,7 @@ export default function ActaPersonSearch({ label, nombre, usuarioId, options, di
       <input id={id} value={nombre} placeholder="Nombre completo"
         className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
         onChange={event => onChange(event.target.value, null)} />
-    </> : <ActaSearch label={label} value={busqueda ?? (usuarioId ? options.find(option => option.id === usuarioId)?.label || "" : nombre)} options={options} disabled={disabled}
+    </> : <ActaSearch label={label} value={busqueda ?? (usuarioId ? options.find(option => option.id === usuarioId)?.label || "" : nombre)} options={options} disabled={disabled || bloquearCuenta}
       onChange={value => { setBusqueda(value); onChange("", null); }}
       onSelect={option => { setBusqueda(null); onChange(option.nombre || "", option.id); }} />}
     {!manual && usuarioId != null && <div className="mt-2">
@@ -33,7 +34,7 @@ export default function ActaPersonSearch({ label, nombre, usuarioId, options, di
       {!nombre.trim() && <p id={`${id}-aviso`} className="mt-1 text-sm text-red-700">Falta el nombre completo. Captúralo aquí; se conservará el ID de la cuenta seleccionada.</p>}
     </div>}
     <label className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-      <input type="checkbox" checked={manual} aria-label={`Capturar nombre manualmente de ${label}`}
+      <input type="checkbox" checked={manual} disabled={bloquearCuenta} aria-label={`Capturar nombre manualmente de ${label}`}
         onChange={event => {
           setManual(event.target.checked); setBusqueda(null);
           onChange(event.target.checked ? nombre : "", null);

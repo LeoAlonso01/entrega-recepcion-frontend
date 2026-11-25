@@ -2,10 +2,12 @@
 
 import { categoria_anexos, claves_anexos, obtenerCategoriaPorClave } from "@/lib/anexosCatalogo"
 import HabilitacionAnexos from "@/components/HabilitacionAnexos"
+import FiltroConBusqueda from "@/components/FiltroConBusqueda"
+import { calcularFojasAnexo, ErrorCalculoFojas } from "@/lib/calcularFojasAnexo"
 import { usePermisosAnexos, clavePermitida, filtrarAnexosAsignados } from "@/lib/usePermisosAnexos"
 import type React from "react"
 import { useForm, SubmitHandler } from "react-hook-form"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -162,6 +164,10 @@ export interface Anexo {
   unidad_responsable_id: number
   is_deleted?: boolean
   acta_id?: number | null
+  fojas_por_defecto?: boolean
+  fojas_reporte?: number | null
+  reporte_vigente?: boolean
+  reporte_generado_en?: string | null
   creador?: { id: number; username: string; email: string; role: string } | null
 }
 
@@ -1456,6 +1462,9 @@ export default function AnexosPage() {
   const [recargasPendientes, setRecargasPendientes] = useState(0);
   const isLoading = cargaInicialPendiente || recargasPendientes > 0 || permisosCaptura.cargando;
 
+  const [calculandoFojasId, setCalculandoFojasId] = useState<number | null>(null);
+  const calculoFojasEnCurso = useRef(false);
+
   // Filtros combinables (ADMIN - Anexos por Usuario)
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState("__all__");
   const [unidadSeleccionada, setUnidadSeleccionada] = useState("__all__");
@@ -1605,6 +1614,27 @@ export default function AnexosPage() {
       setTodosLosAnexos(data);
     } finally {
       setRecargasPendientes((pendientes) => pendientes - 1);
+    }
+  };
+
+  const handleCalcularFojas = async (anexoId: number) => {
+    if (calculoFojasEnCurso.current) return;
+    calculoFojasEnCurso.current = true;
+    setCalculandoFojasId(anexoId);
+    try {
+      if (!API_URL) throw new Error("No se ha configurado la dirección de la API.");
+      const confirmado = await calcularFojasAnexo(anexoId, API_URL, localStorage.getItem("token") || "");
+      setTodosLosAnexos(actuales => actuales.map(anexo => anexo.id === anexoId ? {
+        ...anexo, fojas_por_defecto: confirmado.fojas_por_defecto, fojas_reporte: confirmado.fojas_reporte,
+        reporte_vigente: confirmado.reporte_vigente, reporte_generado_en: confirmado.reporte_generado_en,
+      } : anexo));
+      toast.success(`${confirmado.fojas_reporte} foja(s) confirmadas para ${confirmado.clave}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudieron calcular las fojas.");
+      if (error instanceof ErrorCalculoFojas && error.status === 409) await recargarAnexos();
+    } finally {
+      calculoFojasEnCurso.current = false;
+      setCalculandoFojasId(null);
     }
   };
 
@@ -3199,7 +3229,8 @@ export default function AnexosPage() {
                           Clave: anexo.clave,
                           Estado: anexo.estado,
                           "Fecha de Creación": anexo.fecha_creacion,
-                          "Unidad Responsable": anexo.unidad_responsable_id
+                          "Unidad Responsable": nombresUnidades[Number(anexo.unidad_responsable_id)] || anexo.unidad_responsable_id,
+                          Fojas: anexo.reporte_vigente ? anexo.fojas_reporte : "Pendiente de calcular"
                         }));
                         const ws = XLSX.utils.json_to_sheet(dataExport);
                         const wb = XLSX.utils.book_new();
@@ -3216,44 +3247,16 @@ export default function AnexosPage() {
                   <CardContent>
                     {/* Filtros de anexos */}
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <div className="min-w-0 space-y-2">
-                        <Label htmlFor="filtro-usuario-anexos">Usuario</Label>
-                        <Select value={usuarioSeleccionado} onValueChange={setUsuarioSeleccionado}>
-                          <SelectTrigger id="filtro-usuario-anexos" className="w-full" aria-label="Filtrar por usuario">
-                            <SelectValue placeholder="Selecciona un usuario" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">Todos los usuarios</SelectItem>
-                            {Array.from(
-                              new Set(
-                                todosLosAnexos
-                                  .map(anexo => anexo.creador?.username)
-                                  .filter((username): username is string => typeof username === "string" && username.trim() !== "")
-                              )
-                            ).map(username => (
-                              <SelectItem key={username} value={username}>{username}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-0 space-y-2">
-                        <Label htmlFor="filtro-unidad-anexos">Unidad Responsable</Label>
-                        <Select value={unidadSeleccionada} onValueChange={setUnidadSeleccionada}>
-                          <SelectTrigger id="filtro-unidad-anexos" className="w-full" aria-label="Filtrar por unidad responsable">
-                            <SelectValue placeholder="Selecciona una unidad" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">Todas las unidades</SelectItem>
-                            {Array.from(new Set(todosLosAnexos.map(anexo => anexo.unidad_responsable_id)))
-                              .sort((a, b) => (nombresUnidades[Number(a)] || `ID: ${a}`).localeCompare(nombresUnidades[Number(b)] || `ID: ${b}`, "es"))
-                              .map(unidadId => (
-                                <SelectItem key={unidadId} value={String(unidadId)}>
-                                  {nombresUnidades[Number(unidadId)] || `ID: ${unidadId}`}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <FiltroConBusqueda label="Usuario" value={usuarioSeleccionado} onChange={setUsuarioSeleccionado}
+                        allLabel="Todos los usuarios"
+                        options={Array.from(new Set(todosLosAnexos.map(anexo => anexo.creador?.username)
+                          .filter((nombre): nombre is string => typeof nombre === "string" && !!nombre.trim())))
+                          .sort((a, b) => a.localeCompare(b, "es")).map(nombre => ({ value: nombre, label: nombre }))} />
+                      <FiltroConBusqueda label="Unidad responsable" value={unidadSeleccionada} onChange={setUnidadSeleccionada}
+                        allLabel="Todas las unidades"
+                        options={Array.from(new Set(todosLosAnexos.map(anexo => anexo.unidad_responsable_id)))
+                          .map(id => ({ value: String(id), label: nombresUnidades[Number(id)] || `ID: ${id}` }))
+                          .sort((a, b) => a.label.localeCompare(b.label, "es"))} />
                       <div className="min-w-0 space-y-2">
                         <Label htmlFor="filtro-clave-anexos">Clave</Label>
                         <Input
@@ -3265,22 +3268,10 @@ export default function AnexosPage() {
                           onChange={(event) => setBusquedaClave(event.target.value)}
                         />
                       </div>
-                      <div className="min-w-0 space-y-2">
-                        <Label htmlFor="filtro-estado-anexos">Estado</Label>
-                        <Select value={estadoSeleccionado} onValueChange={setEstadoSeleccionado}>
-                          <SelectTrigger id="filtro-estado-anexos" className="w-full" aria-label="Filtrar por estado">
-                            <SelectValue placeholder="Selecciona un estado" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">Todos los estados</SelectItem>
-                            {Array.from(new Set(todosLosAnexos.map(anexo => anexo.estado).filter(estado => estado.trim() !== "")))
-                              .sort((a, b) => a.localeCompare(b, "es"))
-                              .map(estado => (
-                                <SelectItem key={estado} value={estado}>{estado}</SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <FiltroConBusqueda label="Estado" value={estadoSeleccionado} onChange={setEstadoSeleccionado}
+                        allLabel="Todos los estados"
+                        options={Array.from(new Set(todosLosAnexos.map(anexo => anexo.estado).filter(estado => !!estado?.trim())))
+                          .sort((a, b) => a.localeCompare(b, "es")).map(estado => ({ value: estado, label: estado }))} />
                     </div>
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                       {!isLoading && (
@@ -3310,12 +3301,13 @@ export default function AnexosPage() {
                             <TableHead>Estado</TableHead>
                             <TableHead>Fecha de Creación</TableHead>
                             <TableHead>Unidad Responsable</TableHead>
+                            <TableHead>Fojas</TableHead>
                             <TableHead>Acciones</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody className="divide-y divide-gray-200">
                           {isLoading ? (
-                            <AnexosLoadingRow colSpan={6} />
+                            <AnexosLoadingRow colSpan={7} />
                           ) : anexosFiltrados.length > 0 ? (
                             anexosFiltrados.map((anexo) => (
                               <TableRow
@@ -3364,11 +3356,25 @@ export default function AnexosPage() {
                                     {nombresUnidades[Number(anexo.unidad_responsable_id)] || `ID: ${anexo.unidad_responsable_id}`}
                                   </div>
                                 </TableCell>
+                                <TableCell className="px-4 py-4 md:table-cell">
+                                  <div className="md:hidden font-semibold text-gray-500">Fojas</div>
+                                  <span className={anexo.reporte_vigente ? "font-semibold text-[#24356B]" : "text-sm text-amber-700"}>
+                                    {anexo.reporte_vigente && Number(anexo.fojas_reporte) > 0
+                                      ? anexo.fojas_reporte : anexo.fojas_reporte != null ? "Recalcular" : "Pendiente"}
+                                  </span>
+                                  {anexo.fojas_por_defecto && <span className="block text-xs text-gray-500">Por defecto · PDF</span>}
+                                </TableCell>
                                 {/* Acciones */}
                                 <TableCell className="px-4 py-4 flex gap-3 md:table-cell">
                                   <div className="md:hidden font-semibold text-gray-500 mb-1">
                                     Acciones
                                   </div>
+                                  {!anexo.fojas_por_defecto && <Button type="button" variant="outline" size="sm"
+                                    onClick={() => void handleCalcularFojas(anexo.id)} disabled={calculandoFojasId !== null}
+                                    className="gap-1.5 text-[#24356B]" aria-label={`Calcular fojas de ${anexo.clave} de ${anexo.creador?.username || "usuario"}`}>
+                                    {calculandoFojasId === anexo.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileText className="h-4 w-4" aria-hidden="true" />}
+                                    {calculandoFojasId === anexo.id ? "Calculando..." : "Calcular fojas"}
+                                  </Button>}
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -3401,7 +3407,7 @@ export default function AnexosPage() {
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                              <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                                 No se encontraron anexos.
                               </TableCell>
                             </TableRow>

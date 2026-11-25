@@ -8,7 +8,11 @@ import { Button } from '@/components/ui/button';
 const validarFilasObligatorias = jest.fn();
 const yaTieneAnexoConClave = jest.fn();
 
-function GuardarAnexoButton({ clave, fecha_creacion, estado, datos, anexos, userid, editingAnexo }) {
+function GuardarAnexoButton({ clave, fecha_creacion, estado, datos, anexos, userid, editingAnexo }: {
+  clave: string; fecha_creacion: string; estado: string;
+  datos: Record<string, unknown>[]; anexos: unknown[]; userid: number;
+  editingAnexo: { id: number } | null;
+}) {
   const disabled =
     !clave ||
     !fecha_creacion ||

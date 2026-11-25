@@ -34,6 +34,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+import { actorActaLocal, puedeEditarActa, type ActorActa } from "@/lib/actaEdicion";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface Anexo {
@@ -50,10 +52,12 @@ interface Anexo {
 }
 
 interface ActaForm {
+    creador_id?: number | null;
     id: number;
     unidad_responsable: number;
     folio?: string;
     fecha: string;
+    lugar_acta?: string;
     hora: string;
     comisionado?: string;
     comisionados?: number[];
@@ -72,6 +76,12 @@ interface ActaForm {
     domicilio_entrante?: string;
     telefono_entrante?: string;
     saliente: string;
+    ine_saliente?: string;
+    domicilio_saliente?: string;
+    telefono_saliente?: string;
+    nombramiento_saliente?: string;
+    asignacion_saliente?: string;
+    asignado_por_saliente?: string;
     fecha_fin_labores?: string;
     testigo_entrante?: string;
     ine_testigo_entrante?: string;
@@ -80,7 +90,7 @@ interface ActaForm {
     fecha_cierre_acta?: string;
     hora_cierre_acta?: string;
     observaciones?: string;
-    estado: "Pendiente" | "Completada" | "Revisión";
+    estado: "Pendiente" | "Completada" | "Revisión" | "Borrador";
     creado_en?: string;
     actualizado_en?: string;
     anexos?: Anexo[];
@@ -97,6 +107,8 @@ const createDate = () => {
 }
 
 export default function ActasPage() {
+  const [actorEdicion, setActorEdicion] = useState<ActorActa | null>(null);
+  useEffect(() => { setActorEdicion(actorActaLocal()); }, []);
   const [actas, setActas] = useState<ActaForm[]>([])
   const [filteredActas, setFilteredActas] = useState<ActaForm[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -237,6 +249,7 @@ export default function ActasPage() {
   }
 
   const handleEdit = (acta: ActaForm) => {
+    if (!puedeEditarActa(acta, actorActaLocal())) { toast.error("El acta está cerrada o no tienes permiso para editarla."); return; }
     setEditingActa(acta)
     setShowForm(true)
   }
@@ -302,7 +315,7 @@ export default function ActasPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.message || 'Error al actualizar acta')
+        throw new Error(errorData.detail || errorData.message || 'Error al actualizar acta')
       }
 
       const updatedActa = await response.json()
@@ -741,9 +754,10 @@ export default function ActasPage() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
+                                    disabled={!puedeEditarActa(acta, actorEdicion)}
                                     onClick={() => handleEdit(acta)}
                                     className="h-8 w-8 rounded-md border border-transparent p-0 text-green-700 hover:border-green-100 hover:bg-green-50"
-                                    title="Editar acta"
+                                    title={puedeEditarActa(acta, actorEdicion) ? "Editar acta" : "Acta cerrada o sin permiso de edición"}
                                   >
                                     <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                                     <span className="sr-only">Editar</span>

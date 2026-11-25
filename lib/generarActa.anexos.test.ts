@@ -28,7 +28,7 @@ const data = {
   ],
 };
 
-async function readPdf(raw = data) {
+async function readPdf(raw: Record<string, any> = data) {
   const doc = await crearActaPdf(raw);
   const pdf = await getDocument({ data: new Uint8Array(doc.output("arraybuffer")), useSystemFonts: true }).promise;
   const pages = [];
@@ -100,4 +100,40 @@ it("usa únicamente fojas confirmadas y vigentes en el inventario del acta", () 
   ] });
   expect(acta.anexos.find(item => item.clave === "SGC01")?.fojas).toBe(3);
   expect(acta.anexos.find(item => item.clave === "RM01")?.fojas).toBeNull();
+});
+
+it("presenta lugar, INE y domicilio inmediatamente después del nombre de cada funcionario", async () => {
+  const { text } = await readPdf({ ...data, lugar_acta: "Uruapan, Michoacán",
+    ine_entrante: "0000123456789", ine_saliente: "0000987654321",
+    domicilio_saliente: "Calle de Prueba 45, colonia Centro, Uruapan, Michoacán",
+    telefono_saliente: "4430000001", nombramiento_saliente: "NOM-SAL-2024",
+    asignacion_saliente: "nombramiento", asignado_por_saliente: "h_consejo",
+  });
+  expect(text).toContain("En Uruapan, Michoacán, el día 3 de febrero de 2001, a las 09:15 horas, se levanta");
+  expect(text).toContain("Comparece Roberto González López, quien se identifica con credencial del Instituto Nacional Electoral número 0000987654321");
+  expect(text).toContain("Asimismo comparece María Guadalupe Villalón, quien se identifica con credencial del Instituto Nacional Electoral número 0000123456789");
+  const saliente = text.slice(text.indexOf("Comparece Roberto"), text.indexOf("Asimismo comparece"));
+  const entrante = text.slice(text.indexOf("Asimismo comparece"), text.indexOf("designa como testigo"));
+  expect(saliente).toContain("domicilio para recibir notificaciones y documentos relacionados con la presente acta el ubicado en Calle de Prueba 45");
+  expect(saliente).toContain("NOM-SAL-2024"); expect(saliente).toContain("H. Consejo");
+  expect(saliente).toContain("4430000001"); expect(saliente).not.toContain("0000123456789");
+  expect(entrante).toContain("Madero Poniente 556"); expect(entrante).toContain(data.telefono_entrante);
+  expect(entrante).not.toContain("0000987654321");
+});
+
+it("conserva domicilio y nombres largos sin salir de los márgenes ni perder el final", async () => {
+  const { pages, text } = await readPdf({ ...data, lugar_acta: "Comunidad de prueba del municipio de Uruapan, Michoacán",
+    ine_saliente: "0000000000012",
+    domicilio_saliente: Array.from({ length: 45 }, (_, i) => `Referencia ${i + 1}: localidad y domicilio para notificaciones del funcionario saliente.`).join(" ") + " FIN-DOMICILIO-SALIENTE",
+    domicilio_entrante: Array.from({ length: 45 }, (_, i) => `Referencia ${i + 1}: localidad y domicilio para notificaciones del funcionario entrante.`).join(" ") + " FIN-DOMICILIO-ENTRANTE",
+  });
+  expect(pages.length).toBeGreaterThan(3);
+  expect(text).toContain("FIN-DOMICILIO-SALIENTE");
+  expect(text).toContain("FIN-DOMICILIO-ENTRANTE");
+  for (const page of pages) for (const item of page.items.filter(item => item.str.trim())) {
+    expect(item.transform[4]).toBeGreaterThanOrEqual(30);
+    expect(item.transform[4] + item.width).toBeLessThanOrEqual(page.width - 25);
+    expect(item.transform[5]).toBeGreaterThan(10);
+    expect(item.transform[5]).toBeLessThan(page.height - 20);
+  }
 });
