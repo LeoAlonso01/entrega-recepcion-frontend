@@ -18,12 +18,6 @@ const nextConfig = {
       ? { exclude: ['error', 'warn'] }
       : false,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     unoptimized: true,
   },

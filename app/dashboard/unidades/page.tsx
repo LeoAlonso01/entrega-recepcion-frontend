@@ -64,9 +64,9 @@ type responsable = {
     id: number;
 };
 
-export default function UnidadesResponsablesPage(currentUser: { role: string } | null, username: string | null) {
+export default function UnidadesResponsablesPage() {
     // Estados
-    const [user, setUser] = useState<{ username: string; role?: string } | null>({ username: username || "", role: "" });
+    const [user, setUser] = useState<{ username: string; role?: string } | null>({ username: "", role: "" });
     const [userrole, setUserRole] = useState<{ role: string }>({ role: user?.role || "" });
     const [token, setToken] = useState<string | null>(null);
     const [unidades, setUnidades] = useState<Unidad[]>([]);
