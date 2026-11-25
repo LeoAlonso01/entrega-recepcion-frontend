@@ -3,12 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import HabilitacionAnexos from "./HabilitacionAnexos";
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn(), info: jest.fn(), warning: jest.fn() } }));
-jest.mock("@/components/ui/select", () => ({
-  Select: ({ children, value, onValueChange, disabled }: any) => <select value={value} disabled={disabled} onChange={event => onValueChange(event.target.value)}><option value="" />{children}</select>,
-  SelectTrigger: () => null, SelectValue: () => null,
-  SelectContent: ({ children }: any) => <>{children}</>,
-  SelectItem: ({ children, value }: any) => <option value={value}>{children}</option>,
-}));
+
 
 const props = { adminId: 1, role: "ADMIN", anexos: [], cargandoAnexos: false };
 const config = { user_id: 2, configurado: false, revision: 0, claves: [] as string[], modo: "gradual", confirmado_en: null, confirmado_por: null };
@@ -35,9 +30,11 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 async function elegirUsuario() {
-  const selector = screen.getAllByRole("combobox")[0];
+  const selector = screen.getByRole("combobox", { name: "Filtrar por usuario" });
   await waitFor(() => expect(selector).toBeEnabled());
-  fireEvent.change(selector, { target: { value: "2" } });
+  fireEvent.focus(selector);
+  fireEvent.change(selector, { target: { value: "Ana" } });
+  fireEvent.keyDown(selector, { key: "Enter" });
   await screen.findByLabelText(/MJ01 ·/);
 }
 
@@ -98,4 +95,37 @@ it("blocks configuration editing when the server cannot load it", async () => {
   render(<HabilitacionAnexos {...props} />);
   await screen.findByRole("alert");
   expect(screen.queryByRole("button", { name: "Guardar y aplicar permisos" })).not.toBeInTheDocument();
+});
+
+
+it("permite buscar por tecleado en los tres filtros sin guardar permisos", async () => {
+  render(<HabilitacionAnexos {...props} />);
+  await elegirUsuario();
+  const categoria = screen.getByRole("combobox", { name: "Filtrar por categoría" });
+  fireEvent.focus(categoria);
+  fireEvent.change(categoria, { target: { value: "juridico" } });
+  fireEvent.keyDown(categoria, { key: "Enter" });
+  expect(categoria).toHaveValue("MARCO JURIDICO");
+  const clave = screen.getByRole("combobox", { name: "Filtrar por clave o descripción" });
+  fireEvent.focus(clave);
+  fireEvent.change(clave, { target: { value: "juridico" } });
+  fireEvent.keyDown(clave, { key: "Enter" });
+  expect(clave).toHaveValue("MJ01 · Marco jurídico");
+  expect(screen.getByLabelText(/MJ01 ·/)).toBeVisible();
+  expect((fetch as jest.Mock).mock.calls.some(([, options]) => options.method === "PUT")).toBe(false);
+});
+
+it("conserva los cambios si se cancela cambiar o limpiar el usuario", async () => {
+  render(<HabilitacionAnexos {...props} />);
+  await elegirUsuario();
+  fireEvent.click(screen.getByLabelText(/MJ01 ·/));
+  jest.mocked(window.confirm).mockReturnValue(false);
+  const selector = screen.getByRole("combobox", { name: "Filtrar por usuario" });
+  fireEvent.focus(selector);
+  fireEvent.change(selector, { target: { value: "Luis" } });
+  fireEvent.keyDown(selector, { key: "Enter" });
+  expect(selector).toHaveValue("Ana · ID 2");
+  fireEvent.click(screen.getByRole("button", { name: "Limpiar filtro usuario" }));
+  expect(selector).toHaveValue("Ana · ID 2");
+  expect(screen.getByLabelText(/MJ01 ·/)).toBeChecked();
 });

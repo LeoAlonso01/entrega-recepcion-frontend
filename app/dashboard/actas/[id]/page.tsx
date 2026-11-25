@@ -28,6 +28,8 @@ import { cargarDatosActaPdf } from "@/lib/actaPdfData";
 import PdfDocumentViewer from "@/components/pdf/PdfDocumentViewer";
 import { categoria_anexos, obtenerCategoriaPorClave } from "@/lib/anexosCatalogo";
 
+import { actorActaLocal, puedeEditarActa, type ActorActa } from "@/lib/actaEdicion";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface Unidad {
@@ -51,11 +53,13 @@ interface Anexo {
 }
 
 interface ActaForm {
+    creador_id?: number | null;
     id: number;
     unidad_responsable: number;
     unidad_nombre?: string;
     folio?: string;
     fecha: string;
+    lugar_acta?: string;
     hora: string;
     comisionado?: string;
     comisionados?: number[];
@@ -74,6 +78,12 @@ interface ActaForm {
     domicilio_entrante?: string;
     telefono_entrante?: string;
     saliente: string;
+    ine_saliente?: string;
+    domicilio_saliente?: string;
+    telefono_saliente?: string;
+    nombramiento_saliente?: string;
+    asignacion_saliente?: string;
+    asignado_por_saliente?: string;
     fecha_fin_labores?: string;
     testigo_entrante?: string;
     ine_testigo_entrante?: string;
@@ -82,7 +92,7 @@ interface ActaForm {
     fecha_cierre_acta?: string;
     hora_cierre_acta?: string;
     observaciones?: string;
-    estado: "Pendiente" | "Completada" | "Revisión";
+    estado: "Pendiente" | "Completada" | "Revisión" | "Borrador";
     creado_en?: string;
     actualizado_en?: string;
     anexos?: Anexo[];
@@ -111,6 +121,8 @@ const getUnidadNombre = (unidades: Unidad[], id?: number) => {
 export default function ViewActaPage() {
     const router = useRouter();
     const params = useParams();
+    const [actorEdicion, setActorEdicion] = useState<ActorActa | null>(null);
+    useEffect(() => { setActorEdicion(actorActaLocal()); }, []);
     const [acta, setActa] = useState<ActaForm | null>(null);
     const [unidades, setUnidades] = useState<Unidad[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -214,6 +226,7 @@ export default function ViewActaPage() {
             return;
         }
 
+        if (!acta || !puedeEditarActa(acta, actorActaLocal())) { toast.error("El acta está cerrada o no tienes permiso para editarla."); return; }
         const { id: _id, ...formFields } = formData;
         const payload = {
             ...formFields,
@@ -415,6 +428,8 @@ export default function ViewActaPage() {
 
                     <Button
                         variant="outline"
+                        disabled={!puedeEditarActa(acta, actorEdicion)}
+                        title={puedeEditarActa(acta, actorEdicion) ? "Editar acta" : "Acta cerrada o sin permiso de edición"}
                         onClick={() => setEditDialogOpen(true)}
                         className="w-full min-w-0 whitespace-normal text-xs sm:w-auto sm:text-sm"
                     >

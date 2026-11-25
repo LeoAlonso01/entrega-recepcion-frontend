@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import NavbarWithBreadcrumb from "@/components/NavbarBreadcrumb";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Trash2, Pencil, Eye } from "lucide-react";
+import UnidadesJerarquia from "@/components/UnidadesJerarquia";
+import { cargarUnidadesJerarquicas, type UnidadJerarquica } from "@/lib/unidadesJerarquia";
 import { CreateCargoForm } from "@/components/CreateCargoForm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL; // Default to local if not set
@@ -62,14 +64,6 @@ type responsable = {
     id: number;
 };
 
-// Extiende Unidad para jerarquía, agregando los campos usados en renderTreeNode
-type UnidadJerarquica = Unidad & {
-    estado?: string;
-    tipo_unidad?: string;
-    codigo_postal?: string;
-    rfc?: string;
-};
-
 export default function UnidadesResponsablesPage(currentUser: { role: string } | null, username: string | null) {
     // Estados
     const [user, setUser] = useState<{ username: string; role?: string } | null>({ username: username || "", role: "" });
@@ -77,12 +71,13 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
     const [token, setToken] = useState<string | null>(null);
     const [unidades, setUnidades] = useState<Unidad[]>([]);
     const [unidadesOriginales, setUnidadesOriginales] = useState<Unidad[]>([]);
-    const [unidadesJerarquia, setUnidadesJerarquia] = useState<Unidad[]>([]);
+    const [unidadesJerarquia, setUnidadesJerarquia] = useState<UnidadJerarquica[]>([]);
     const [activeTab, setActiveTab] = useState("listado");
     const [loading, setLoading] = useState(true);
     const [loadingJerarquia, setLoadingJerarquia] = useState(false);
     const [error, setError] = useState<Error | null>(null);
-    const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set());
+    const [errorJerarquia, setErrorJerarquia] = useState<string | null>(null);
+    const jerarquiaEnCurso = useRef(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -556,25 +551,21 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
 
     // Obtener unidades jerárquicas (solo cuando se selecciona la pestaña)
     const handleGetUnidadesJerarquicas = async () => {
-        if (!token || unidadesJerarquia.length > 0) return;
-
+        if (jerarquiaEnCurso.current) return;
+        jerarquiaEnCurso.current = true;
         setLoadingJerarquia(true);
+        setErrorJerarquia(null);
 
         try {
-            const response = await fetch(`${API_URL}/unidades_jerarquicas`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) throw new Error('Error al obtener unidades jerárquicas');
-
-            const data = await response.json();
+            const token = localStorage.getItem("token");
+            if (!token) throw new Error("Tu sesión venció. Inicia sesión nuevamente.");
+            if (!API_URL) throw new Error("No se ha configurado la dirección de la API.");
+            const data = await cargarUnidadesJerarquicas(API_URL, token);
             setUnidadesJerarquia(data);
         } catch (err) {
-            setError(err as Error);
+            setErrorJerarquia(err instanceof Error ? err.message : "No se pudo cargar la jerarquía.");
         } finally {
+            jerarquiaEnCurso.current = false;
             setLoadingJerarquia(false);
         }
     };
@@ -586,79 +577,6 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
         if (value === "jerarquia") {
             handleGetUnidadesJerarquicas();
         }
-    };
-
-    // Renderizar nodo del árbol jerárquico
-    const toggleNode = (id: number) => {
-        const newExpanded = new Set(expandedNodes);
-        if (newExpanded.has(id)) {
-            newExpanded.delete(id);
-        } else {
-            newExpanded.add(id);
-        }
-        setExpandedNodes(newExpanded);
-    };
-
-    const renderTreeNode = (unidad: UnidadJerarquica) => {
-        const children = unidadesJerarquia.filter(u => u.unidad_padre_id === unidad.id_unidad);
-        const isExpanded = expandedNodes.has(unidad.id_unidad);
-        const hasChildren = children.length > 0;
-
-        return (
-            <div key={unidad.id_unidad}>
-                <div
-                    className={`flex items-center py-1 cursor-pointer rounded hover:bg-gray-100 p-1 ${unidad.estado === 'inactivo' ? 'opacity-70' : ''
-                        }`}
-                    style={{ paddingLeft: `${(unidad.nivel || 0) * 20}px` }}
-                    onClick={() => hasChildren && toggleNode(unidad.id_unidad)}
-                >
-                    {hasChildren && (
-                        <div className="mr-2 flex-shrink-0">
-                            {isExpanded ? (
-                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                                </svg>
-                            ) : (
-                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v1h3a1 1 0 110 2h-3v1a1 1 0 11-2 0V7H6a1 1 0 110-2h3V4a1 1 0 011-1z" clipRule="evenodd" />
-                                </svg>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="flex items-center flex-1 min-w-0">
-                        <div className="flex-shrink-0 mr-2">
-                            {hasChildren ? (
-                                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v1h3a1 1 0 110 2h-3v1a1 1 0 11-2 0V6H6a1 1 0 110-2h3V4a1 1 0 111-1z" clipRule="evenodd" />
-                                </svg>
-                            ) : (
-                                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                                </svg>
-                            )}
-                        </div>
-
-                        <div className="min-w-0">
-                            <div className={`text-sm font-medium ${unidad.estado === 'inactivo' ? 'text-gray-500' : 'text-gray-900'}`}>
-                                {unidad.nombre}
-                            </div>
-                            {unidad.responsable && (
-                                <div className="text-xs text-gray-500 truncate">
-                                    {renderResponsable(unidad.responsable)}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {hasChildren && isExpanded && (
-                    <div className="mt-1 ml-6 border-l border-gray-200 pl-4">
-                        {children.map(renderTreeNode)}
-                    </div>
-                )}
-            </div>
-        );
     };
 
     // Filtro de búsqueda local
@@ -1017,9 +935,14 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                     {/* Contenido - Jerarquía */}
                     <TabsContent value="jerarquia" className="mt-4 sm:mt-6 md:mt-8">
                         <div className="bg-white shadow rounded-lg overflow-hidden">
-                            <div className="p-6 border-b border-gray-200">
-                                <h2 className="text-xl font-semibold text-gray-800">Árbol Jerárquico</h2>
-                                <p className="text-sm text-gray-500 mt-1">Visualización de unidades por nivel de jerarquía</p>
+                            <div className="flex flex-wrap items-center justify-between gap-3 whitespace-normal p-6 border-b border-gray-200">
+                                <div>
+                                    <h2 className="text-xl font-semibold text-gray-800">Árbol Jerárquico</h2>
+                                    <p className="text-sm text-gray-500 mt-1">Explora cada unidad y las unidades que dependen de ella.</p>
+                                </div>
+                                <Button variant="outline" disabled={loadingJerarquia} onClick={() => handleGetUnidadesJerarquicas()}>
+                                    Actualizar jerarquía
+                                </Button>
                             </div>
 
                             <div className="p-6">
@@ -1028,14 +951,10 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#24356B]"></div>
                                         <p className="mt-2 text-gray-600">Cargando unidades jerárquicas...</p>
                                     </div>
-                                ) : error && activeTab === "jerarquia" ? (
-                                    <div className="p-4 bg-red-50 text-red-700 rounded">
-                                        <span className="flex items-center">
-                                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                            Error: {error.message}
-                                        </span>
+                                ) : errorJerarquia ? (
+                                    <div role="alert" className="space-y-3 whitespace-normal p-4 bg-red-50 text-red-700 rounded">
+                                        <p>{errorJerarquia}</p>
+                                        <Button variant="outline" onClick={() => handleGetUnidadesJerarquicas()}>Reintentar</Button>
                                     </div>
                                 ) : unidadesJerarquia.length === 0 ? (
                                     <div className="py-12 text-center text-gray-500">
@@ -1045,11 +964,7 @@ export default function UnidadesResponsablesPage(currentUser: { role: string } |
                                         <p>No hay unidades jerárquicas disponibles</p>
                                     </div>
                                 ) : (
-                                    <div className="border border-gray-200 rounded p-4">
-                                        <div className="space-y-1">
-                                           {unidadesJerarquia.map((unidad) => renderTreeNode(unidad))}
-                                        </div>
-                                    </div>
+                                    <UnidadesJerarquia unidades={unidadesJerarquia} />
                                 )}
                             </div>
                         </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import FiltroConBusqueda from "@/components/FiltroConBusqueda";
 import { toast } from "sonner";
 
 type Usuario = { id: number; username: string };
@@ -30,7 +30,6 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
   const [busqueda, setBusqueda] = useState("");
   const [categoriaId, setCategoriaId] = useState("__all__");
   const [listo, setListo] = useState(false);
-  const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
   useEffect(() => {
     if (role !== "ADMIN" || adminId <= 0) return;
@@ -97,7 +96,7 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
     .sort((a, b) => Number(a.id) - Number(b.id));
   const listaVisible = catalogo.filter(item =>
     (categoriaId === "__all__" || item.categoria_id === categoriaId) &&
-    normalizar(`${item.clave} ${item.descripcion}`).includes(normalizar(busqueda))
+    (!busqueda || item.clave === busqueda)
   );
   const cambiarClaves = (lista: string[], habilitar: boolean) => setClaves(actuales =>
     habilitar ? Array.from(new Set([...actuales, ...lista])) : actuales.filter(clave => !lista.includes(clave))
@@ -107,6 +106,11 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
     setUsuarioId(id);
     setListo(false);
     setClaves([]);
+    setConfig(null);
+    setHistorial([]);
+    setMotivo("");
+    setConflicto(false);
+    setError("");
   }
   async function guardar() {
     if (role !== "ADMIN" || !listo || !config || guardando || conflicto || error) return;
@@ -153,26 +157,19 @@ export default function HabilitacionAnexos({ adminId, role, anexos, cargandoAnex
           <Button variant="outline" className="ml-3" onClick={() => usuarioId ? setRecargaConfig(valor => valor + 1) : setRecarga(valor => valor + 1)}>Reintentar</Button>
         </div>}
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="usuario-habilitacion">Usuario</Label>
-            <Select value={usuarioId} onValueChange={seleccionarUsuario} disabled={cargando || guardando}>
-              <SelectTrigger id="usuario-habilitacion"><SelectValue placeholder={cargando ? "Cargando usuarios…" : "Selecciona un usuario"} /></SelectTrigger>
-              <SelectContent>{usuarios.map(user => <SelectItem key={user.id} value={String(user.id)}>{user.username} · ID {user.id}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="categoria-habilitacion">Categoría</Label>
-            <Select value={categoriaId} onValueChange={setCategoriaId}>
-              <SelectTrigger id="categoria-habilitacion"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="__all__">Todas las categorías</SelectItem>
-                {categorias.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.nombre_categoria}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="buscar-habilitacion">Clave o descripción</Label>
-            <Input id="buscar-habilitacion" type="search" placeholder="Buscar clave o descripción" value={busqueda} onChange={event => setBusqueda(event.target.value)} />
-          </div>
+          <FiltroConBusqueda label="Usuario" value={usuarioId || "__all__"}
+            allLabel={cargando ? "Cargando usuarios…" : "Selecciona un usuario"}
+            disabled={cargando || guardando}
+            options={usuarios.map(user => ({ value: String(user.id), label: `${user.username} · ID ${user.id}` }))}
+            onChange={id => seleccionarUsuario(id === "__all__" ? "" : id)} />
+          <FiltroConBusqueda label="Categoría" value={categoriaId} allLabel="Todas las categorías"
+            disabled={cargando || guardando}
+            options={categorias.map(cat => ({ value: cat.id, label: cat.nombre_categoria }))}
+            onChange={setCategoriaId} />
+          <FiltroConBusqueda label="Clave o descripción" value={busqueda || "__all__"} allLabel="Todas las claves"
+            disabled={cargando || guardando}
+            options={catalogo.map(item => ({ value: item.clave, label: `${item.clave} · ${item.descripcion}` }))}
+            onChange={clave => setBusqueda(clave === "__all__" ? "" : clave)} />
         </div>
         {!cargando && !error && usuarios.length === 0 && <p>No hay usuarios disponibles.</p>}
         {!usuarioId ? <p className="text-sm text-gray-600">Selecciona un usuario para configurar sus anexos, incluso si aún no ha creado ninguno.</p> : !listo ? <p role="status">{error ? "No se puede editar hasta cargar la configuración." : "Cargando configuración…"}</p> : <>

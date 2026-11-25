@@ -222,3 +222,32 @@ it("requiere nombre para un comisionado sin nombre completo y conserva el captur
   fireEvent.click(screen.getByRole("button", { name: "Guardar Acta" }));
   expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ id: 42, comisionado: "Ana López García", comisiones: saved.comisiones }));
 });
+
+
+it("bloquea la unidad y la cuenta saliente con anexos, pero conserva la edición del nombre", () => {
+  const onSave = jest.fn();
+  render(<FormActa unidades={unidades} usuarios={usuarios} onSave={onSave} onCancel={() => {}}
+    acta={{ id: 30, unidad_responsable: 17, entrante: "Entrante", saliente: "Regular", saliente_id: 3,
+      estado: "Revisión", anexos: [{ id: 1 }] }} />);
+  expect(screen.getByRole("combobox", { name: "Unidad Responsable" })).toBeDisabled();
+  expect(screen.getByRole("combobox", { name: "Funcionario Saliente" })).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: "Capturar nombre manualmente de Funcionario Saliente" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Nombre para el acta de Funcionario Saliente"), { target: { value: "Nombre corregido" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar Acta" }));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ saliente: "Nombre corregido", saliente_id: 3, unidad_responsable: 17 }));
+});
+
+it("impide guardar una acta completada y advierte al completar una pendiente", () => {
+  const onSave = jest.fn();
+  const props = { unidades, usuarios, onSave, onCancel: () => {} };
+  const { unmount } = render(<FormActa {...props} acta={{ id: 31, unidad_responsable: 17, entrante: "Entrante", saliente: "Saliente", estado: "Completada" }} />);
+  fireEvent.click(screen.getByRole("button", { name: "Guardar Acta" }));
+  expect(onSave).not.toHaveBeenCalled();
+  expect(screen.getByRole("alert")).toHaveTextContent("cerrada");
+  unmount();
+  render(<FormActa {...props} acta={{ id: 32, unidad_responsable: 17, entrante: "Entrante", saliente: "Saliente", estado: "Pendiente" }} />);
+  fireEvent.change(document.querySelector('select[name="estado"]')!, { target: { value: "Completada" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar Acta" }));
+  expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("quedará cerrada"));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ estado: "Completada" }));
+});
