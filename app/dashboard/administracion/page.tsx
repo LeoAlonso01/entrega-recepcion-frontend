@@ -2,7 +2,9 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import AsignarResponsableDialog from "@/components/AsignarResponsableDialog"
+import { coincideUnidad, coincideUsuario } from "@/lib/busquedaAdministracion"
 import { useRouter } from "next/navigation"
 
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
@@ -211,7 +213,7 @@ const exportUsersToExcel = (usuarios: Usuario[], title = "Reporte de Usuarios") 
   XLSX.writeFile(workbook, `usuarios_reporte_${new Date().toISOString().split("T")[0]}.xlsx`)
 }
 
-export default function AdministracionPage(user: { role: string } | null) {
+export default function AdministracionPage() {
   // Prevent server-side execution of client-only code by short-circuiting during SSR/build
   if (typeof window === 'undefined') {
     return <div className="min-h-screen bg-gray-50"></div>;
@@ -226,21 +228,17 @@ export default function AdministracionPage(user: { role: string } | null) {
   //const [unidadesCache, setUnidadesCache] = useState<Unidad[]>([]);
   const [isModalLoading, setIsModalLoading] = useState(false);
   const [loadingAsignacion, setLoadingAsignacion] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [pendingAssignment, setPendingAssignment] = useState<{
-    unidadId: number;
-    unidadNombre: string;
-    usuarioId: number;
-    usuarioNombre: string;
-    cargoId?: number;
-    cargoNombre?: string;
-  } | null>(null);
+  const [unidadAsignacion, setUnidadAsignacion] = useState<Unidad | null>(null);
+  const [cargoGuardado, setCargoGuardado] = useState(false);
+  const [asignacionError, setAsignacionError] = useState<string | null>(null);
+  const guardandoAsignacion = useRef(false);
+  const ultimaUnidadAsignacion = useRef<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
-  const [searchUser, setSearchUser] = useState<string>("") // Para buscar unidades
-  const [searchUsuario, setSearchUsuario] = useState<string>("") // Para buscar usuarios en el select
+  const [busquedaUsuarios, setBusquedaUsuarios] = useState("");
+  const [busquedaUnidadesModal, setBusquedaUnidadesModal] = useState("");
   const [isDeleting, setIsDeleting] = useState(false)
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null)
   const [currentUser, setCurrentUser] = useState<{ username: string; role: string }>({ username: "", role: "" })
@@ -268,7 +266,6 @@ export default function AdministracionPage(user: { role: string } | null) {
   const [cargos, setCargos] = useState<Cargo[]>([]);
   const [cargosLoading, setCargosLoading] = useState(false);
   const [cargosLoaded, setCargosLoaded] = useState(false);
-  const [selectCargoId, setSelectCargoId] = useState<number | null>(null);
 
   // Reset password modal state (admin flows)
   const [openResetModal, setOpenResetModal] = useState(false);
@@ -512,6 +509,7 @@ export default function AdministracionPage(user: { role: string } | null) {
   // Handler for modal open/close to clear heavy state on close for faster UX
   const handleModalOpenChange = (open: boolean) => {
     setIsModalOpen(open);
+    setBusquedaUnidadesModal("");
     if (!open) {
       // Clear big arrays quickly so closing animation is snappy
       setUnidades([]);
@@ -521,6 +519,59 @@ export default function AdministracionPage(user: { role: string } | null) {
       setShowedUnidadesCount(0);
       setIsModalLoading(false);
       setLoadingAsignacion(false);
+    }
+  };
+
+  const confirmarAsignacion = async (usuarioId: number, cargoId: number) => {
+    if (!unidadAsignacion || guardandoAsignacion.current) return;
+    const token = localStorage.getItem("token");
+    if (!token) { toast.error("Token no encontrado. Por favor inicia sesión."); router.push("/"); return; }
+    const usuario = usuarios.find(item => item.id === usuarioId && !item.is_deleted);
+    const cargo = cargos.find(item => item.id === cargoId && !item.is_deleted && (item.activo ?? true));
+    if (!usuario || !cargo) { setAsignacionError("Selecciona un usuario disponible y un cargo activo."); return; }
+    const unidadId = unidadAsignacion.id_unidad;
+    guardandoAsignacion.current = true;
+    setIsSubmitting(true);
+    setAsignacionError(null);
+    try {
+      const comprobarRespuesta = async (response: Response, mensaje: string) => {
+        if (response.status === 401) {
+          router.push("/");
+          throw new Error("Sesión expirada. Por favor inicia sesión de nuevo.");
+        }
+        if (!response.ok) {
+          const detalle = await response.json().catch(() => ({}));
+          throw new Error(typeof detalle.detail === "string" ? detalle.detail : mensaje);
+        }
+      };
+      // Reuse the existing endpoints. If only the second request fails, retry that step.
+      if (!cargoGuardado) {
+        const resCargo = await fetch(`${API_URL}/cargos/asignar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ cargo_id: cargoId, user_id: usuarioId, unidad_responsable_id: unidadId, motivo: "Asignación desde panel de administración" }),
+        });
+        await comprobarRespuesta(resCargo, "No se pudo asignar el cargo. Verifica si ya existe una asignación activa para ese cargo y unidad.");
+        setCargoGuardado(true);
+      }
+      const resUnidad = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ responsable_id: usuarioId }),
+      });
+      await comprobarRespuesta(resUnidad, "No se pudo actualizar al responsable de la unidad.");
+      const actualizar = (items: Unidad[]) => items.map(item => item.id_unidad === unidadId ? { ...item, responsable: { id: usuarioId, username: usuario.username } } : item);
+      setUnidades(actualizar);
+      setUnidadesCache(actualizar);
+      setUnidadAsignacion(null);
+      setCargoGuardado(false);
+      toast.success("Cargo asignado y responsable actualizado correctamente.");
+      await handleGetUsers();
+    } catch (error) {
+      setAsignacionError(error instanceof Error ? error.message : "No se pudo completar la asignación.");
+    } finally {
+      guardandoAsignacion.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -551,6 +602,9 @@ export default function AdministracionPage(user: { role: string } | null) {
 
   }
 
+
+  const usuariosFiltrados = usuarios.filter(usuario => coincideUsuario(usuario, busquedaUsuarios));
+  const unidadesFiltradasModal = unidadesCache.filter(unidad => coincideUnidad(unidad, busquedaUnidadesModal));
 
   if (!isAuthorized) return null
 
@@ -781,7 +835,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                   // Load the first page/chunk of unidades and cargos and show overlay while fetching
                   await loadUnidadesPage(1);
                   if (!cargosLoaded) await loadCargos();
-                  setIsModalOpen(true);
+                  handleModalOpenChange(true);
                   setLoadingAsignacion(false);
                 }}
                 disabled={!localStorage.getItem("token") || loadingAsignacion}
@@ -809,13 +863,20 @@ export default function AdministracionPage(user: { role: string } | null) {
 
         {/* Campo de búsqueda principal */}
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="w-full sm:w-1/2">
-            <Input
-              placeholder="Buscar por nombre, unidad o cargo"
-              value={searchUser}
-              onChange={e => setSearchUser(e.target.value)}
-              className="text-sm"
-            />
+          <div className="w-full space-y-2 sm:max-w-xl">
+            <Label htmlFor="busqueda-gestion-usuarios">Buscar en Gestión de usuarios</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="busqueda-gestion-usuarios"
+                type="search"
+                placeholder="Nombre, email, unidad, cargo o rol"
+                value={busquedaUsuarios}
+                onChange={e => setBusquedaUsuarios(e.target.value)}
+                className="min-w-0 text-sm"
+              />
+              {busquedaUsuarios && <Button type="button" variant="outline" onClick={() => setBusquedaUsuarios("")}>Limpiar búsqueda</Button>}
+            </div>
+            <p role="status" className="text-xs text-gray-500">{usuariosFiltrados.length} de {usuarios.length} usuarios</p>
           </div>
         </div>
 
@@ -869,22 +930,7 @@ export default function AdministracionPage(user: { role: string } | null) {
 
                   {/* Cuerpo de tabla / tarjetas responsivas */}
                   <TableBody className="divide-y divide-gray-200">
-                    {usuarios
-                      .filter((usuario) => {
-                        if (!searchUser) return true;
-                        const search = searchUser.toLowerCase();
-                        const nombre = usuario.username.toLowerCase();
-                        const unidad = usuario.unidad_responsable?.nombre?.toLowerCase() || "";
-                        const cargos = (usuario.cargos_actuales && usuario.cargos_actuales.length > 0)
-                          ? usuario.cargos_actuales.map(c => (c.cargo?.nombre || (c as any).nombre || "")).join(", ").toLowerCase()
-                          : "";
-                        return (
-                          nombre.includes(search) ||
-                          unidad.includes(search) ||
-                          cargos.includes(search)
-                        );
-                      })
-                      .map((usuario) => (
+                    {usuariosFiltrados.map((usuario) => (
                       <TableRow
                         key={usuario.id}
                         className="md:table-row flex flex-col md:flex-row md:table-row border md:border-0 mb-4 md:mb-0 rounded-lg md:rounded-none shadow-sm md:shadow-none"
@@ -1009,6 +1055,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                         </TableCell>
                       </TableRow>
                     ))}
+                    {usuariosFiltrados.length === 0 && <TableRow><TableCell colSpan={6} className="p-6 text-center text-gray-500">No se encontraron usuarios con esta búsqueda.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </div>
@@ -1023,8 +1070,12 @@ export default function AdministracionPage(user: { role: string } | null) {
         <ResetPasswordModal open={openSelfChange} onOpenChange={(v) => { setOpenSelfChange(v); if (!v) setSelfTarget(null); }} userId={selfTarget?.id ?? null} username={selfTarget?.username ?? null} mode="self" onSuccess={() => { /* handled inside modal (logout) */ }} />
 
         {/* Asignación de usuario */}
-        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
-          <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <Dialog open={isModalOpen && !unidadAsignacion} onOpenChange={handleModalOpenChange}>
+          <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onOpenAutoFocus={event => {
+            const button = document.querySelector<HTMLButtonElement>(`button[data-unidad-asignacion="${ultimaUnidadAsignacion.current}"]`);
+            if (button) { event.preventDefault(); button.focus(); }
+            ultimaUnidadAsignacion.current = null;
+          }}>
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">Asignar Responsable a Unidad</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
@@ -1050,37 +1101,22 @@ export default function AdministracionPage(user: { role: string } | null) {
               </div>
             ) : (
               <div className="py-4 flex-1 overflow-y-auto">
-                <div className="mb-4">
-                  
-                  <Input
-                  type="hidden"
-                    placeholder="Buscar por username o email"
-                    value={searchUser}
-                    onChange={(e) => setSearchUser(e.target.value)}
-                    className="text-xs"
-                  />
-                </div>
-                <div className="mb-4 flex flex-col sm:flex-row gap-2">
-                  <div className="flex-1">
-                    <Label className="text-xs">Buscar Unidad Responsable</Label>
+                <div className="mb-4 max-w-xl">
+                  <div className="min-w-0 space-y-2">
+                    <Label htmlFor="busqueda-unidades-asignacion">Buscar unidad o responsable actual</Label>
                     <Input
-                      placeholder="Buscar por nombre de unidad"
-                      value={searchUser}
-                      onChange={(e) => setSearchUser(e.target.value)}
-                      className="text-xs"
+                      id="busqueda-unidades-asignacion"
+                      type="search"
+                      placeholder="Nombre de unidad o responsable"
+                      value={busquedaUnidadesModal}
+                      onChange={e => setBusquedaUnidadesModal(e.target.value)}
+                      className="text-sm"
                     />
+                    <p role="status" className="text-xs text-gray-500">{unidadesFiltradasModal.length} de {unidadesCache.length} unidades cargadas</p>
                   </div>
-                  <div className="flex-1">
-                    
-                    <Input
-                    type="hidden"
-                      placeholder="Buscar por username o email"
-                      value={searchUsuario}
-                      onChange={(e) => setSearchUsuario(e.target.value)}
-                      className="text-xs"
-                    />
-                  </div>
+
                 </div>
+                {busquedaUnidadesModal && <Button type="button" variant="outline" size="sm" className="mb-4" onClick={() => setBusquedaUnidadesModal("")}>Limpiar búsqueda de unidades</Button>}
 
                 <div className="overflow-x-auto">
                   <Table>
@@ -1092,12 +1128,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {unidadesCache
-                        .filter((unidad) =>
-                          searchUser === "" ||
-                          unidad.nombre.toLowerCase().includes(searchUser.toLowerCase())
-                        )
-                        .map((unidad) => (
+                      {unidadesFiltradasModal.map((unidad) => (
                         <TableRow key={unidad.id_unidad}>
                           <TableCell className="font-medium text-xs sm:text-sm">
                             {unidad.nombre}
@@ -1112,48 +1143,21 @@ export default function AdministracionPage(user: { role: string } | null) {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Controller
-                              name={`asignaciones.${unidad.id_unidad}`}
-                              control={control}
-                              render={({ field }) => (
-                                <Select
-                                  onValueChange={(value) => {
-                                    field.onChange(value);
-                                    const usuarioId = parseInt(value);
-                                    const usuario = usuarios.find((u) => u.id === usuarioId);
-                                    setSelectCargoId(null); // reset cargo selection when changing user
-                                    setPendingAssignment({
-                                      unidadId: unidad.id_unidad,
-                                      unidadNombre: unidad.nombre,
-                                      usuarioId,
-                                      usuarioNombre: usuario?.username || "",
-                                    });
-                                    setIsConfirmOpen(true);
-                                  }}
-                                  value={field.value}
-                                >
-                                  <SelectTrigger className="text-xs sm:text-sm">
-                                    <SelectValue placeholder="Seleccionar usuario" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {usuarios
-                                      .filter((u) =>
-                                        searchUsuario === "" ||
-                                        u.username.toLowerCase().includes(searchUsuario.toLowerCase()) ||
-                                        u.email.toLowerCase().includes(searchUsuario.toLowerCase())
-                                      )
-                                      .map((usuario) => (
-                                        <SelectItem key={usuario.id} value={usuario.id.toString()} className="text-xs sm:text-sm">
-                                          {usuario.username} ({usuario.email})
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
+                            <Button type="button" variant="outline" className="h-auto whitespace-normal text-left text-xs sm:text-sm"
+                              data-unidad-asignacion={unidad.id_unidad}
+                              aria-label={`Seleccionar responsable y cargo para ${unidad.nombre}`}
+                              onClick={() => {
+                                ultimaUnidadAsignacion.current = unidad.id_unidad;
+                                setCargoGuardado(false);
+                                setAsignacionError(null);
+                                setUnidadAsignacion(unidad);
+                              }}>
+                              Seleccionar responsable y cargo
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
+                      {unidadesFiltradasModal.length === 0 && <TableRow><TableCell colSpan={3} className="p-6 text-center text-gray-500">No se encontraron unidades con esta búsqueda.</TableCell></TableRow>}
                     </TableBody>
                   </Table>
                   {/* Load more control */}
@@ -1189,7 +1193,7 @@ export default function AdministracionPage(user: { role: string } | null) {
                 variant="outline"
                 onClick={() => {
                   if (isModalLoading) return;
-                  setIsModalOpen(false);
+                  handleModalOpenChange(false);
                 }}
                 disabled={isModalLoading}
                 className="w-full sm:w-auto"
@@ -1207,179 +1211,22 @@ export default function AdministracionPage(user: { role: string } | null) {
           </DialogContent>
         </Dialog>
 
-        {/* Modal de Confirmación */}
-        <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-          <DialogContent className="w-[95vw] max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Confirmar Asignación</DialogTitle>
-              <DialogDescription className="text-sm sm:text-base">
-                ¿Estás seguro de que deseas asignar a <strong>{pendingAssignment?.usuarioNombre}</strong> como responsable de{" "}
-                <strong>{pendingAssignment?.unidadNombre}</strong>?
-              </DialogDescription>
-            </DialogHeader>
-
-            {/* Cargo selection (optional) */}
-            <div className="space-y-2">
-              <Label className="text-sm">Cargo</Label>
-
-              <Select
-                onValueChange={(v) => setSelectCargoId(parseInt(v))}
-                value={selectCargoId ? selectCargoId.toString() : ""}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={cargosLoading ? "Cargando cargos..." : "Selecciona un cargo (opcional)"}
-                  >
-                  </SelectValue>
-                </SelectTrigger>
-
-                <SelectContent>
-                  {
-                    cargos
-                      .filter((c) => !c.is_deleted && (c.activo ?? true))
-                      .map((cargo) => (
-                        <SelectItem key={cargo.id} value={cargo.id.toString()} className="text-sm">
-                          {cargo.nombre}
-                        </SelectItem>
-                      ))
-                  }
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">Selecciona un cargo si deseas asignar uno.</p>
-            </div>
-
-            <DialogFooter className="flex flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsConfirmOpen(false)}
-                className="w-full sm:w-auto order-2 sm:order-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                style={{ backgroundColor: "#24356B", color: "white" }}
-                onClick={async () => {
-                  if (!pendingAssignment) return;
-                  if (isSubmitting) return;
-
-                  const token = localStorage.getItem("token");
-                  if (!token) {
-                    toast.error("Token no encontrado. Por favor inicia sesión.");
-                    router.push("/");
-                    return;
-                  }
-
-                  const { unidadId, usuarioId } = pendingAssignment;
-
-                  // 1) Validaciones
-                  const usuarioExistente = usuarios.find((u) => u.id === usuarioId);
-                  if (!usuarioExistente) {
-                    toast.error("El usuario seleccionado no existe en el listado.");
-                    setIsConfirmOpen(false);
-                    return;
-                  }
-
-                  if (!selectCargoId) {
-                    toast.error("Selecciona un cargo para continuar.");
-                    return;
-                  }
-
-                  try {
-                    setIsSubmitting(true);
-
-                    // 2) ASIGNAR CARGO (transaccional en backend)
-                    const resCargo = await fetch(`${API_URL}/cargos/asignar`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                      },
-                      body: JSON.stringify({
-                        cargo_id: selectCargoId,
-                        user_id: usuarioId,
-                        unidad_responsable_id: unidadId,
-                        motivo: "Asignación desde panel de administración",
-                      }),
-                    });
-
-                    if (resCargo.status === 401) {
-                      toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
-                      router.push("/");
-                      return;
-                    }
-
-                    // Conflicto: ya existe asignación activa para ese cargo/unidad
-                    if (resCargo.status === 409) {
-                      const err = await resCargo.json().catch(() => ({}));
-                      toast.error(err.detail || "Ya existe una asignación activa para ese cargo y unidad.");
-                      return;
-                    }
-
-                    if (!resCargo.ok) {
-                      const err = await resCargo.json().catch(() => ({}));
-                      toast.error(err.detail || "No se pudo asignar el cargo.");
-                      return;
-                    }
-
-                    // 3) ASIGNAR RESPONSABLE A UNIDAD
-                    const resUnidad = await fetch(`${API_URL}/unidades_responsables/${unidadId}`, {
-                      method: "PUT",
-                      headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                      },
-                      body: JSON.stringify({ responsable_id: usuarioId }),
-                    });
-
-                    if (resUnidad.status === 401) {
-                      toast.error("Sesión expirada. Por favor inicia sesión de nuevo.");
-                      router.push("/");
-                      return;
-                    }
-
-                    if (resUnidad.status === 404) {
-                      toast.error("Unidad o usuario no encontrado (404).");
-                      return;
-                    }
-
-                    if (resUnidad.status === 422) {
-                      const err = await resUnidad.json().catch(() => ({}));
-                      toast.error("Datos mal formados: " + (err.detail || JSON.stringify(err)));
-                      return;
-                    }
-
-                    if (!resUnidad.ok) {
-                      const err = await resUnidad.json().catch(() => ({}));
-                      toast.error(err.detail || "Error al asignar responsable.");
-                      return;
-                    }
-
-                    // 4) Refrescar toda la página para limpiar campos de búsqueda y estado
-                    window.location.reload();
-
-                    toast.success("Cargo asignado y responsable actualizado correctamente ✅");
-                    setIsConfirmOpen(false);
-                    setSelectCargoId(null);
-
-                    // opcional (recomendado): refrescar usuarios para ver cargos_actuales en tabla
-                    await handleGetUsers();
-
-                  } catch (error) {
-                    console.error(error);
-                    toast.error("No se pudo completar la asignación.");
-                    setIsConfirmOpen(false);
-                  } finally {
-                    setIsSubmitting(false);
-                  }
-                }}
-                disabled={!localStorage.getItem("token") || isSubmitting || !selectCargoId}
-                className="w-full sm:w-auto order-1 sm:order-2"
-              >
-                {isSubmitting ? "Procesando..." : "Confirmar"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {unidadAsignacion && <AsignarResponsableDialog
+          key={unidadAsignacion.id_unidad}
+          unidad={unidadAsignacion}
+          usuarios={usuarios}
+          cargos={cargos}
+          isSubmitting={isSubmitting}
+          cargoGuardado={cargoGuardado}
+          error={asignacionError}
+          onClose={() => {
+            if (guardandoAsignacion.current) return;
+            setUnidadAsignacion(null);
+            setCargoGuardado(false);
+            setAsignacionError(null);
+          }}
+          onConfirm={confirmarAsignacion}
+        />}
 
         {/* Modal de Eliminación */}
         <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
