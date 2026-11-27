@@ -240,8 +240,13 @@ export default function FormActa({
       setErrorSeleccion("El acta está cerrada y no admite modificaciones.");
       return;
     }
-    if (!formData.unidad_responsable || !formData.entrante.trim() || !formData.saliente.trim()) {
-      setErrorSeleccion("Selecciona una unidad responsable y selecciona o captura el nombre de los funcionarios entrante y saliente.");
+    const camposFaltantes = [
+      !formData.unidad_responsable && "Unidad Responsable",
+      !formData.entrante.trim() && "Funcionario Entrante",
+      !formData.saliente.trim() && "Funcionario Saliente",
+    ].filter(Boolean);
+    if (camposFaltantes.length) {
+      setErrorSeleccion(`Completa los campos obligatorios: ${camposFaltantes.join(", ")}.`);
       return;
     }
     if (formData.comisionados.some(id => !nombreComisionado(id).trim())) {
@@ -267,10 +272,6 @@ export default function FormActa({
       </h2>
 
       {usuariosCargando && <p role="status" className="text-sm text-gray-600">Cargando usuarios...</p>}
-      {usuariosError && <div role="alert" className="text-sm text-red-700">
-        {usuariosError} <button type="button" className="underline" onClick={onRetryUsuarios}>Reintentar</button>
-      </div>}
-      {errorSeleccion && <p role="alert" className="text-sm text-red-700">{errorSeleccion}</p>}
 
       {/* --- DATOS GENERALES --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -609,13 +610,19 @@ export default function FormActa({
       </div>
 
       {/* BOTONES */}
-      <div className="flex justify-end gap-4 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" style={{ backgroundColor: "#24356B", color: "white" }}>
-          Guardar Acta
-        </Button>
+      <div role="group" aria-label="Acciones del acta" className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-start sm:justify-end">
+        {(errorSeleccion || usuariosError) && <div className="min-w-0 flex-1 space-y-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          {errorSeleccion && <p role="alert" className="break-words">{errorSeleccion}</p>}
+          {usuariosError && <p role="alert" className="break-words">{usuariosError} <button type="button" className="underline" onClick={onRetryUsuarios}>Reintentar</button></p>}
+        </div>}
+        <div className="flex shrink-0 justify-end gap-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button type="submit" style={{ backgroundColor: "#24356B", color: "white" }}>
+            Guardar Acta
+          </Button>
+        </div>
       </div>
     </form>
   );

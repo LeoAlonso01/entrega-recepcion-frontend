@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import FormActa, { type ActaUsuario } from "./FormActa";
 
 const usuarios: ActaUsuario[] = [
@@ -72,7 +72,10 @@ it("impide enviar texto libre sin seleccionar resultados", () => {
   fireEvent.change(screen.getByRole("combobox", { name: "Unidad Responsable" }), { target: { value: "Inventada" } });
   fireEvent.click(screen.getByRole("button", { name: "Guardar Acta" }));
   expect(onSave).not.toHaveBeenCalled();
-  expect(screen.getByRole("alert")).toHaveTextContent("Selecciona una unidad responsable");
+  const acciones = screen.getByRole("group", { name: "Acciones del acta" });
+  expect(within(acciones).getByRole("alert")).toHaveTextContent("Completa los campos obligatorios: Unidad Responsable, Funcionario Entrante, Funcionario Saliente.");
+  expect(within(acciones).getByRole("button", { name: "Cancelar" })).toBeVisible();
+  expect(within(acciones).getByRole("button", { name: "Guardar Acta" })).toBeVisible();
 });
 
 it("conserva nombres de actas anteriores al editar sin modificar participantes", () => {
@@ -127,6 +130,7 @@ it("permite capturar participantes sin cuenta incluso si falla el catálogo y li
   const onSave = jest.fn();
   render(<FormActa unidades={unidades} usuarios={usuarios} usuariosError="Sin conexión" onSave={onSave} onCancel={() => {}}
     acta={{ unidad_responsable: 17, entrante: "Administradora", entrante_id: 1, saliente: "Regular", saliente_id: 3 }} />);
+  expect(within(screen.getByRole("group", { name: "Acciones del acta" })).getByRole("alert")).toHaveTextContent("Sin conexión");
   for (const label of ["Funcionario Entrante", "Funcionario Saliente"]) {
     fireEvent.click(screen.getByRole("checkbox", { name: `Capturar nombre manualmente de ${label}` }));
     fireEvent.change(screen.getByRole("textbox", { name: label }), { target: { value: `  ${label} externo  ` } });

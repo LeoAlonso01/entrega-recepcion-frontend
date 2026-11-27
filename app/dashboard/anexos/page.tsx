@@ -3,6 +3,7 @@
 import { categoria_anexos, claves_anexos, obtenerCategoriaPorClave } from "@/lib/anexosCatalogo"
 import HabilitacionAnexos from "@/components/HabilitacionAnexos"
 import FiltroConBusqueda from "@/components/FiltroConBusqueda"
+import AnexoDataEditor from "@/components/AnexoDataEditor"
 import { calcularFojasAnexo, ErrorCalculoFojas } from "@/lib/calcularFojasAnexo"
 import { usePermisosAnexos, clavePermitida, filtrarAnexosAsignados } from "@/lib/usePermisosAnexos"
 import type React from "react"
@@ -1132,7 +1133,7 @@ enum CategoriasAnexos {
 // ENUM + LABELS (opcional pero recomendado en tu app)
 // ======================================================
 
-export enum CategoriaEnum {
+enum CategoriaEnum {
   ARCHIVOS_DOCUMENTALES_E_INFORMATICOS = "1",
   ASUNTOS_GENERALES = "2",
   ASUNTOS_RELEVANTES_EN_TRAMITE_DE_ATENCION = "3",
@@ -1150,7 +1151,7 @@ export enum CategoriaEnum {
   SISTEMA_DE_GESTION_DE_CALIDAD = "15"
 }
 
-export const CategoriaLabels: Record<string, string> = {
+const CategoriaLabels: Record<string, string> = {
   "1": "ARCHIVOS DOCUMENTALES E INFORMATICOS",
   "2": "ASUNTOS GENERALES",
   "3": "ASUNTOS RELEVANTES EN TRAMITE DE ATENCION",
@@ -1266,7 +1267,7 @@ const normalizarDatos = (str: string) =>
     .toLowerCase()
     .trim();
 
-export const validarDatosAnexo = (
+const validarDatosAnexo = (
   clave: string,
   date: Date,
   datos: Array<Record<string, any>>,
@@ -1448,10 +1449,8 @@ export default function AnexosPage() {
   const [previewData, setPreviewData] = useState<Array<Record<string, any>>>([]);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [pendingFile, setPendingFile] = useState<{ file: File; data: any[] } | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [unidadToShow, setUnidadToShow] = useState<string>("");
   const [creatorToShow, setCreatorToShow] = useState<string>("");
-  const rowsPerPage = 35;
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [anexoParaActualizar, setAnexoParaActualizar] = useState<Anexo | null>(null);
   const [anexoParaEliminar, setAnexoParaEliminar] = useState<Anexo | null>(null);
@@ -1490,21 +1489,6 @@ export default function AnexosPage() {
   // La clave duplicada bloquea solo la creación; en edición se modifica el registro actual.
   const hayDuplicadoEnCreacion = (clave: string): boolean =>
     !editingAnexo && yaTieneAnexoConClave(clave, anexos, userid);
-
-  // Calcular filas actuales
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = datos.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(datos.length / rowsPerPage);
-
-  // Cambiar página
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-
-
-  // Reinicia la paginación cuando cambia la cantidad de filas en la tabla de captura.
-  useEffect(() => {
-    setCurrentPage(1); // Reiniciar a la primera página al cambiar los datos
-  }, [datos]);
 
   /*
     Código en pausa (sin uso actual): guardado por helper dedicado.
@@ -1943,7 +1927,6 @@ export default function AnexosPage() {
       estado: fetchd.estado,
       unidad_responsable_id: fetchd.unidad_responsable_id,
     });
-    setCurrentPage(1);
     setDatos(datosArray);
 
     // guardar el id del anexo en edicion
@@ -2172,7 +2155,7 @@ export default function AnexosPage() {
           disableAuthCheck={true} // Deshabilitar la verificación de autenticación para esta página 
         />
 
-        <div className="container whitespace-nowrap overflow-x-auto px-4 py-8">
+        <div className="container min-w-0 max-w-full px-3 py-6 sm:px-4 sm:py-8">
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className={`grid h-auto w-full grid-cols-2 gap-2 text-sm ${userrole === "ADMIN" ? "lg:grid-cols-4" : ""}`} >
@@ -2283,7 +2266,6 @@ export default function AnexosPage() {
                           return;
                         }
                         setVerHistorialUnidad((prev) => !prev);
-                        setCurrentPage(1);
                       }}
                       className="min-w-[48px] flex items-center justify-center text-xs sm:text-sm"
                     >
@@ -2298,7 +2280,6 @@ export default function AnexosPage() {
                       value={selectedCategory}
                       onValueChange={(value: string) => {
                         setSelectedCategory(value);
-                        setCurrentPage(1);
                       }}
                     >
                       <SelectTrigger>
@@ -2516,7 +2497,7 @@ export default function AnexosPage() {
 
             </TabsContent>
 
-            <TabsContent value="nuevoAnexo" className="mt-4 sm:mt-6 md:mt-8">
+            <TabsContent value="nuevoAnexo" className="min-w-0 mt-4 sm:mt-6 md:mt-8">
               <Card>
                 <CardHeader>
                   <CardTitle>{editingAnexo ? "Editar Anexo" : "Nuevo Anexo"}</CardTitle>
@@ -2538,7 +2519,7 @@ export default function AnexosPage() {
                     <p role="alert" className="mb-4 text-sm text-amber-700">Ya no tienes habilitada la clave de este anexo. Tus cambios siguen visibles, pero no puedes guardarlos.</p>
                   )}
                   <form onSubmit={handleSubmit(onSubmit)}>
-                    <fieldset className="space-y-6" disabled={permisosCaptura.cargando || !!permisosCaptura.error || (!!editingAnexo && !permisosCaptura.puedeCapturar(editingAnexo.clave))}>
+                    <fieldset className="min-w-0 max-w-full space-y-6" disabled={permisosCaptura.cargando || !!permisosCaptura.error || (!!editingAnexo && !permisosCaptura.puedeCapturar(editingAnexo.clave))}>
                     {/* Categoría (selector) */}
                     <div className="space-y-2 col-span-6 grid-cols-3">
                       <Label>Categoría</Label>
@@ -2721,165 +2702,31 @@ export default function AnexosPage() {
                                   </p>
                                   <div>
 
-                                    {/* Botón para agregar fila */}
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span>Tabla de datos</span>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        disabled={!datos.length}
-                                        onClick={() => {
-                                          const confirmar = window.confirm(
-                                            "¿Seguro que deseas eliminar todas las filas de la tabla? Esta acción no se puede deshacer."
-                                          );
-
-                                          if (!confirmar) return;
-
-                                          setDatos([]);
-                                          setValue("datos", []);
-                                          setCurrentPage(1);
-                                        }}
-                                      >
-                                        Vaciar tabla
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                          const estructura = ESTRUCTURA_DATOS_POR_CLAVE[watch("clave")] || [];
-                                          const nuevaFila: Record<string, any> = {};
-                                          estructura.forEach((campo) => (nuevaFila[campo.campo] = ""));
-                                          const nuevas = [...datos, nuevaFila];
-                                          setDatos(nuevas);
-                                          setValue("datos", nuevas);
-                                        }}
-                                        disabled={
-                                          !watch("clave") ||
-                                          hayDuplicadoEnCreacion(watch("clave"))
+                                    <AnexoDataEditor
+                                      key={`${watch("clave")}-${editingAnexo?.id ?? "nuevo"}`}
+                                      rows={datos}
+                                      fields={ESTRUCTURA_DATOS_POR_CLAVE[watch("clave")] || []}
+                                      disabled={hayDuplicadoEnCreacion(watch("clave")) || permisosCaptura.cargando || !!permisosCaptura.error || !permisosCaptura.puedeCapturar(watch("clave"))}
+                                      onChange={(nuevas) => {
+                                        setDatos(nuevas);
+                                        setValue("datos", nuevas, { shouldDirty: true });
+                                      }}
+                                      onValidate={(campo, valor, rowIndex) => {
+                                        const clave = watch("clave");
+                                        const validacion = validarCampoEstructura(clave, campo, valor);
+                                        if (validacion) {
+                                          void registrarEventoAuditoria({
+                                            actor_id: userid,
+                                            action: "validar_campo_dinamico",
+                                            object_type: "anexo",
+                                            object_id: clave,
+                                            success: validacion.nivel === "warning",
+                                            metadata: { campo, nivel: validacion.nivel, mensaje: validacion.mensaje, fila: rowIndex + 1 },
+                                          });
                                         }
-                                        className={hayDuplicadoEnCreacion(watch("clave")) ? "opacity-50 cursor-not-allowed" : ""}
-                                      >
-                                        + Agregar fila
-                                      </Button>
-
-                                    </div>
-
-                                    {/* Mensaje si no hay datos */}
-                                    {datos.length === 0 ? (
-                                      <p className="text-sm text-gray-500">No hay datos. Sube un archivo excel o agrega manualmente.</p>
-                                    ) : (
-                                      <>
-                                        {/* Contenedor con scroll horizontal/vertical */}
-                                        <div className="border border-gray-300 rounded-md overflow-hidden">
-                                          <div className={editingAnexo ? "overflow-y-visible" : "max-h-60 overflow-y-auto"}>
-                                            <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                              <thead className="bg-gray-50 sticky top-0">
-                                                <tr>
-                                                  {Object.keys(datos[0]).map((key) => (
-                                                    <th
-                                                      key={key}
-                                                      className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider"
-                                                    >
-                                                      {key.replace(/_/g, " ").toUpperCase()}
-                                                    </th>
-                                                  ))}
-                                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                                    Acciones
-                                                  </th>
-                                                </tr>
-                                              </thead>
-                                              <tbody className="bg-white divide-y divide-gray-200">
-                                                {currentRows.map((fila, i) => {
-                                                  const rowIndex = indexOfFirstRow + i;
-                                                  return (
-                                                    <tr key={rowIndex} className="hover:bg-gray-50">
-                                                      {Object.keys(fila).map((campo) => (
-                                                        <td key={campo} className="px-3 py-2 whitespace-nowrap">
-                                                          <input
-                                                            type="text"
-                                                            value={fila[campo]}
-                                                            onChange={(e) => {
-                                                              const nuevas = [...datos];
-                                                              nuevas[rowIndex][campo] = e.target.value;
-                                                              setDatos(nuevas);
-                                                              setValue("datos", nuevas);
-                                                            }}
-                                                            onBlur={async (e) => {
-                                                              const clave = watch("clave");
-                                                              if (!clave) return;
-
-                                                              const validacion = validarCampoEstructura(clave, campo, e.target.value);
-                                                              if (validacion) {
-                                                                if (validacion.nivel === "error") {
-                                                                  toast.error(validacion.mensaje);
-                                                                } else {
-                                                                  toast.warning(validacion.mensaje);
-                                                                }
-
-                                                                await registrarEventoAuditoria({
-                                                                  actor_id: userid,
-                                                                  action: "validar_campo_dinamico",
-                                                                  object_type: "anexo",
-                                                                  object_id: clave,
-                                                                  success: validacion.nivel === "warning",
-                                                                  metadata: {
-                                                                    campo,
-                                                                    nivel: validacion.nivel,
-                                                                    mensaje: validacion.mensaje,
-                                                                    fila: rowIndex + 1,
-                                                                  },
-                                                                });
-                                                              }
-                                                            }}
-                                                            className="w-full p-1 border rounded hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                                            disabled={hayDuplicadoEnCreacion(watch("clave"))}
-                                                          />
-                                                        </td>
-                                                      ))}
-                                                      <td className="px-3 py-2 whitespace-nowrap">
-                                                        <Button
-                                                          type="button"
-                                                          variant="ghost"
-                                                          size="sm"
-                                                          className="text-red-500 hover:bg-red-50"
-                                                          onClick={() => {
-                                                            const nuevas = datos.filter((_, index) => index !== rowIndex);
-                                                            setDatos(nuevas);
-                                                            setValue("datos", nuevas);
-                                                          }}
-                                                          disabled={hayDuplicadoEnCreacion(watch("clave"))}
-                                                        >
-                                                          Eliminar
-                                                        </Button>
-                                                      </td>
-                                                    </tr>
-                                                  );
-                                                })}
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        </div>
-
-                                        {/* Paginación */}
-                                        {totalPages > 1 && (
-                                          <div className="flex justify-center mt-3 space-x-1">
-                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                              <Button
-                                                type="button"
-                                                key={page}
-                                                variant={currentPage === page ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => paginate(page)}
-                                                className={currentPage === page ? "!bg-blue-600" : ""}
-                                              >
-                                                {page}
-                                              </Button>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
+                                        return validacion;
+                                      }}
+                                    />
 
                                     {/* Subida de Excel */}
                                     <div className="mt-4">
